@@ -38,8 +38,16 @@ $yesterday= $yesterdaydate->toDateString();
 				<div class="t-content">
 					<h6 class="text-uppercase mb-1">GP Summary</h6>
 					<h1 class="mb-1">{{$totalGp}}</h1>
-               <span class="text-muted font-180">Total Down Gp's&nbsp;&nbsp;<a href="/public/westbengal/public/admin/tickets?Gpstatus=DownGP" >{{ $uniqueLgdCount }}</a></span><br/>
-               <span class="text-success font-180"><b>Totla Up Gp's</b> &nbsp;&nbsp;<a>{{$totalGp - $uniqueLgdCount}}</a></span><br/>
+               <span class="text-muted font-180">Total Down Gp's&nbsp;&nbsp;<a href="/public/westbengal/public/admin/tickets?Gpstatus=DownGP" >{{ $uniqueLgdCount }}</a>
+			    @if($totalGp > 0)
+					({{ round(($uniqueLgdCount / $totalGp) * 100, 2) }}%)
+				@endif
+			   </span><br/>
+               <span class="text-success font-180"><b>Totla Up Gp's</b> &nbsp;&nbsp;<a>{{$totalGp - $uniqueLgdCount}}</a>
+			    @if($totalGp > 0)
+					({{ round((($totalGp - $uniqueLgdCount) / $totalGp) * 100, 2) }}%)
+				@endif
+			   </span><br/>
 
 				</div>
 			</div>

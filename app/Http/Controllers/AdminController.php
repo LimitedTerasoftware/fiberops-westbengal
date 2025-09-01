@@ -3845,22 +3845,9 @@ public function gp_summary(Request $request)
         'chart_data' => $chartData,
     ]);
 }
-
-
-// Handle ONT Data 
-
-// public function HandleONT(Request $request){
-
-//         $records = OntUptime::orderBy('id', 'desc')->get();
-
-//     // pass to the view
-//     return view('admin.ont_uptime', compact('records'));
-
-// }
-
 public function uploadCSV(Request $request)
 {
-    $request->validate([
+    $this->validate($request, [
         'csv_file' => 'required|mimes:csv,txt|max:2048',
     ]);
 
@@ -3869,29 +3856,43 @@ public function uploadCSV(Request $request)
     $header = fgetcsv($file);
 
     $records = [];
-    while (($row = fgetcsv($file)) !== false) {
-        $date = null;
-        if (!empty($row[2])) {
-            try {
-                $date = \Carbon\Carbon::parse($row[2])->format('Y-m-d');
-            } catch (\Exception $e) {
-                $date = null;
+
+    try {
+        while (($row = fgetcsv($file)) !== false) {
+            $date = null;
+            if (!empty($row[2])) {
+                try {
+                    $date = \Carbon\Carbon::parse($row[2])->format('Y-m-d');
+                } catch (\Exception $e) {
+                    // Invalid date format
+                    throw new \Exception("Invalid date format in CSV.");
+                }
             }
+
+            // Check mandatory fields
+            if (empty($row[0]) || empty($row[1]) || empty($date)) {
+                throw new \Exception("Missing required fields in CSV (LGD Code, Uptime %, or Date).");
+            }
+
+            $data = [
+                'lgd_code' => $row[0],
+                'uptime_percent' => $row[1],
+                'record_date' => $date,
+            ];
+
+            OntUptime::create($data);
+            $records[] = $data;
         }
-
-        $data = [
-            'lgd_code' => $row[0],
-            'uptime_percent' => $row[1],
-            'record_date' => $date,
-        ];
-
-        OntUptime::create($data);
-        $records[] = $data;
+    } catch (\Exception $e) {
+        fclose($file);
+        return back()->with('error', $e->getMessage());
     }
+
     fclose($file);
 
     return back()->with('success', 'CSV uploaded successfully!')->with('records', $records);
 }
+
 
 // public function ONTdashboard(Request $request)
 // {
@@ -3980,15 +3981,23 @@ public function ONTdashboard(Request $request)
     $groupedData = $data->groupBy(function ($item) {
         return Carbon::parse($item->record_date)->format('Y-m-d');
     })->map(function ($items) {
-        return [
-            '>=98'   => $items->where('uptime_percent', '>=', 98)->count(),
-            '>=90'   => $items->filter(fn($i) => $i->uptime_percent >= 90 && $i->uptime_percent < 98)->count(),
-            '>=75'   => $items->filter(fn($i) => $i->uptime_percent >= 75 && $i->uptime_percent < 90)->count(),
-            '>=50'   => $items->filter(fn($i) => $i->uptime_percent >= 50 && $i->uptime_percent < 75)->count(),
-            '>=20'   => $items->filter(fn($i) => $i->uptime_percent >= 20 && $i->uptime_percent < 50)->count(),
-            '<20'    => $items->where('uptime_percent', '<', 20)->count(),
-            'total'  => $items->count(),
-        ];
+           return [
+        '>=98'   => $items->where('uptime_percent', '>=', 98)->count(),
+        '>=90'   => $items->filter(function($i) {
+            return $i->uptime_percent >= 90 && $i->uptime_percent < 98;
+        })->count(),
+        '>=75'   => $items->filter(function($i) {
+            return $i->uptime_percent >= 75 && $i->uptime_percent < 90;
+        })->count(),
+        '>=50'   => $items->filter(function($i) {
+            return $i->uptime_percent >= 50 && $i->uptime_percent < 75;
+        })->count(),
+        '>=20'   => $items->filter(function($i) {
+            return $i->uptime_percent >= 20 && $i->uptime_percent < 50;
+        })->count(),
+        '<20'    => $items->where('uptime_percent', '<', 20)->count(),
+        'total'  => $items->count(),
+    ];
     });
 
     // Totals across all days
