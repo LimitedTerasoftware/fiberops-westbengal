@@ -13,6 +13,8 @@ use \Carbon\Carbon;
 use App\Http\Controllers\SendPushNotification;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProviderResources\TripController;
+use Illuminate\Support\Facades\Validator;
+use App\OntUptime;
 
 use App\User;
 use App\Fleet;
@@ -39,7 +41,8 @@ use App\Document;
 use App\District;
 use Illuminate\Support\Arr;
 use Log;
-
+use Maatwebsite\Excel\Facades\Excel;
+use App\Services\OntUptimeImport;
 
 class AdminController extends Controller
 {
@@ -3843,4 +3846,222 @@ public function gp_summary(Request $request)
     ]);
 }
 
+
+// Handle ONT Data 
+
+// public function HandleONT(Request $request){
+
+//         $records = OntUptime::orderBy('id', 'desc')->get();
+
+//     // pass to the view
+//     return view('admin.ont_uptime', compact('records'));
+
+// }
+
+public function uploadCSV(Request $request)
+{
+    $request->validate([
+        'csv_file' => 'required|mimes:csv,txt|max:2048',
+    ]);
+
+    $path = $request->file('csv_file')->getRealPath();
+    $file = fopen($path, 'r');
+    $header = fgetcsv($file);
+
+    $records = [];
+    while (($row = fgetcsv($file)) !== false) {
+        $date = null;
+        if (!empty($row[2])) {
+            try {
+                $date = \Carbon\Carbon::parse($row[2])->format('Y-m-d');
+            } catch (\Exception $e) {
+                $date = null;
+            }
+        }
+
+        $data = [
+            'lgd_code' => $row[0],
+            'uptime_percent' => $row[1],
+            'record_date' => $date,
+        ];
+
+        OntUptime::create($data);
+        $records[] = $data;
+    }
+    fclose($file);
+
+    return back()->with('success', 'CSV uploaded successfully!')->with('records', $records);
+}
+
+// public function ONTdashboard(Request $request)
+// {
+//     $month    = $request->get('month');
+//     $fromDate = $request->get('fromDate');
+//     $toDate   = $request->get('toDate');
+
+//     $query = OntUptime::query();
+
+//     if (!empty($month)) {
+//         // Ensure month value is valid like "2025-08"
+//         try {
+//             $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+//             $end   = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+//             $query->whereBetween('record_date', [$start, $end]);
+//         } catch (\Exception $e) {
+//             // fallback in case of invalid input
+//             $query->whereBetween('record_date', [
+//                 Carbon::now()->subDays(7)->toDateString(),
+//                 Carbon::now()->toDateString()
+//             ]);
+//         }
+//     } elseif (!empty($fromDate) && !empty($toDate)) {
+//         $query->whereBetween('record_date', [$fromDate, $toDate]);
+//     } else {
+//         // Default last 7 days
+//         $query->whereBetween('record_date', [
+//             Carbon::now()->subDays(7)->toDateString(),
+//             Carbon::now()->toDateString()
+//         ]);
+//     }
+
+//     $data = $query->get();
+
+//     // Group by date and count ranges
+// $groupedData = $data->groupBy(function ($item) {
+//     return $item->record_date->format('Y-m-d');  // cast Carbon to string
+// })->map(function ($items) {
+//     return [
+//         '>=98'   => $items->where('uptime_percent', '>=', 98)->count(),
+//         '>=90'   => $items->filter(fn($i) => $i->uptime_percent >= 90 && $i->uptime_percent < 98)->count(),
+//         '>=75'   => $items->filter(fn($i) => $i->uptime_percent >= 75 && $i->uptime_percent < 90)->count(),
+//         '>=50'   => $items->filter(fn($i) => $i->uptime_percent >= 50 && $i->uptime_percent < 75)->count(),
+//         '>=20'   => $items->filter(fn($i) => $i->uptime_percent >= 20 && $i->uptime_percent < 50)->count(),
+//         '<20'    => $items->where('uptime_percent', '<', 20)->count(),
+//         'total'  => $items->count(),
+//     ];
+// });
+
+
+//     return view('admin.ont_uptime', compact('groupedData'));
+// }
+
+
+public function ONTdashboard(Request $request)
+{
+    $month    = $request->get('month');
+    $fromDate = $request->get('fromDate');
+    $toDate   = $request->get('toDate');
+
+    $query = OntUptime::query();
+
+    if (!empty($month)) {
+        try {
+            $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+            $end   = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+            $query->whereBetween('record_date', [$start, $end]);
+        } catch (\Exception $e) {
+            $query->whereBetween('record_date', [
+                Carbon::now()->subDays(6)->toDateString(),
+                Carbon::now()->toDateString()
+            ]);
+        }
+    } elseif (!empty($fromDate) && !empty($toDate)) {
+        $query->whereBetween('record_date', [$fromDate, $toDate]);
+    } else {
+        $query->whereBetween('record_date', [
+            Carbon::now()->subDays(6)->toDateString(),
+            Carbon::now()->toDateString()
+        ]);
+    }
+
+    $data = $query->get();
+
+    // Group by date and count ranges
+    $groupedData = $data->groupBy(function ($item) {
+        return Carbon::parse($item->record_date)->format('Y-m-d');
+    })->map(function ($items) {
+        return [
+            '>=98'   => $items->where('uptime_percent', '>=', 98)->count(),
+            '>=90'   => $items->filter(fn($i) => $i->uptime_percent >= 90 && $i->uptime_percent < 98)->count(),
+            '>=75'   => $items->filter(fn($i) => $i->uptime_percent >= 75 && $i->uptime_percent < 90)->count(),
+            '>=50'   => $items->filter(fn($i) => $i->uptime_percent >= 50 && $i->uptime_percent < 75)->count(),
+            '>=20'   => $items->filter(fn($i) => $i->uptime_percent >= 20 && $i->uptime_percent < 50)->count(),
+            '<20'    => $items->where('uptime_percent', '<', 20)->count(),
+            'total'  => $items->count(),
+        ];
+    });
+
+    // Totals across all days
+   $totals = [];
+foreach ($groupedData as $date => $values) {
+    $totals[$date] = $values['total'];
+}
+
+
+    // Calculate percentages (>98%)
+    $percentages = [];
+    foreach ($groupedData as $date => $values) {
+        $total = $totals[$date];
+        $percentages[$date] = $total > 0 ? round(($values['>=98'] / $total) * 100, 2) : 0;
+    }
+
+
+    return view('admin.ont_uptime', compact('totals', 'percentages','groupedData'));
+}
+
+
+    // CSV Management Tab
+    public function csvManagement()
+    {
+        $records = OntUptime::latest()->paginate(20);
+        return view('ont.csv', compact('records'));
+    }
+
+    // Upload CSV
+    // public function uploadCsv(Request $request)
+    // {
+    //     $request->validate([
+    //         'file' => 'required|mimes:csv,xlsx,xls'
+    //     ]);
+
+    //     Excel::import(new OntUptimeImport, $request->file('file'));
+
+    //     return back()->with('success', 'CSV uploaded successfully!');
+    // }
+
+    // CRUD
+    public function index()
+    {
+        $records = OntUptime::orderBy('id', 'asc')->get();
+
+        return view('admin.ont-uptime-index',compact('records'));
+    }
+
+    public function store(Request $request)
+    {
+        OntUptime::create($request->all());
+        return back()->with('success', 'Record added');
+    }
+
+    public function edit($id)
+    {
+           $record = OntUptime::findOrFail($id);
+            return response()->json($record);
+
+    }
+
+    public function update(Request $request, $id)
+    {
+        $ont = OntUptime::findOrFail($id);
+        $ont->update($request->all());
+        return response()->json(['success' => true, 'message' => 'Record updated successfully!']);
+        
+
+    }
+
+    public function destroy($id)
+    {
+        OntUptime::destroy($id);
+        return back()->with('success', 'Record deleted');
+    }
 }

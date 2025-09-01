@@ -69,7 +69,17 @@
 					<span class="s-text">@lang('admin.include.heat_map')</span>
 				</a>
 			</li>
-                    @endif 
+                    @endif
+		    @if(auth()->user()->role == 'admin' ||  auth()->user()->role == 'super_admin' )
+			<li>
+				<a href="{{ route('admin.ont-uptime') }}" class="waves-effect waves-light">
+					<span class="s-icon"><i class="ti-star"></i></span>
+					<span class="s-text">@lang('admin.include.ontuptime')</span>
+				</a>
+			</li>
+            @endif  
+
+
 
                     @if(auth()->user()->role == 'admin' ||  auth()->user()->role == 'super_admin' ||  auth()->user()->role == 'zone_admin')
 			<li>

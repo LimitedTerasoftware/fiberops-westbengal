@@ -182,6 +182,7 @@ return array (
     'account_statements' => 'Accounts Statements',
     'dispatcher_panel' => 'Dispatcher Panel',
     'heat_map' => 'Heat Map',
+    'ontuptime'=> "ONT Uptime",
     'members' => 'Members',
     'users' => 'DHQ',
     'list_users' => 'List DHQs',

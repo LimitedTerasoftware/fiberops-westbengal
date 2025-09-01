@@ -21,6 +21,20 @@ Route::get('/getSearchblocklist/{id}','AdminController@getSearchblocklist');
 Route::get('/getSearchproviderlist/{id}','AdminController@getSearchproviderlist');
 Route::get('/addtickets', 'AdminController@addtickets')->name('addtickets');
 Route::get('/heatmap', 'AdminController@heatmap')->name('heatmap');
+
+
+Route::get('/ont-uptime', 'AdminController@ONTdashboard')->name('ont-uptime');
+Route::get('/ont-uptime/csv', 'AdminController@csvManagement')->name('ont-uptime.csv');
+Route::post('/ont-uptime/upload', 'AdminController@uploadCsv')->name('ont-uptime.upload');
+
+// CRUD operations
+Route::get('/ont-uptime/index', 'AdminController@index')->name('ont-uptime.index');
+Route::post('/ont-uptime/store', 'AdminController@store')->name('ont-uptime.store');
+Route::get('/ont-uptime/edit/{id}', 'AdminController@edit')->name('ont-uptime.edit');
+Route::post('/ont-uptime/update/{id}', 'AdminController@update')->name('ont-uptime.update');
+Route::delete('/ont-uptime/delete/{id}', 'AdminController@destroy')->name('ont-uptime.delete');
+
+
 Route::get('/currentlocation/{id}', 'AdminController@currentlocation')->name('currentlocation');
 Route::get('/attendance', 'AdminController@attendance')->name('attendance');
 Route::get('/userattendance', 'AdminController@userattendance')->name('userattendance');
