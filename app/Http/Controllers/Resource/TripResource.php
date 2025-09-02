@@ -626,7 +626,7 @@ class TripResource extends Controller
 
          try{
             $requests = UserRequests::leftjoin('master_tickets', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
-                        ->where('user_requests.status' , 'INCOMING') 
+                        ->where('user_requests.status' , 'INCOMING')->where('user_requests.state_id',1)
                         ->select(
                             DB::raw('COUNT(CASE WHEN TIMESTAMPDIFF(HOUR, DATE_FORMAT(STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now()->format("Y-m-d H:i:s").'") < 4 THEN 1 END) AS below_4_hours'),
                             DB::raw('COUNT(CASE WHEN TIMESTAMPDIFF(HOUR,  DATE_FORMAT(STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now()->format("Y-m-d H:i:s").'") BETWEEN 4 AND 10 THEN 1 END) AS between_4_to_10_hours'),

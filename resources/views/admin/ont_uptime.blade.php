@@ -110,90 +110,95 @@
             </form>    
 
             {{-- Data Table --}}
+            <div class="table-responsive" style="overflow-x:auto; max-width:100%;">
             
-                <table class="table row-bordered dataTable nowrap display">
-    <thead>
-        <tr class="bg-yellow-100">
-            <th class="p-2 border">SL.NO</th>
-            <th class="p-2 border">GP UPTIME BIFURCATION</th>
-            @foreach($groupedData as $date => $values)
-                <th class="p-2 border">{{ \Carbon\Carbon::parse($date)->format('d M') }}</th>
-            @endforeach
-        </tr>
-    </thead>
-    <tbody>
-        @php $sl=1; @endphp
+            <table class="table row-bordered dataTable nowrap display">
+                <thead>
+                    <tr class="bg-yellow-100">
+                        <th class="p-2 border">SL.NO</th>
+                        <th class="p-2 border">GP UPTIME BIFURCATION</th>
+                        @foreach($data as $row)
+                            <th class="p-2 border">{{ \Carbon\Carbon::parse($row->day)->format('d M') }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @php $sl = 1; @endphp
 
-        {{-- >=98 --}}
-        <tr>
-            <td class="p-2 border">{{ $sl++ }}</td>
-            <td class="p-2 border">GPs with (>=98) to 100%</td>
-            @foreach($groupedData as $values)
-                <td class="p-2 border text-green-500">{{ $values['>=98'] }}</td>
-            @endforeach
-        </tr>
+                    {{-- >=98 --}}
+                    <tr>
+                        <td class="p-2 border">{{ $sl++ }}</td>
+                        <td class="p-2 border">GPs with (>=98) to 100%</td>
+                        @foreach($data as $row)
+                            <td class="p-2 border text-green-500">{{ $row->gte98 }}</td>
+                        @endforeach
+                    </tr>
 
-        {{-- >=90 --}}
-        <tr>
-            <td class="p-2 border">{{ $sl++ }}</td>
-            <td class="p-2 border">GPs with (>=90) to <98%</td>
-            @foreach($groupedData as $values)
-                <td class="p-2 border">{{ $values['>=90'] }}</td>
-            @endforeach
-        </tr>
+                    {{-- >=90 --}}
+                    <tr>
+                        <td class="p-2 border">{{ $sl++ }}</td>
+                        <td class="p-2 border">GPs with (>=90) to <98% </td>
+                        @foreach($data as $row)
+                            <td class="p-2 border">{{ $row->gte90 }}</td>
+                        @endforeach
+                    </tr>
 
-        {{-- >=75 --}}
-        <tr>
-            <td class="p-2 border">{{ $sl++ }}</td>
-            <td class="p-2 border">GPs with (>=75) to <90%</td>
-            @foreach($groupedData as $values)
-                <td class="p-2 border">{{ $values['>=75'] }}</td>
-            @endforeach
-        </tr>
-        <tr>
-            <td class="p-2 border">{{ $sl++ }}</td>
-            <td class="p-2 border">GPs with (>=50) to <75%</td>
-            @foreach($groupedData as $values)
-                <td class="p-2 border">{{ $values['>=50'] }}</td>
-            @endforeach
-        </tr>
+                    {{-- >=75 --}}
+                    <tr>
+                        <td class="p-2 border">{{ $sl++ }}</td>
+                        <td class="p-2 border">GPs with (>=75) to <90%</td>
+                        @foreach($data as $row)
+                            <td class="p-2 border">{{ $row->gte75 }}</td>
+                        @endforeach
+                    </tr>
 
-        <tr>
-            <td class="p-2 border">{{ $sl++ }}</td>
-            <td class="p-2 border">GPs with (>=20) to <50%</td>
-            @foreach($groupedData as $values)
-                <td class="p-2 border">{{ $values['>=20'] }}</td>
-            @endforeach
-        </tr>
-         <tr>
-            <td class="p-2 border">{{ $sl++ }}</td>
-            <td class="p-2 border">GPs with (0) to <20%</td>
-            @foreach($groupedData as $values)
-                <td class="p-2 border">{{ $values['<20'] }}</td>
-            @endforeach
-        </tr>
+                    {{-- >=50 --}}
+                    <tr>
+                        <td class="p-2 border">{{ $sl++ }}</td>
+                        <td class="p-2 border">GPs with (>=50) to <75%</td>
+                        @foreach($data as $row)
+                            <td class="p-2 border">{{ $row->gte50 }}</td>
+                        @endforeach
+                    </tr>
 
-        <tr class="font-weight-bold bg-gray-100">
-            <td></td>
-            <td>Total</td>
-            @foreach($totals as $total)
-                <td class="p-2 border">{{ $total }}</td>
-            @endforeach
-        </tr>
+                    {{-- >=20 --}}
+                    <tr>
+                        <td class="p-2 border">{{ $sl++ }}</td>
+                        <td class="p-2 border">GPs with (>=20) to <50%</td>
+                        @foreach($data as $row)
+                            <td class="p-2 border">{{ $row->gte20 }}</td>
+                        @endforeach
+                    </tr>
 
-        {{-- >98% Percentage Row --}}
-        <tr class="text-primary font-bold">
-            <td></td>
-            <td>>98%</td>
-            @foreach($percentages as $perc)
-                <td class="p-2 border">{{ $perc }}%</td>
-            @endforeach
-        </tr>
+                    {{-- <20 --}}
+                    <tr>
+                        <td class="p-2 border">{{ $sl++ }}</td>
+                        <td class="p-2 border">GPs with (0) to <20%</td>
+                        @foreach($data as $row)
+                            <td class="p-2 border">{{ $row->lt20 }}</td>
+                        @endforeach
+                    </tr>
 
-    </tbody>
-</table>
-           
+                    {{-- Total --}}
+                    <tr class="font-weight-bold bg-gray-100">
+                        <td></td>
+                        <td>Total</td>
+                        @foreach($data as $row)
+                            <td class="p-2 border">{{ $row->total }}</td>
+                        @endforeach
+                    </tr>
 
+                    {{-- >98% Percentage --}}
+                    <tr class="text-primary font-bold">
+                        <td></td>
+                        <td>>98%</td>
+                        @foreach($data as $row)
+                            <td class="p-2 border">{{ $row->pct_gte98 }}%</td>
+                        @endforeach
+                    </tr>
+                </tbody>
+            </table>
+            </div>
         </div>
     </div>
 </div>

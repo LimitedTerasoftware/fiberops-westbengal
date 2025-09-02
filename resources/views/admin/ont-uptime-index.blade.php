@@ -104,7 +104,14 @@
             @else
                 <h6 class="no-result">No ONT Uptime Records found</h6>
             @endif
+             <div class="mt-3">
 
+            Showing {{$records->currentPage() != 1 ? $records->currentPage() * 10 - 9 : $records->currentPage()}} to {{$records->currentPage() * $records->perPage()}} of {{$records->total()}} entries
+            </div>
+           <div class="mt-1">
+
+                {{ $records->links() }}
+            </div>
         </div>
             <!-- Edit Modal -->
             <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
@@ -157,7 +164,7 @@
             scrollX: true,
             searching: true,
             responsive: false,
-            paging:true,
+            paging:false,
             info: false,
             dom: 'Bfrtip',
             buttons: [
