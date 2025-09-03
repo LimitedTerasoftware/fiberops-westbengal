@@ -34,6 +34,11 @@ Route::get('/ont-uptime/edit/{id}', 'AdminController@edit')->name('ont-uptime.ed
 Route::post('/ont-uptime/update/{id}', 'AdminController@update')->name('ont-uptime.update');
 Route::delete('/ont-uptime/delete/{id}', 'AdminController@destroy')->name('ont-uptime.delete');
 
+Route::get('/patroller_attendance', 'AdminController@PatrollerAttendanceIndex')->name('patroller_attendance');
+Route::get('/attendance_track', function () {
+    return view('admin.attendance_track');
+});
+
 
 Route::get('/currentlocation/{id}', 'AdminController@currentlocation')->name('currentlocation');
 Route::get('/attendance', 'AdminController@attendance')->name('attendance');

@@ -2,7 +2,6 @@
 
 @section('title', 'Request details ')
 
-
 @section('content')
 
 <?php
@@ -60,7 +59,10 @@ $distance = ($miles * 1.609344).' km';
                     <div class="ticket-meta text-muted">
                         <i class="ti-location-pin" style="color: #FF0000;"></i>
 
-                        <span>{{ $ticket->district ?? 'N/A' }} / {{ $ticket->mandal ?? 'N/A' }} / {{ $request->gpname }}</span>
+                        <span>{{ isset($ticket->district) ? $ticket->district : '' }} /
+                              {{ isset($ticket->mandal) ? $ticket->mandal : '' }} /
+                              {{ isset($request->gpname) ? $request->gpname : '' }}
+                            </span>
                         &nbsp;
                         <i class="ti-time" style="color:#FF0000;"></i>
                         <span>
@@ -249,12 +251,12 @@ $distance = ($miles * 1.609344).' km';
                         <div class="col-md-3">
                             <div class="detail-group mb-3">
                                 <label class="detail-label">Issue Type</label>
-                                <div class="detail-value">{{ $request->downreason ?? 'N/A' }}</div>
+                                <div class="detail-value">{{ isset($request->downreason) ? $request->downreason : '' }}</div>
                             </div>
 
                             <div class="detail-group mb-3">
                                 <label class="detail-label">Issue Overview</label>
-                                <div class="detail-value">{{ $request->downreasonindetailed ?? 'N/A' }}</div>
+                                <div class="detail-value">{{ isset($request->downreasonindetailed)  ? $request->downreasonindetailed : '' }}</div>
                             </div>
                         
 

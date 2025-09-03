@@ -4069,4 +4069,9 @@ public function ONTdashboard(Request $request)
         OntUptime::destroy($id);
         return back()->with('success', 'Record deleted');
     }
+
+
+    public function PatrollerAttendanceIndex(){
+        return view('admin.PatrollerAttendance');
+    }
 }

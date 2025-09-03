@@ -69,10 +69,10 @@
                     ** Demo Mode : @lang('admin.demomode')
                 </div>
                 @endif
-
+             @if(auth()->user()->role == 'admin' ||  auth()->user()->role == 'super_admin')
             <a href="{{ route('admin.tickets.create') }}" style="margin-left: 1em;" class="btn btn-primary pull-right b-a-radius-0-5"><i class="fa fa-plus"></i> Add New Ticket</a>
             <a href="{{ route('admin.import') }}" style="margin-left: 1em;" class="btn btn-success pull-right b-a-radius-0-5"><i class="fa fa-upload"></i> Upload CSV File</a>
-
+             @endif
             <h4 class="mb-2">Tickets History</h4>
 
             <ul class="nav nav-pills mb-1 b-b nav-cstm">
