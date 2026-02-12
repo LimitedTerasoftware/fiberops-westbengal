@@ -6,6 +6,7 @@
 |--------------------------------------------------------------------------
 */
 
+
 Route::get('/', 'AdminController@dashboard')->name('index');
 Route::get('/dashboard', 'AdminController@dashboard')->name('dashboard');
 Route::get('/inventorydashboard', 'AdminController@inventorydashboard')->name('inventorydashboard');
