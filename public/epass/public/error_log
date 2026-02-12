@@ -1,0 +1,17 @@
+[05-Aug-2022 18:31:39 Asia/Calcutta] PHP Fatal error:  Cannot use DateTimeImmutable as DateTimeImmutable because the name is already in use in /home/nftpqvig/epass.nftplaza.tools/app/Http/Services/Visitor/VisitorService.php on line 11
+[05-Oct-2024 20:44:15 Asia/Calcutta] PHP Fatal error:  During inheritance of ArrayAccess: Uncaught ErrorException: Return type of Illuminate\Database\Eloquent\Model::offsetExists($offset) should either be compatible with ArrayAccess::offsetExists(mixed $offset): bool, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1658
+Stack trace:
+#0 /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php(23): Illuminate\Foundation\Bootstrap\HandleExceptions->handleError()
+#1 /home/nftpqvig/epass.nftplaza.tools/vendor/composer/ClassLoader.php(571): include('/home/nftpqvig/...')
+#2 /home/nftpqvig/epass.nftplaza.tools/vendor/composer/ClassLoader.php(428): Composer\Autoload\includeFile()
+#3 /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Database/DatabaseServiceProvider.php(42): Composer\Autoload\ClassLoader->loadClass()
+#4 /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(627): Illuminate\Database\DatabaseServiceProvider->register()
+#5 /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Foundation/ProviderRepository.php(75): Illuminate\Foundation\Application->register()
+#6 /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(604): Illuminate\Foundation\ProviderRepository->load()
+#7 /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/RegisterProviders.php(17): Illuminate\Foundation\Application->registerConfiguredProviders()
+#8 /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(230): Illuminate\Foundation\Bootstrap\RegisterProviders->bootstrap()
+#9 /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(151): Illuminate\Foundation\Application->bootstrapWith()
+#10 /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(135): Illuminate\Foundation\Http\Kernel->bootstrap()
+#11 /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(109): Illuminate\Foundation\Http\Kernel->sendRequestThroughRouter()
+#12 /home/nftpqvig/epass.nftplaza.tools/public/index.php(54): Illuminate\Foundation\Http\Kernel->handle()
+#13 {main} in /home/nftpqvig/epass.nftplaza.tools/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php on line 23

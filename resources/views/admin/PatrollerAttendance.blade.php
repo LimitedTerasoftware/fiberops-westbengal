@@ -3,71 +3,138 @@
 @section('title', 'Attendance Summary - ')
 
 @section('content')
+@php
+    $roles = [
+        1 => 'OFC',
+        2 => 'FRT',
+        5 => 'Patroller',
+        3 => 'Zonal incharge',
+        4 => 'District incharge'
+    ];
+@endphp
 <div class="content-area py-4">
     <div class="container-fluid">
         <!-- Header Section -->
         <div class="header-section mb-4">
             <div class="header-content">
-                <h1 class="page-title">Attendance Summary</h1>
+                <h1 class="page-title">Attendance List</h1>
                 <p class="page-subtitle">Field Team Management</p>
             </div>
-            <button class="btn btn-export">
+            <!-- <button class="btn btn-export">
                 <i class="fa fa-download me-2"></i>Export
-            </button>
+            </button> -->
+           <a href="{{ route('admin.attendance-export', [
+                    'from_date' => request('from_date'),
+                    'to_date' => request('to_date'),
+                    'date_range' => request('date_range'),
+                    'district_id' => request('district_id'),
+                    'block_id' => request('block_id'),
+                    'zone_id' => request('zone_id'),
+                    'role' => request('role'),
+                    'status' => request('status'),
+                    'search' => request('search')
+                ]) }}" 
+            class="btn btn-export">
+                <i class="fa fa-download me-2"></i>Export
+            </a>
+
+
         </div>
 
         <!-- Filters Section -->
-        <div class="filters-section mb-4">
-            <div class="filters-grid">
-                <div class="filter-group">
-                    <label class="filter-label">Date Range</label>
-                    <input type="date" class="filter-input" placeholder="dd-mm-yyyy">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">Quick Filter</label>
-                    <select class="filter-select">
-                        <option>Today</option>
-                        <option>Yesterday</option>
-                        <option>This Week</option>
-                        <option>This Month</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">Search</label>
-                    <input type="text" class="filter-input" placeholder="Name or ID">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">Role</label>
-                    <select class="filter-select">
-                        <option>All</option>
-                        <option>FRT</option>
-                        <option>Patroller</option>
-                        <option>Supervisor</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">Zone</label>
-                    <select class="filter-select">
-                        <option>All Zones</option>
-                        <option>Zone A</option>
-                        <option>Zone B</option>
-                        <option>Zone C</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">Status</label>
-                    <select class="filter-select">
-                        <option>All</option>
-                        <option>Synced</option>
-                        <option>Pending</option>
-                        <option>Absent</option>
-                    </select>
-                </div>
+         <div class="filters-section mb-4">
+    <form method="GET" action="{{ route('admin.attendance_list') }}">
+
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">Zone</label>
+                <select name="zone_id" class="filter-select">
+                    <option value="">Select Zone</option>
+                    @foreach($zonals as $zon)
+                        <option value="{{ $zon->id }}" {{ request('zone_id') == $zon->id ? 'selected' : '' }}>
+                            {{ $zon->Name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">District</label>
+                <select name="district_id" class="filter-select">
+                    <option value="">Select District</option>
+                    @foreach($districts as $district)
+                        <option value="{{ $district->id }}" {{ request('district_id') == $district->id ? 'selected' : '' }}>
+                            {{ $district->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Block</label>
+                <select name="block_id" class="filter-select">
+                    <option value="">Select Block</option>
+                    @foreach($blocks as $block)
+                        <option value="{{ $block->id }}" {{ request('block_id') == $block->id ? 'selected' : '' }}>
+                            {{ $block->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Role</label>
+                <select name="role" class="filter-select">
+                    <option value="">All Roles</option>
+                    @foreach($roles as $id => $roleName)
+                        <option value="{{ $id }}" {{ request('role') == $id ? 'selected' : '' }}>
+                            {{ $roleName }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Date Range</label>
+                <select name="date_range" class="filter-select">
+                    <option value="today" {{ request('date_range') == 'today' ? 'selected' : '' }}>Today</option>
+                    <option value="yesterday" {{ request('date_range') == 'yesterday' ? 'selected' : '' }}>Yesterday</option>
+                    <option value="week" {{ request('date_range') == 'week' ? 'selected' : '' }}>This Week</option>
+                    <option value="month" {{ request('date_range') == 'month' ? 'selected' : '' }}>This Month</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Search</label>
+                <input type="text" name="search" value="{{ request('search') }}" class="filter-input" placeholder="Name, ID, GP...">
             </div>
         </div>
 
+                <!-- New Row: From Date & To Date -->
+                <div class="filters-grid mt-1">
+                    <div class="filter-group">
+                        <label class="filter-label">From Date</label>
+                        <input type="date" name="from_date" value="{{ request('from_date') }}" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">To Date</label>
+                        <input type="date" name="to_date" value="{{ request('to_date') }}" class="filter-input">
+                    </div>
+               
+
+                    <!-- Buttons Row -->
+                    <div class="filter-group" style="display: flex; gap: 0.5rem;">
+                        <button type="submit" class="action-btn action-btn-primary">Apply</button>
+                        <a href="{{ route('admin.attendance_list') }}" class="action-btn action-btn-secondary">Clear</a>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+
+
         <!-- Statistics Cards -->
-        <div class="stats-grid mb-5">
+        <!-- <div class="stats-grid mb-5">
             <div class="stat-card">
                 <div class="stat-content">
                     <div class="stat-number">124</div>
@@ -113,7 +180,7 @@
                     <i class="fa fa-check-circle"></i>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Table Section -->
         <div class="table-section">
@@ -126,112 +193,85 @@
                             <th class="th-staff">STAFF</th>
                             <th class="th-role">ROLE</th>
                             <th class="th-date">DATE</th>
-                            <th class="th-zone">ZONE/GP</th>
+                            <th class="th-zone">ZONE</th>
                             <th class="th-punch">PUNCH IN</th>
                             <th class="th-punch">PUNCH OUT</th>
                             <th class="th-duration">DURATION</th>
-                            <th class="th-km">KM</th>
+                             <th class="th-zone">Version</th>
+                            <!-- <th class="th-km">KM</th> -->
                             <th class="th-status">STATUS</th>
                             <th class="th-actions">ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="table-row">
-                            <td class="td-staff">
-                                <div class="staff-info">
-                                    <div class="staff-avatar">
-                                        <img src="https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=50&h=50&fit=crop" alt="Ravi Kumar">
+                        @foreach($providers as $provider)
+
+                            <tr class="table-row">
+                                <td class="td-staff">
+                                    <div class="staff-info">
+                                        <div class="staff-avatar">
+                                            <img src="https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=50&h=50&fit=crop" alt="Ravi Kumar">
+                                        </div>
+                                        <div class="staff-details">
+                                            <div class="staff-name">{{ $provider->first_name }} {{ $provider->last_name }}</div>
+                                            <div class="staff-id">{{ $provider->mobile }}</div>
+                                        </div>
                                     </div>
-                                    <div class="staff-details">
-                                        <div class="staff-name">Ravi Kumar</div>
-                                        <div class="staff-id">FRT_023</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="td-role">
-                                <span class="role-badge role-frt">FRT</span>
-                            </td>
-                            <td class="td-date">19-07-2025</td>
-                            <td class="td-zone">Zone B / Chakulia GP</td>
-                            <td class="td-punch">08:15</td>
-                            <td class="td-punch">16:35</td>
-                            <td class="td-duration">8h 20m</td>
-                            <td class="td-km">22.4</td>
-                            <td class="td-status">
-                                <span class="status-badge status-synced">
-                                    <span class="status-dot"></span>
-                                    Synced
-                                </span>
-                            </td>
-                            <td class="td-actions">
-                                <button class="action-btn action-btn-primary">View Route</button>
-                                <button class="action-btn action-btn-secondary">Calendar</button>
-                            </td>
-                        </tr>
-                        <tr class="table-row">
-                            <td class="td-staff">
-                                <div class="staff-info">
-                                    <div class="staff-avatar">
-                                        <img src="https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=50&h=50&fit=crop" alt="Priya Singh">
-                                    </div>
-                                    <div class="staff-details">
-                                        <div class="staff-name">Priya Singh</div>
-                                        <div class="staff-id">PAT_045</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="td-role">
-                                <span class="role-badge role-patroller">Patroller</span>
-                            </td>
-                            <td class="td-date">19-07-2025</td>
-                            <td class="td-zone">Zone A / Ranchi GP</td>
-                            <td class="td-punch">07:45</td>
-                            <td class="td-punch">15:30</td>
-                            <td class="td-duration">7h 45m</td>
-                            <td class="td-km">18.2</td>
-                            <td class="td-status">
-                                <span class="status-badge status-pending">
-                                    <span class="status-dot"></span>
-                                    Pending
-                                </span>
-                            </td>
-                            <td class="td-actions">
-                                <button class="action-btn action-btn-primary">View Route</button>
-                                <button class="action-btn action-btn-secondary">Calendar</button>
-                            </td>
-                        </tr>
-                        <tr class="table-row">
-                            <td class="td-staff">
-                                <div class="staff-info">
-                                    <div class="staff-avatar">
-                                        <img src="https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=50&h=50&fit=crop" alt="Amit Sharma">
-                                    </div>
-                                    <div class="staff-details">
-                                        <div class="staff-name">Amit Sharma</div>
-                                        <div class="staff-id">FRT_011</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="td-role">
-                                <span class="role-badge role-frt">FRT</span>
-                            </td>
-                            <td class="td-date">19-07-2025</td>
-                            <td class="td-zone">Zone C / Dhanbad GP</td>
-                            <td class="td-punch">-</td>
-                            <td class="td-punch">-</td>
-                            <td class="td-duration">-</td>
-                            <td class="td-km">0</td>
-                            <td class="td-status">
-                                <span class="status-badge status-absent">
-                                    <span class="status-dot"></span>
-                                    Absent
-                                </span>
-                            </td>
-                            <td class="td-actions">
-                                <button class="action-btn action-btn-primary">View Route</button>
-                                <button class="action-btn action-btn-secondary">Calendar</button>
-                            </td>
-                        </tr>
+                                </td>
+                                <td class="td-role">
+                                    @if(isset($roles[$provider->type]))
+                                        <span class="role-badge role-{{ strtolower(str_replace(' ', '-', $roles[$provider->type])) }}">
+                                            {{ $roles[$provider->type] }}
+                                        </span>
+                                    @else
+                                        <span class="role-badge role-unknown">Unknown</span>
+                                    @endif
+                                </td>
+                                <td class="td-date"> {{ $provider->check_in ? \Carbon\Carbon::parse($provider->check_in)->format('dd/mm/yyyy') : '—' }}</td>
+                                <td class="td-zone">{{ isset($provider->zone_name) ? $provider->zone_name : 'N/A' }}</td>
+                                <td class="td-punch">{{ $provider->check_in ? \Carbon\Carbon::parse($provider->check_in)->format('h:i A') : '—' }}</td>
+                                <td class="td-punch"> 
+                                    @if($provider->attendance_status == 'active')
+                                    -
+                                    @else
+                                    {{ $provider->check_out ? \Carbon\Carbon::parse($provider->check_out)->format('h:i A') : '—' }}
+                                    @endif
+                                </td>
+                                    <?php
+                                        $startTime = Carbon\Carbon::parse($provider->check_in);
+                                        $currenttime = Carbon\Carbon::now();
+                                        $currentdate =$currenttime->toDateTimeString();
+                                        if($provider->attendance_status == 'active'){
+                                        $finishTime = Carbon\Carbon::parse($currentdate);
+                                        }
+                                        else {
+                                        $finishTime = Carbon\Carbon::parse($provider->check_out);	 
+                                        }
+                                        $totalDuration = $finishTime->diffInSeconds($startTime);
+                                        $duration =gmdate('H:i:s', $totalDuration);						 
+                                    ?>	
+                                <td class="td-duration">
+                                    {{ $duration? $duration . ' hrs' : $provider->duration  }}
+                                    
+                                </td>
+                                <td class="td-zone">{{ isset($provider->version) ? $provider->version : 'N/A' }}</td>
+
+                                <!-- <td class="td-km">22.4</td> -->
+                                <td class="td-status">
+                                      @if($provider->attendance_status == 'active')
+                                            <span class="status-badge status-done">Online</span>
+                                        @else
+                                            <span class="status-badge status-late">Offline</span>
+                                        @endif
+                                </td>
+                                <td class="td-actions">
+                                    <button class="action-btn action-btn-primary">View Route</button>
+                                    <button class="action-btn action-btn-secondary">Calendar</button>
+                                </td>
+                            </tr>
+                        @endforeach
+
+                     
                     </tbody>
                 </table>
             </div>
@@ -240,26 +280,17 @@
         <!-- Pagination -->
         <div class="pagination-section">
             <div class="pagination-info">
-                Showing 1 to 10 of 124 entries
+                Showing 
+                {{ ($providers->currentPage() - 1) * $providers->perPage() + 1 }} 
+                to 
+                {{ ($providers->currentPage() * $providers->perPage()) > $providers->total() 
+                    ? $providers->total() 
+                    : $providers->currentPage() * $providers->perPage() 
+                }} 
+                of {{ $providers->total() }} entries
             </div>
             <nav class="pagination-nav">
-                <ul class="pagination">
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" tabindex="-1">Previous</a>
-                    </li>
-                    <li class="page-item active">
-                        <a class="page-link" href="#">1</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">2</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">3</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">Next</a>
-                    </li>
-                </ul>
+                {{ $providers->links('pagination::bootstrap-4') }}
             </nav>
         </div>
     </div>
@@ -267,11 +298,14 @@
 @endsection
 
 @section('styles')
+<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> -->
+
 <style>
 /* Reset and Base Styles */
 * {
     box-sizing: border-box;
 }
+
 
 .content-area {
     background-color: #f8fafc;
@@ -330,6 +364,7 @@
 .btn-export:hover {
     background-color: #2f855a;
     transform: translateY(-1px);
+    color:white;
 }
 
 /* Filters Section */
@@ -544,15 +579,13 @@
     display: inline-block;
 }
 
-.role-frt {
-    background-color: #ebf4ff;
-    color: #2b6cb0;
-}
+.role-ofc { background: #e0f2fe; color: #0369a1; }
+.role-frt { background: #f0fdf4; color: #166534; }
+.role-patroller { background: #fef2f2; color: #b91c1c; }
+.role-zonal-incharge { background: #fdf4ff; color: #7e22ce; }
+.role-district-incharge { background: #fff7ed; color: #c2410c; }
+.role-unknown { background: #e2e8f0; color: #475569; }
 
-.role-patroller {
-    background-color: #f0fff4;
-    color: #2f855a;
-}
 
 /* Status Badges */
 .status-badge {
@@ -564,6 +597,15 @@
     align-items: center;
     gap: 0.375rem;
     white-space: nowrap;
+}
+.status-done {
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.status-late {
+    background: #fef3c7;
+    color: #92400e;
 }
 
 .status-dot {

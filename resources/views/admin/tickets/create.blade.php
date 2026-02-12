@@ -3,6 +3,13 @@
 @section('title', 'Add Ticket')
 
 @section('content')
+@php
+    $user = Session::get('user');
+    $DistId = null; 
+    if ($user && isset($user->district_id)) {
+        $DistId = $user->district_id;
+    }
+@endphp
 
 <div class="content-area py-1">
     <div class="container-fluid">
@@ -27,7 +34,9 @@
 						<select class="form-control" name="district" id="district">
 							<option value="">Please Select District</option>
 							@foreach($districts as $dist)
-							<option value="{{$dist->name}}" rel="{{$dist->id}}">{{$dist->name}}</option>
+							<option value="{{$dist->id}}" rel="{{$dist->id}}"
+							 {{ ($DistId && $DistId == $dist->id) ? 'selected' : '' }}
+							>{{$dist->name}}</option>
 							@endforeach
 							
 						</select>

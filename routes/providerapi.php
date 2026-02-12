@@ -37,8 +37,12 @@ Route::group(['middleware' => ['provider.api']], function () {
         Route::post('/location' , 'ProviderResources\ProfileController@location');
         Route::post('/language' , 'ProviderResources\ProfileController@update_language');
         Route::post('/available', 'ProviderResources\ProfileController@available');
+        Route::post('/available-test', 'ProviderResources\ProfileController@availableTest');
+
         Route::get ('/documents', 'ProviderResources\ProfileController@documents');
-        Route::post('/documents/store', 'ProviderResources\ProfileController@documentstore');       
+        Route::post('/documents/store', 'ProviderResources\ProfileController@documentstore');  
+        Route::post('/location-test' , 'ProviderResources\ProfileController@locationTest');
+     
 
     });
 
@@ -64,6 +68,8 @@ Route::group(['middleware' => ['provider.api']], function () {
         Route::post('{id}/rate',     'ProviderResources\TripController@rate');
         Route::post('{id}/message' , 'ProviderResources\TripController@message');
         Route::post('{id}/calculate','ProviderResources\TripController@calculate_distance');
+        Route::post('{id}/update-issue', 'ProviderResources\TripController@updateIssueFields');
+
 
     });
     

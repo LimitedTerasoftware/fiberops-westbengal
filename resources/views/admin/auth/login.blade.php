@@ -1,250 +1,99 @@
-@extends('admin.layout.auth')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fiber Ops - Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="shortcut icon" type="image/png" href="{{ Setting::get('site_icon') }}"/>
 
-@section('content')
-<!--<div class="sign-form">
-    <div class="row">
-        <div class="col-md-4 offset-md-4 px-3">
-            <div class="box b-a-0">
-                <div class="p-2 text-xs-center">
-                    <h5>@lang('admin.auth.admin_login')</h5>
-                </div>
-                <form class="form-material mb-1" role="form" method="POST" action="{{ url('/admin/login') }}" >
-                {{ csrf_field() }}
-                    <div class="form-group {{ $errors->has('email') ? ' has-error' : '' }}">
-                        <input type="email" name="email" required="true" class="form-control" id="email" placeholder="@lang('admin.email')">
-                        @if ($errors->has('email'))
-                            <span class="help-block" style="margin-left: 55px;color: red;">
-                                <strong>{{ $errors->first('email') }}</strong>
-                            </span>
-                        @endif
-                    </div>
-                    <div class="form-group {{ $errors->has('password') ? ' has-error' : '' }}">
-                        <input type="password" name="password" required="true" class="form-control" id="password" placeholder="@lang('admin.password')">
-                        @if ($errors->has('password'))
-                            <span class="help-block" style="margin-left: 55px;color: red;">
-                                <strong>{{ $errors->first('password') }}</strong>
-                            </span>
-                        @endif
-                    </div>
-                    <div class="px-2 form-group mb-0">
-                        <input type="checkbox" name="remember"> @lang('admin.auth.remember_me')
-                    </div>
-                    <br>
-                    <div class="px-2 form-group mb-0">
-                        <button type="submit" class="btn btn-purple btn-block text-uppercase">@lang('admin.auth.sign_in')</button>
-                    </div>
-                </form>
-                <div class="p-2 text-xs-center text-muted">
-                    <a class="text-black" href="{{ url('/admin/password/reset') }}"><span class="underline">@lang('admin.auth.forgot_your_password')?</span></a>
-                </div>
-            </div>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #1a2980, #26d0ce);
+            background-size: 200% 200%;
+            animation: gradientMove 6s ease infinite;
+        }
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .login-card {
+            max-width: 400px;
+            width: 90%;
+            padding: 40px 30px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+            backdrop-filter: blur(12px);
+            color: white;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+        }
+        .login-card img {
+            height: 80px;
+            margin-bottom: 15px;
+        }
+        .btn-custom {
+            background: #007bff; 
+            border: none;
+            font-weight: bold;
+            border-radius: 25px;
+        }
+        .btn-custom:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+<div class="login-card text-center">
+    <img src="{{ Setting::get('site_icon') }}" alt="Logo">
+    <h3 class="fw-bold mb-4">Fiber Ops</h3>
+
+    <form method="POST" action="/admin/login">
+        <input type="hidden" name="_token" value="{{ csrf_token() }}">
+
+        <!-- Email Input -->
+        <div class="input-group mb-3">
+            <span class="input-group-text bg-transparent text-white"><i class="fa-solid fa-envelope"></i></span>
+            <input type="email" class="form-control bg-transparent text-white" placeholder="Email Address" name="email" required>
         </div>
-    </div>
-</div>-->
- <div class="container">
-            <div class="col-lg-8 col-lg-offset-2 col-md-6 col-md-offset-3 col-md-8 col-md-offset-2">
-               
-				 
-                <nav class="navbar navbar-fixed-top">
-                    <div class="container-fluid">
-                        <div class="navbar-header">
-                            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
-                                <span class="sr-only">Toggle navigation</span>
-                                <span class="icon-bar"></span>
-                                <span class="icon-bar"></span>
-                                <span class="icon-bar"></span>
-                            </button>
 
-                            <!-- <button type="button" class="hamburger is-closed" data-toggle="offcanvas">
-                                <span class="hamb-top"></span>
-                                <span class="hamb-middle"></span>
-                                <span class="hamb-bottom"></span>
-                            </button> -->
-
-                            <a class="navbar-brand" href="{{url('/')}}"><img src="{{ Setting::get('site_logo', asset('logo-black.png')) }}"></a>
-                        </div>
-                        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-                            
-							
-							<a class="nav navbar-nav navbar-right navbar-brand" href="http://terasoftware.com/" target="_blank"><img style="width:86px !important;" src="{{ asset('uploads/teralogo.png') }}"></a>
-                            <!--<ul class="nav navbar-nav navbar-right">
-                               
-                                <li><a class="btn-outline" href="{{url('/login')}}">Ride</a></li>
-                                <li><a class="menu-btn" href="{{url('/provider/login')}}">Drive</a></li>
-                            </ul>-->
-                        </div>
-						
-                    </div>
-                </nav>
-           
-                 <div class="row">
-                    <div class="col-xs-12 col-sm-12">
-                        <div class="logo-section text-center" style="height:150px;">
-                        <!-- <link rel="shortcut icon" type="image/png" href="{{ Setting::get('site_icon') }}"> -->
-                            
-                        </div>
-                    </div>
-                </div>
-                <div id="userform">
-                    <ul class="nav nav-tabs nav-justified" role="tablist">
-                       <!-- <li @if (!$errors->has('login_type')) class="active" @endif><a href="#signup" role="tab" data-toggle="tab">Admin</a></li>-->
-                        <!--<li @if ($errors->has('login_type') && $errors->first('login_type') == 'dispatcher')  class="active" @endif><a href="#dispatcher" role="tab" data-toggle="tab">DHQ/QCC</a></li>-->
-                        <!--<li @if ($errors->has('login_type') && $errors->first('login_type') == 'fleet')  class="active" @endif><a href="#fleet" role="tab" data-toggle="tab">POP/FRT</a></li>-->
-                         <!-- <li @if ($errors->has('login_type') && $errors->first('login_type') == 'account')  class="active" @endif><a href="#account" role="tab" data-toggle="tab">Account</a></li> -->
-                    </ul>
-                    <div class="tab-content">
-                        <div class="tab-pane fade @if (!$errors->has('login_type')) active @endif in" id="signup">
-                            <h2 class="text-uppercase text-center"> Sign In</h2>
-                            <form id="signup" role="form" method="POST" action="{{ url('/admin/login') }}">
-                                {{ csrf_field() }}
-                                <div class="form-group">
-                                    <label @if(Setting::get('demo_mode',0) ==1)class="active"@endif>Super Administrator E-mail<span class="req">*</span> </label>
-                                    <input type="email" name="email" class="form-control" id="email" required data-validation-required-message="Please enter your email address." autocomplete="off" @if(Setting::get('demo_mode',0) ==1)value="admin@demo.com"@endif>
-                                    @if ($errors->has('email'))
-                                        <p class="help-block text-danger">{{ $errors->first('email') }}</p>
-                                    @endif
-                                </div>
-                                <div class="form-group">
-                                    <label @if(Setting::get('demo_mode',0) ==1)class="active"@endif> Password<span class="req">*</span> </label>
-                                    <input type="password" name="password" class="form-control" id="password" required data-validation-required-message="Please enter your password" autocomplete="off" @if(Setting::get('demo_mode',0) ==1)value="123456"@endif>
-                                    @if ($errors->has('password'))
-                                        <p class="help-block text-danger">{{ $errors->first('password') }}</p>
-                                    @endif
-                                </div>
-                                <div class="mrgn-30-top">
-                                    <button type="submit" class="btn btn-larger btn-block" /> Log in
-                                    </button>
-                                </div>
-                            </form>
-                            <div class="row">
-                                <div class="col-xs-12 col-sm-12">
-                                    <div class="details">
-                                    @if(Setting::get('demo_mode' , 0)==1)
-                                        <h4 class="text-captilize text-left">Using below detail for demo version</h4>
-                                        <h5><strong>User Name : </strong><span>admin@demo.com</span></h5>
-                                        <h5><strong>Password  : </strong><span>123456</span></h5>
-                                        <p>Super Administrator can manage whole system and other user's rights too.</p>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane fade @if ($errors->has('login_type') && $errors->first('login_type') == 'dispatcher') active @endif in" id="dispatcher">
-                            <h2 class="text-uppercase text-center">Sign in</h2>
-                            <form id="login" role="form" method="POST" action="{{ url('/login') }}">
-                             {{ csrf_field() }}
-                                <div class="form-group">
-                                    <label @if(Setting::get('demo_mode',0) ==1)class="active"@endif>DHQ/QCC Administrator E-mail<span class="req">*</span> </label>
-                                    <input type="email" name="email" class="form-control" id="email" required data-validation-required-message="Please enter your email address." autocomplete="off" @if(Setting::get('demo_mode',0) ==1)value="dispatcher@demo.com"@endif>
-                                    @if ($errors->has('email'))
-                                        <p class="help-block text-danger">{{ $errors->first('email') }}</p>
-                                    @endif
-                                </div>
-                                <div class="form-group">
-                                    <label @if(Setting::get('demo_mode',0) ==1)class="active"@endif> Password<span class="req">*</span> </label>
-                                    <input type="password" name="password" class="form-control" id="password" required data-validation-required-message="Please enter your password" autocomplete="off" @if(Setting::get('demo_mode',0) ==1)value="123456"@endif>
-                                    @if ($errors->has('password'))
-                                        <p class="help-block text-danger">{{ $errors->first('password') }}</p>
-                                    @endif
-                                </div>
-                                <div class="mrgn-30-top">
-                                    <button type="submit" class="btn btn-larger btn-block" /> Log in
-                                    </button>
-                                </div>
-                            </form>
-                            <div class="row">
-                                <div class="col-xs-12 col-sm-12">
-                                    <div class="details">
-                                        @if(Setting::get('demo_mode', 0)==1)
-                                        <h4 class="text-captilize text-left">Using below detail for demo version</h4>
-                                        <h5><strong>User Name : </strong><span>dispatcher@demo.com</span></h5>
-                                        <h5><strong>Password  : </strong><span>123456</span></h5>
-                                        <p>Super Administrator can manage whole system and other user's rights too.</p>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Fleet -->
-                        <div class="tab-pane fade @if ($errors->has('login_type') && $errors->first('login_type') == 'provider')  active @endif in" id="fleet">
-                            <h2 class="text-uppercase text-center">Sign In</h2>
-                            <form id="login" role="form" method="POST" action="{{ url('provider/login') }}">
-                             {{ csrf_field() }}
-                                <div class="form-group">
-                                    <label @if(Setting::get('demo_mode',0) ==1)class="active"@endif>POP/FRT Administrator E-mail<span class="req">*</span> </label>
-                                        <input type="email" name="email" class="form-control" id="email" required data-validation-required-message="Please enter your email address." autocomplete="off" @if(Setting::get('demo_mode',0) ==1)value="fleet@demo.com"@endif>
-                                        @if ($errors->has('email'))
-                                            <p class="help-block text-danger">{{ $errors->first('email') }}</p>
-                                        @endif
-                                </div>
-                                <div class="form-group">
-                                    <label @if(Setting::get('demo_mode',0) ==1)class="active"@endif> Password<span class="req">*</span> </label>
-                                    <input type="password" name="password" class="form-control" id="password" required data-validation-required-message="Please enter your password" autocomplete="off" @if(Setting::get('demo_mode',0) ==1)value="123456"@endif>
-                                    @if ($errors->has('password'))
-                                        <p class="help-block text-danger">{{ $errors->first('password') }}</p>
-                                    @endif
-                                </div>
-                                <div class="mrgn-30-top">
-                                    <button type="submit" class="btn btn-larger btn-block" /> Log in
-                                    </button>
-                                </div>
-                            </form>
-                            <div class="row">
-                                <div class="col-xs-12 col-sm-12">
-                                    <div class="details">
-                                    @if(Setting::get('demo_mode',0) ==1)
-                                        <h4 class="text-captilize text-left">Using below detail for demo version</h4>
-                                        <h5><strong>User Name : </strong><span>fleet@demo.com</span></h5>
-                                        <h5><strong>Password  : </strong><span>123456</span></h5>
-                                        <p>Super Administrator can manage whole system and other user's rights too.</p>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                         <!-- Fleet -->
-                        <div class="tab-pane fade @if ($errors->has('login_type') && $errors->first('login_type') == 'account')  active @endif in" id="account">
-                            <h2 class="text-uppercase text-center">Sign In</h2>
-                            <form id="login" role="form" method="POST" action="{{ url('/account/login') }}">
-                             {{ csrf_field() }}
-                                <div class="form-group">
-                                    <label @if(Setting::get('demo_mode',0) ==1)class="active"@endif>Account Administrator E-mail<span class="req">*</span> </label>
-                                        <input type="email" name="email" class="form-control" id="email" required data-validation-required-message="Please enter your email address." autocomplete="off" @if(Setting::get('demo_mode',0) ==1)value="account@demo.com"@endif>
-                                        @if ($errors->has('email'))
-                                            <p class="help-block text-danger">{{ $errors->first('email') }}</p>
-                                        @endif
-                                </div>
-                                <div class="form-group">
-                                    <label @if(Setting::get('demo_mode',0) ==1)class="active"@endif> Password<span class="req">*</span> </label>
-                                    <input type="password" name="password" class="form-control" id="password" required data-validation-required-message="Please enter your password" autocomplete="off" @if(Setting::get('demo_mode',0) ==1)value="123456"@endif>
-                                    @if ($errors->has('password'))
-                                        <p class="help-block text-danger">{{ $errors->first('password') }}</p>
-                                    @endif
-                                </div>
-                                <div class="mrgn-30-top">
-                                    <button type="submit" class="btn btn-larger btn-block" /> Log in
-                                    </button>
-                                </div>
-                            </form>
-                            <div class="row">
-                                <div class="col-xs-12 col-sm-12">
-                                    <div class="details">
-                                    @if(Setting::get('demo_mode',0) ==1)
-                                     <h4 class="text-captilize text-left">Using below detail for demo version</h4>
-                                        <h5><strong>User Name : </strong><span>account@demo.com</span></h5>
-                                        <h5><strong>Password  : </strong><span>123456</span></h5>
-                                        <p>Super Administrator can manage whole system and other user's rights too.</p>
-                                    @endif
-                                       </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- Password Input with Toggle -->
+        <div class="input-group mb-4">
+            <span class="input-group-text bg-transparent text-white"><i class="fa-solid fa-lock"></i></span>
+            <input type="password" class="form-control bg-transparent text-white" id="passwordField" placeholder="Password" name="password" required>
+            <span class="input-group-text bg-transparent text-white" id="togglePassword" style="cursor:pointer;">
+                <i class="fa-solid fa-eye"></i>
+            </span>
         </div>
-@endsection
+
+        <button class="btn btn-custom w-100 py-2">Log In</button>
+    </form>
+
+    <p class="mt-4 mb-0">&#169; <span id="year"></span> Tera Software Ltd | All Rights Reserved</p>
+</div>
+
 <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
 
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordField = document.getElementById('passwordField');
+    togglePassword.addEventListener('click', function () {
+        const type = passwordField.type === 'password' ? 'text' : 'password';
+        passwordField.type = type;
+        this.innerHTML = type === 'password' ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>';
+    });
 </script>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

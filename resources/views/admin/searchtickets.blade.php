@@ -4,7 +4,13 @@
 
 @section('content')
 
-
+@php
+    $user = Session::get('user');
+    $DistId = null; 
+    if ($user && isset($user->district_id)) {
+        $DistId = $user->district_id;
+    }
+@endphp
 
 <div class="content-area py-1">
     <div class="container-fluid">
@@ -15,7 +21,9 @@
                    <select class="form-control selectpicker" data-show-subtext="true" data-live-search="true" name="district_id" id="searchblocklist">
                    	<option value="">Please Select District</option>
                     @foreach($districts as $district)
-                    <option value="{{$district->name}}" rel="{{$district->id}}" @if(Request::get('district_id')) @if(@Request::get('district_id') == $district->name) selected @endif @endif>{{$district->name}} </option> 
+                    <option value="{{$district->id}}" rel="{{$district->id}}" 
+                     {{ (request('district_id') == $district->id) || ($DistId && $DistId == $district->id) ? 'selected' : '' }}>
+                    {{$district->name}} </option> 
                    @endforeach 
                   </select>
                 </div>

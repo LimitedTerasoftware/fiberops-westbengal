@@ -307,6 +307,13 @@ class ProviderFleetResource extends Controller
     
  public function teams_status(Request $request){
 
+      $user = Session::get('user');
+      $company_id = $user->company_id;
+      $state_id = $user->state_id;
+      $district_id = $user->district_id;
+
+
+
       $inputFromDate = request()->input('from_date');
       $inputToDate = request()->input('to_date');
 
@@ -329,13 +336,19 @@ class ProviderFleetResource extends Controller
    }
    $pendingTicketsMorethen24 .= ' THEN user_requests.id END) as pending_tickets_morethen_24';
     
-    $teams = DB::table('providers')->join('zonal_managers','zonal_managers.id','providers.zone_id')
+    $teamsquery = DB::table('providers')->join('zonal_managers','zonal_managers.id','providers.zone_id')
                                    ->join('teams','teams.id','providers.team_id')
                                    ->leftJoin('user_requests','user_requests.provider_id','providers.id')
                                    ->leftJoin('master_tickets','user_requests.booking_id','master_tickets.ticketid')
                                    ->leftjoin('districts','districts.id','providers.district_id')
                                    ->where('providers.zone_id', '!=', 0)
-                                   ->groupby('providers.zone_id','providers.team_id')
+                                   ->where('providers.state_id', $state_id)
+                                   ->whereIn('providers.type', [2]);
+                                  
+                if (!empty($district_id)) {
+                    $teamsquery->where('providers.district_id', $district_id);
+                }
+    $teams =   $teamsquery->groupby('providers.zone_id','providers.team_id')
                                    ->select(
                                         'providers.first_name',
                                         'providers.last_name',

@@ -12,6 +12,7 @@ use App\MasterTicket;
 use App\SubmitFile;
 use DB;
 use \Carbon\Carbon;
+use Session;
 
 
 class TripResource extends Controller
@@ -187,6 +188,10 @@ class TripResource extends Controller
      */
      public function ongoing(Request $request)
     {
+        Session::put('user', Auth::User());
+        $user = Session::get('user');
+	    $company_id = $user->company_id;
+	    $state_id = $user->state_id;
 		if($request->ajax()){
 			$search_interval = $request->get('interval', '');
 			$tickets = DB::table('master_tickets')
@@ -194,7 +199,9 @@ class TripResource extends Controller
                  ->leftjoin('user_requests', 'user_requests.booking_id', '=', 'master_tickets.ticketid')
 				 ->leftjoin('service_types', 'user_requests.service_type_id', '=', 'service_types.id')
 				 ->leftjoin('providers', 'user_requests.provider_id', '=', 'providers.id')
-				 ->where('user_requests.status' , 'INCOMING');
+				 ->where('user_requests.status' , 'INCOMING')
+                  ->where('user_requests.company_id', $company_id)
+                  ->where('user_requests.state_id', $state_id);
             if($search_interval != ''){
                 if($search_interval == 'below_4_hours')
                     $tickets = $tickets->whereRaw('TIMESTAMPDIFF(HOUR, DATE_FORMAT(STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now()->format("Y-m-d H:i:s").'") < 4');
@@ -216,7 +223,9 @@ class TripResource extends Controller
             $search_interval = $request->get('interval', '');
 
             $requests = UserRequests::leftjoin('master_tickets', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
-                        ->where(function ($query) {
+                          ->where('user_requests.company_id', $company_id)
+                          ->where('user_requests.state_id', $state_id)
+                          ->where(function ($query) {
                             $query->where('user_requests.status', '=', 'INCOMING');
                         })->select('*','user_requests.id as uid','user_requests.status as ustatus',DB::Raw('TIMESTAMPDIFF(HOUR, DATE_FORMAT(STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now()->format("Y-m-d H:i:s").'") as hours'));
             if($search_interval != ''){
@@ -625,9 +634,21 @@ class TripResource extends Controller
 
 
          try{
-            $requests = UserRequests::leftjoin('master_tickets', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
-                        ->where('user_requests.status' , 'INCOMING')->where('user_requests.state_id',1)
-                        ->select(
+             $user = Session::get('user');
+   
+            $company_id = $user->company_id;
+            $state_id = $user->state_id;
+            $district_id = $user->district_id;
+
+            $requestsQuery = UserRequests::leftjoin('master_tickets', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
+                        ->where('user_requests.status' , 'INCOMING') 
+                         ->where('user_requests.company_id', $company_id)
+                         ->where('user_requests.state_id', $state_id);
+                      
+            if (!empty($district_id)) {
+                $requestsQuery->where('user_requests.district_id', $district_id);
+            }
+            $requests=   $requestsQuery->select(
                             DB::raw('COUNT(CASE WHEN TIMESTAMPDIFF(HOUR, DATE_FORMAT(STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now()->format("Y-m-d H:i:s").'") < 4 THEN 1 END) AS below_4_hours'),
                             DB::raw('COUNT(CASE WHEN TIMESTAMPDIFF(HOUR,  DATE_FORMAT(STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now()->format("Y-m-d H:i:s").'") BETWEEN 4 AND 10 THEN 1 END) AS between_4_to_10_hours'),
                             DB::raw('COUNT(CASE WHEN TIMESTAMPDIFF(HOUR,  DATE_FORMAT(STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now()->format("Y-m-d H:i:s").'") BETWEEN 11 AND 24 THEN 1 END) AS between_10_to_24_hours'),
@@ -642,7 +663,12 @@ class TripResource extends Controller
             $descriptions[2] = "Gp's Between 10 to 24 Hrs";
             $descriptions[3] = "Gp's above 24 Hrs";
            
-            $ongoing_tickets = UserRequests::with('masterticket')->Where('status','INCOMING')->count();
+            $ongoing_ticketsQuery = UserRequests::with('masterticket')->Where('status','INCOMING')->where('user_requests.company_id', $company_id)
+                         ->where('user_requests.state_id', $state_id);
+              if (!empty($district_id)) {
+                $ongoing_ticketsQuery->where('user_requests.district_id', $district_id);
+            }
+            $ongoing_tickets =$ongoing_ticketsQuery->count();
 
             return view('admin.request.ongoing_intervals', compact('requests', 'descriptions','ongoing_tickets'));
         } catch (Exception $e) {

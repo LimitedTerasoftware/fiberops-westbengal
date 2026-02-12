@@ -16,6 +16,7 @@ use Mail;
 use DateTime;
 use App\District;
 use App\Block;
+use Session;
 
 class LocationResource extends Controller
 {
@@ -37,7 +38,16 @@ class LocationResource extends Controller
      */
     public function index(Request $request)
     {
-    	$districts = District::paginate($this->perpage);
+        $user = Session::get('user');
+        $company_id = $user->company_id;
+        $state_id = $user->state_id;
+        $district_id = $user->district_id;
+
+        $districtQuery = District::where('state_id',$state_id);
+        if (!empty($district_id)) {
+            $districtQuery->where('id', $district_id);
+        }
+        $districts = $districtQuery->paginate($this->perpage);
         // $blocks= Block::get();
         $pagination=(new Helper)->formatPagination($districts);
         return view('admin.locations.district.index',compact('districts','pagination'));
@@ -144,15 +154,25 @@ class LocationResource extends Controller
     // Listing the blocks
     public function list_block(Request $request)
     {
-        // $districts = District::get();
-        // $blocks= Block::join('districts', 'blocks.id', '=', 'districts.id')
-        //                 ->paginate($this->perpage);
-        // echo json_encode($blocks);
-        // dd("");
-        $districts = District::get();
-        $blocks= Block::select('blocks.name as block_name', 'districts.name as district_name', 'blocks.id as block_id', 'districts.id as districts_id', 'm_s_code')
-                    ->leftJoin('districts', 'blocks.district_id', '=', 'districts.id')
-                    ->paginate($this->perpage);
+        $user = Session::get('user');
+        $company_id = $user->company_id;
+        $state_id = $user->state_id;
+        $district_id = $user->district_id;
+
+        $districtQuery = District::where('state_id',$state_id);
+        if (!empty($district_id)) {
+            $districtQuery->where('id', $district_id);
+        }
+        $districts = $districtQuery->get();
+
+        $blockQuery= Block::select('blocks.name as block_name', 'districts.name as district_name', 'blocks.id as block_id', 'districts.id as districts_id', 'm_s_code')
+                    ->leftJoin('districts', 'blocks.district_id', '=', 'districts.id');
+                  
+                    
+          if (!empty($district_id)) {
+            $blockQuery->where('blocks.district_id', $district_id);
+        }
+        $blocks = $blockQuery->paginate($this->perpage);
         $pagination=(new Helper)->formatPagination($blocks);
         return view('admin.locations.block.index',compact('blocks','districts','pagination'));
     }
@@ -160,7 +180,16 @@ class LocationResource extends Controller
     // create block screen
     public function create_block(Request $request)
     {
-        $districts = District::get();
+       $user = Session::get('user');
+        $company_id = $user->company_id;
+        $state_id = $user->state_id;
+        $district_id = $user->district_id;
+
+        $districtQuery = District::where('state_id',$state_id);
+        if (!empty($district_id)) {
+            $districtQuery->where('id', $district_id);
+        }
+        $districts = $districtQuery->get();
         return view('admin.locations.block.create',compact('districts'));
         // $districts = District::get();
         // $blocks= Block::select('blocks.name as block_name', 'districts.name as district_name', 'blocks.id as block_id', 'districts.id as districts_id', 'm_s_code')
@@ -199,7 +228,16 @@ class LocationResource extends Controller
     public function edit_block($id)
     {
         try {
-            $districts = District::get();
+            $user = Session::get('user');
+            $company_id = $user->company_id;
+            $state_id = $user->state_id;
+            $district_id = $user->district_id;
+
+            $districtQuery = District::where('state_id',$state_id);
+            if (!empty($district_id)) {
+                $districtQuery->where('id', $district_id);
+            }
+            $districts = $districtQuery->get();
             $block = Block::findOrFail($id);
             return view('admin.locations.block.edit',compact('block','districts'));
         } catch (ModelNotFoundException $e) {

@@ -34,6 +34,12 @@ Route::post('/ProviderRequestStatus' , 'UserApiController@ProviderRequestStatus'
 Route::post('/PilotAcceptedRejected' , 'UserApiController@PilotAcceptedRejected');
 Route::post('/ProviderWorkStatus' , 'UserApiController@ProviderWorkStatus');
 Route::post('/savedocuments' , 	'UserApiController@savedocuments');
+Route::post('/submit-files/{id}/update-joint-images', 'UserApiController@updateJointImages');
+Route::get('/export_non_geotagged_images', 'UserApiController@exportNonGeotaggedImages');
+
+Route::post('/consume_material' , 	'UserApiController@consumeMaterials');
+
+Route::get('/assigned-materials','UserApiController@getEmployeeMaterials');
 Route::post('/multiupload' , 	'UserApiController@multiupload');
 
 Route::post('/savehistory' , 	'UserApiController@savehistory');
@@ -95,3 +101,25 @@ Route::group(['middleware' => ['auth:api']], function () {
 });
 
 Route::get('/auto_assign_tickets', 'UserApiController@auto_assign_tickets');
+Route::post('/userperformance', 'UserApiController@userPerformance');
+Route::post('/gpperformance', 'UserApiController@gpperformance');
+Route::post('/userhistory' , 	'UserApiController@userhistory');
+Route::post('/raise_ticket', 'UserApiController@raise_ticket');
+Route::post('/patroller_checklist', 'UserApiController@patroller_checklist');
+Route::get('/patroller_checklist/recent', 'UserApiController@patrollerChecklistRecent');
+Route::post('/patroller_checklist_tracking', 'UserApiController@saveTracking');
+Route::post('/createmastertickets' , 	'UserApiController@createmastertickets');
+Route::post('/getticketstatus' , 	'UserApiController@getticketstatus');
+
+
+
+
+Route::get('/olt-status', 'UserApiController@getOltStatus');
+Route::get('/ont-status', 'UserApiController@getOntStatus');
+Route::get('/ne-status', 'UserApiController@getBharatNetNeStatus');
+Route::post('/ne-status', 'UserApiController@getBharatNetNeStatus');
+Route::post('/ne-status/insert', 'UserApiController@insertBharatNetNeStatus');
+
+
+Route::get('/get_employee_list', 'UserApiController@get_employee_list');
+

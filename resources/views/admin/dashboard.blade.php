@@ -32,28 +32,6 @@ $yesterday= $yesterdaydate->toDateString();
 <div class="container-fluid">
     <div class="row row-md">
 		
-      <a href="/public/westbengal/public/admin/tickets?Gpstatus=DownGP"><div class="col-lg-3 col-md-6 col-xs-12">
-			<div class="box box-block bg-white tile tile-1 mb-2">
-				<div class="t-icon right"><span class="bg-danger"></span><i class="ti-archive"></i></div>
-				<div class="t-content">
-					<h6 class="text-uppercase mb-1">GP Summary</h6>
-					<h1 class="mb-1">{{$totalGp}}</h1>
-               <span class="text-muted font-180">Total Down Gp's&nbsp;&nbsp;<a href="/public/westbengal/public/admin/tickets?Gpstatus=DownGP" >{{ $uniqueLgdCount }}</a>
-			    @if($totalGp > 0)
-					({{ round(($uniqueLgdCount / $totalGp) * 100, 2) }}%)
-				@endif
-			   </span><br/>
-               <span class="text-success font-180"><b>Totla Up Gp's</b> &nbsp;&nbsp;<a>{{$totalGp - $uniqueLgdCount}}</a>
-			    @if($totalGp > 0)
-					({{ round((($totalGp - $uniqueLgdCount) / $totalGp) * 100, 2) }}%)
-				@endif
-			   </span><br/>
-
-				</div>
-			</div>
-		</div>
-      </a>
-	  
 		<div class="col-lg-3 col-md-6 col-xs-12">
 			<a href="{{ url('/admin/tickets-ongoing-intervals') }}"><div class="box box-block bg-white tile tile-1 mb-2">
 				<div class="t-icon right"><span class="bg-primary"></span><i class="ti-view-grid"></i></div>
@@ -63,7 +41,6 @@ $yesterday= $yesterdaydate->toDateString();
 				</div>
 			</div></a>
 		</div>
-      
 
                 <div class="col-lg-3 col-md-6 col-xs-12">
 			<a href="{{ url('/admin/tickets-ongoing-history') }}"><div class="box box-block bg-white tile tile-1 mb-2">
@@ -77,34 +54,27 @@ $yesterday= $yesterdaydate->toDateString();
 				</div>
 			</div></a>
 		</div>
-   
-   
+
+                <a href="{{ url('/admin/tickets') }}"><div class="col-lg-3 col-md-6 col-xs-12">
+			<div class="box box-block bg-white tile tile-1 mb-2">
+				<div class="t-icon right"><span class="bg-danger"></span><i class="ti-archive"></i></div>
+				<div class="t-content">
+					<h6 class="text-uppercase mb-1">@lang('admin.dashboard.Tickets')</h6>
+					<h1 class="mb-1">{{$master_tickets}}</h1>
+				</div>
+			</div>
+		</div></a>
 		<div class="col-lg-3 col-md-6 col-xs-12">
-			<a href="{{ url('/admin/tickets') }}"><div class="box box-block bg-white tile tile-1 mb-2">
+			<a href="{{ url('/admin/tickets-completed-history') }}"><div class="box box-block bg-white tile tile-1 mb-2">
 				<div class="t-icon right"><span class="bg-success"></span><i class="ti-thumb-up"></i></div>
 				<div class="t-content">
-					<h6 class="text-uppercase mb-1">Total No.Of Tickets</h6>
-					<h1 class="mb-1">{{$master_tickets}}</h1>
-					<span class="text-success font-180"><b>Completed tickets</b> &nbsp;&nbsp;<a href="{{ url('/admin/tickets-completed-history') }}">{{$completed_tickets}}</a></span><br/>
-
-					   <div class="d-flex justify-content-between">
-							<span class="text-muted font-180">
-								Today &nbsp;&nbsp;
-								<a href="/public/westbengal/public/admin/tickets?from_date={{$today}}&to_date={{$today}}&status=Completed">
-									{{$todayclosed_tickets}}
-								</a>
-							</span>
-                             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-							 <span class="text-muted font-180">Yesterday&nbsp;&nbsp;<a href="/public/westbengal/public/admin/tickets?from_date={{$yesterday}}&to_date={{$yesterday}}&status=Completed">{{$yesterdayclosed_tickets}}</a></span><br/>
-
-							
-						</div>
-
-				</div>
+					<h6 class="text-uppercase mb-1">@lang('admin.dashboard.resolved')</h6>
+					<h1 class="mb-1">{{$completed_tickets}}</h1>
+                                        <span class="text-muted font-180">Today &nbsp;&nbsp;<a href="/public/westbengal/public/admin/tickets?from_date={{$today}}&to_date={{$today}}&status=Completed">{{$todayclosed_tickets}}</a></span><br/>
+                                        <span class="text-success font-180"><b>Yesterday</b> &nbsp;&nbsp;<a href="/public/westbengal/public/admin/tickets?from_date={{$yesterday}}&to_date={{$yesterday}}&status=Completed">{{$yesterdayclosed_tickets}}</a></span><br/>
+                                       </div>
 			</div></a>
 		</div>
-		
-
 
 		 <div class="col-lg-3 col-md-6 col-xs-12">
 			<a href="{{ url('/admin/tickets?status=Onhold') }}"><div class="box box-block bg-white tile tile-1 mb-2">

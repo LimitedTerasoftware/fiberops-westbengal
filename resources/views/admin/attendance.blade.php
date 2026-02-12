@@ -3,6 +3,13 @@
 @section('title', 'Attendance ')
 
 @section('content')
+@php
+    $user = Session::get('user');
+    $DistId = null; 
+    if ($user && isset($user->district_id)) {
+        $DistId = $user->district_id;
+    }
+@endphp
 <style type="text/css">
     table.dataTable thead th {
         background-color: #d9d9d9f5 !important;
@@ -66,7 +73,10 @@
                    <select class="form-control selectpicker" data-show-subtext="true" data-live-search="true" name="district_id" id="district_id">
                    	<option value="">Please Select District</option>
                     @foreach($districts as $district)
-                    <option value="{{$district->id}}" @if(Request::get('district_id')) @if(@Request::get('district_id') == $district->id) selected @endif @endif>{{$district->name}} </option> 
+                    <option value="{{$district->id}}"
+                    {{ (request('district_id') == $district->id) || ($DistId && $DistId == $district->id) ? 'selected' : '' }}>
+
+                     {{$district->name}} </option> 
                    @endforeach 
                   </select>
                 </div>
@@ -114,7 +124,9 @@
                         <th>@lang('admin.name')</th>
                         <th>@lang('admin.district')</th>
                         <th>@lang('admin.designation')</th>
-                        <th>@lang('admin.mobile')</th>                       
+                        @if(auth()->user()->role != 'client')
+                        <th>@lang('admin.mobile')</th> 
+                        @endif                      
                         <th>@lang('admin.onlocation')</th>
                         <th>@lang('admin.offlocation')</th>
 						<th>@lang('admin.report')</th>
@@ -139,7 +151,9 @@
                         @else 
                          <td>FRT Engineer</td>
                         @endif
+                        @if(auth()->user()->role != 'client')
                         <td>{{ $provider->mobile }}</td>
+                        @endif
                         <td>
 						{{ $provider->address?$provider->address:'N/A' }}
                         </td>

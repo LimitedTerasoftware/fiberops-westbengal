@@ -135,8 +135,12 @@
                         <td>{{ $provider->first_name }} {{ $provider->last_name }}</td> 
                         @if($provider->type == 1)
                         <td>POP Engineer</td>
-                        @else 
+                        @else if($provider->type == 2)
+                        <td>Patroller Engineer</td>
+                        @else if($provider->type == 5)
                          <td>FRT Engineer</td>
+                         @else
+                          <td>Other Engineer</td>
                         @endif
                         <td>{{ $provider->mobile }}</td>
 						<td>{{$totaldays}}</td>

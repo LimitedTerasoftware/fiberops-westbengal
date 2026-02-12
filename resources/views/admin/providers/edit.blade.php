@@ -139,6 +139,12 @@
 
 
 
+               <div class="form-group row">
+                    <label for="date" class="col-xs-2 col-form-label">Joining Date</label>
+                    <div class="col-xs-10">
+                        <input class="form-control" type="date" value="" name="joindate" >
+                    </div>
+                </div>
                 <div class="form-group row">
                     <label for="zipcode" class="col-xs-2 col-form-label"></label>
                     <div class="col-xs-10">

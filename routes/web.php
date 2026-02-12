@@ -229,4 +229,17 @@ Route::get('/sendRequestsms' , 'TicketController@send_sms');
 Route::get('/assignedTickets' , 'TicketController@assignedTickets');
 
 
+Route::get('/terms', function () {
+    return view('admin.terms.terms');   // resources/views/termas.blade.php
+});
+
+
+Route::get('/privacy-policy', function () {
+    return view('admin.terms.privacy');   // resources/views/termas.blade.php
+});
+
+
+
+
+
 

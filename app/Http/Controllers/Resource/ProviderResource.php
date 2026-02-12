@@ -10,6 +10,7 @@ use DB;
 use Exception;
 use Setting;
 use Storage;
+use Session;
 
 use \Carbon\Carbon;
 use App\Provider;
@@ -24,6 +25,9 @@ use DateTime;
 use App\District;
 use App\Block;
 use App\Zonalmanger;
+use App\Leave;
+use Excel;
+use Illuminate\Support\Facades\Validator;
 
 
 class ProviderResource extends Controller
@@ -44,8 +48,10 @@ class ProviderResource extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index(Request $request)
+    public function index_old(Request $request)
     {
+
+      
         $providers = Provider::get();
         
         if(isset($request->status) && !empty($request->status)){      
@@ -64,6 +70,145 @@ class ProviderResource extends Controller
        
     }
 
+
+public function index(Request $request)
+{
+    $user = Session::get('user');
+    $company_id = $user->company_id;
+    $state_id = $user->state_id;
+    $district_id = $user->district_id;
+
+    $zoneIdsQuery = DB::table('gp_list')->where('state_id', $state_id);
+       if (!empty($district_id)) {
+        $zoneIdsQuery->where('district_id', $district_id);
+    }
+
+    $zoneIds = $zoneIdsQuery->pluck('zonal_id')->unique();
+    $zonals = DB::table('zonal_managers')->whereIn('id',$zoneIds)->get();
+
+    // $zonals = Zonalmanger::get();
+    $districtQuery = District::query();
+      if (!empty($district_id)) {
+        $districtQuery->where('id', $district_id);
+    }
+    $districts = $districtQuery->get();
+
+
+    $query = Provider::join('zonal_managers', 'providers.zone_id', '=', 'zonal_managers.id')
+        ->join('districts', 'providers.district_id', '=', 'districts.id')
+        ->leftJoin('leaves', function($join) {
+                $join->on('providers.id', '=', 'leaves.provider_id')
+                    ->whereDate('leaves.start_date', '<=', Carbon::today())
+                    ->whereDate('leaves.end_date', '>=', Carbon::today())
+                    ->where('leaves.status', 'approved');
+            })
+        ->select(
+            'providers.*',
+            'zonal_managers.Name as zone_name',
+            'districts.name as district_name',
+            DB::raw('CASE WHEN leaves.id IS NULL THEN "Not on Leave" ELSE "On Leave" END as leave_status')
+        )
+        ->where('providers.company_id', $company_id)
+        ->where('providers.state_id', $state_id)
+        ->distinct('providers.id');
+    if (!empty($district_id)) {
+        $query->where('providers.district_id', $district_id);
+    }
+
+    if ($request->has('search') && $request->search != '') {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('providers.first_name', 'like', "%{$search}%")
+              ->orwhere('providers.last_name', 'like', "%{$search}%")
+              ->orwhere('providers.mobile', 'like', "%{$search}%")
+              ->orwhere('providers.email', 'like', "%{$search}%")
+               ->orWhere('leaves.type', 'like', "%{$search}%")
+               ->orWhere('leaves.status', 'like', "%{$search}%");
+              
+
+        });
+    }
+
+    if ($request->has('zone_id') && $request->zone_id != '') {
+        $query->where('providers.zone_id', $request->zone_id);
+    }
+
+    if ($request->has('district_id') && $request->district_id != '') {
+        $query->where('providers.district_id', $request->district_id);
+    }
+
+    if ($request->has('role') && $request->role != '') {
+        $query->where('providers.type', $request->role);
+    }
+
+    $providers = $query->orderBy('providers.id', 'desc')->paginate(10)->appends($request->all());
+
+    return view('admin.providers.provider_list', compact('providers', 'zonals', 'districts'));
+}
+
+
+public function exportProviders(Request $request)
+{
+    $user = Session::get('user');
+    $company_id = $user->company_id;
+    $state_id = $user->state_id;
+
+    $query = Provider::join('zonal_managers', 'providers.zone_id', '=', 'zonal_managers.id')
+        ->join('districts', 'providers.district_id', '=', 'districts.id')
+        ->select(
+            'providers.*',
+            'zonal_managers.Name as zone_name',
+            'districts.name as district_name'
+        )
+        ->where('providers.company_id', $company_id)
+        ->where('providers.state_id', $state_id);
+
+    if ($request->has('search') && $request->search != '') {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('providers.first_name', 'like', "%{$search}%")
+              ->orWhere('providers.last_name', 'like', "%{$search}%")
+              ->orWhere('providers.mobile', 'like', "%{$search}%")
+              ->orWhere('providers.email', 'like', "%{$search}%");
+        });
+    }
+
+    if ($request->has('zone_id') && $request->zone_id != '') {
+        $query->where('providers.zone_id', $request->zone_id);
+    }
+
+    if ($request->has('district_id') && $request->district_id != '') {
+        $query->where('providers.district_id', $request->district_id);
+    }
+
+    if ($request->has('role') && $request->role != '') {
+        $query->where('providers.type', $request->role);
+    }
+
+    $providers = $query->orderBy('providers.id', 'desc')->get();
+
+    $data = [];
+    $data[] = ['Name', 'Mobile', 'Email', 'Zone', 'District', 'Version', 'Status', 'Created At'];
+
+    foreach ($providers as $p) {
+        $data[] = [
+            $p->first_name . ' ' . $p->last_name,
+            $p->mobile,
+            $p->email,
+            $p->zone_name ?? 'N/A',
+            $p->district_name ?? 'N/A',
+            $p->version ?? '�',
+            $p->attendance_status == 'active' ? 'Online' : 'Offline',
+            Carbon::parse($p->created_at)->format('d-M-Y h:i A'),
+        ];
+    }
+
+    return Excel::create('providers_' . now()->format('Ymd_His'), function($excel) use ($data) {
+        $excel->sheet('Providers', function($sheet) use ($data) {
+            $sheet->fromArray($data, null, 'A1', false, false);
+        });
+    })->download('xlsx');
+}
     /**
      * Show the form for creating a new resource.
      *
@@ -71,9 +216,34 @@ class ProviderResource extends Controller
      */
     public function create()
     {
-        $districts = District::get();
-        $blocks= Block::get();
-        $zonalmanagers= Zonalmanger::get();
+        $user = Session::get('user');
+        $state_id = $user->state_id;
+        $district_id = $user->district_id;
+
+        $zoneIdsQuery = DB::table('gp_list')->where('state_id', $state_id);
+        if (!empty($district_id)) {
+            $zoneIdsQuery->where('district_id', $district_id);
+        }
+
+        $zoneIds = $zoneIdsQuery->pluck('zonal_id')->unique();
+        $zonalmanagers = DB::table('zonal_managers')->whereIn('id',$zoneIds)->get();
+
+      
+        $districtQuery = District::where('state_id',$state_id);
+        if (!empty($district_id)) {
+            $districtQuery->where('id', $district_id);
+        }
+        $districts = $districtQuery->get();
+
+       
+        $blockQuery= Block::query();
+          if (!empty($district_id)) {
+            $blockQuery->where('district_id', $district_id);
+        }
+        $blocks = $blockQuery->get();
+          // $zonals = Zonalmanger::get();
+         // $districts = District::get();
+        // $zonalmanagers= Zonalmanger::get();
         $teams= DB::table('teams')->get();
         return view('admin.providers.create',compact('districts','blocks','zonalmanagers','teams'));
     }
@@ -87,6 +257,7 @@ class ProviderResource extends Controller
     public function store(Request $request)
     {
        
+       
         $this->validate($request, [
             'first_name' => 'required|max:255',
             'last_name' => 'required|max:255',
@@ -98,10 +269,15 @@ class ProviderResource extends Controller
             'password' => 'required|min:6|confirmed',
             
         ]);
+     
 
         try{
-
+            
+            $user = Session::get('user');
+            $state_id = $user->state_id;
             $provider = $request->all();
+            $provider['state_id'] = $state_id;
+           
             $provider['password'] = bcrypt($request->password);
             if($request->hasFile('avatar')) {
                 $provider['avatar'] = $request->avatar->store('provider/profile');
@@ -148,16 +324,82 @@ class ProviderResource extends Controller
     public function edit($id)
     {
         try {
-            $districts = District::get();
-            $blocks = Block::get();
+            $user = Session::get('user');
+            $state_id = $user->state_id;
+            $district_id = $user->district_id;
+
+            $zoneIdsQuery = DB::table('gp_list')->where('state_id', $state_id);
+            if (!empty($district_id)) {
+                $zoneIdsQuery->where('district_id', $district_id);
+            }
+
+            $zoneIds = $zoneIdsQuery->pluck('zonal_id')->unique();
+            $zonalmanagers = DB::table('zonal_managers')->whereIn('id',$zoneIds)->get();
+
+        
+            $districtQuery = District::query();
+            if (!empty($district_id)) {
+                $districtQuery->where('id', $district_id);
+            }
+            $districts = $districtQuery->get();
+
+        
+            $blockQuery= Block::query();
+            if (!empty($district_id)) {
+                $blockQuery->where('district_id', $district_id);
+            }
+            $blocks = $blockQuery->get();
+            // $districts = District::get();
+            // $blocks = Block::get();
             $provider = Provider::findOrFail($id);
-            $zonalmanagers= Zonalmanger::get();
+            // $zonalmanagers= Zonalmanger::get();
             $teams= DB::table('teams')->get();
             return view('admin.providers.edit',compact('provider','districts','blocks','zonalmanagers','teams'));
         } catch (ModelNotFoundException $e) {
             return $e;
         }
     }
+
+       public function passwordchange($id)
+    {
+        try {
+            $districts = District::get();
+            $blocks = Block::get();
+            $provider = Provider::findOrFail($id);
+            $zonalmanagers= Zonalmanger::get();
+            $teams= DB::table('teams')->get();
+            return view('admin.providers.password',compact('provider','districts','blocks','zonalmanagers','teams'));
+        } catch (ModelNotFoundException $e) {
+            return $e;
+        }
+    }
+
+
+    public function passwordUpdate(Request $request, $id)
+{
+    // Validate input
+    $request->validate([
+        'password' => 'required|string|min:6|confirmed',
+    ]);
+
+    try {
+        $provider = Provider::findOrFail($id);
+
+        // Update password
+        $provider->password = Hash::make($request->password);
+        $provider->save();
+
+        return redirect()
+            ->route('admin.provider.index')
+            ->with('success', 'Password changed successfully.');
+
+    } catch (\Exception $e) {
+        return redirect()
+            ->back()
+            ->with('error', 'Failed to change password. Please try again.');
+    }
+}
+
 
     /**
      * Update the specified resource in storage.
@@ -196,6 +438,8 @@ class ProviderResource extends Controller
             $provider->type= $request->type;
             $provider->zone_id= $request->zone_id;
             $provider->team_id= $request->team_id;
+             $provider->joiningdate= $request->joindate;
+            
             $provider->save();
 
             return redirect()->route('admin.provider.index')->with('flash_success', trans('admin.provider_msgs.provider_update'));    
@@ -388,4 +632,73 @@ class ProviderResource extends Controller
             return back()->with('flash_error', trans('admin.something_wrong'));
         }
     }
+   
+    
+    public function HandleLeaves(Request $request)
+    {
+       
+         $validator = Validator::make($request->all(),[
+            'provider_id' => 'required|exists:providers,id',
+            'type' =>'required|in:leave,late_login',
+            'start_date'  => 'required_if:type,leave|date',
+            'end_date'    => 'required_if:type,leave|date|after_or_equal:start_date',
+            'reason'=>'nullable|string',
+            'status'      => 'required|in:approved,pending,rejected'
+         ]);
+
+       
+           if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()
+                ], 422);
+            }
+            if ($request->leave_id) {
+                // UPDATE
+                $leave = Leave::findOrFail($request->leave_id);
+                $leave->type = $request->type;
+                $leave->reason = $request->reason;
+                $leave->start_date = Carbon::today();
+                $leave->end_date = Carbon::today();
+                $leave->status = 'approved';
+                $leave->save();
+            }else{
+
+
+            $already = Leave::where('provider_id', $request->provider_id)
+                            ->where('start_date', '<=', $request->start_date)
+                            ->where('end_date', '>=', $request->end_date)
+                            ->whereIn('type', ['leave', 'late_login'])
+                            ->first();
+
+            if ($already) {
+                return response()->json([
+                    'success' => false,
+                     'message' => "Already marked as {$request->type} for today"
+                ], 409);
+            }
+
+    
+        Leave::create([
+            'provider_id' => $request->provider_id,
+            'start_date'  => $request->start_date,
+            'end_date'    => $request->end_date,
+            'reason'      => $request->reason,
+            'status'      => $request->status,
+            'type'=> $request->type
+        ]);
+    }
+         
+      return response()->json([
+            'success' => true,
+            'message' => "{$request->type} added successfully!"
+        ]);
+
+    
+    }
+    public function DeleteLeaves($id){
+    Leave::where('id', $id)->delete();
+    return response()->json(['success' => true]);
+    }
+
 }

@@ -44,7 +44,7 @@
             <th>District</th>
             <th>Team</th>
             <th>Name</th>
-            <th>Total Tickets</th>
+            <th>New Tickets</th>
             <th>Auto Close</th>
             <th>Manual Close</th>
             <th>Hold</th>
@@ -82,28 +82,28 @@
             <td>{{ $user->team_name }}</td>
             <td>{{ $user->first_name }} {{ $user->last_name }}</td>
             <td>{{ $user->total_tickets }}</td>
-            <td><a href="/public/westbengal/public/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=Completed&autoclose=Auto&newfrom_date={{$fromDate}}&newto_date={{$toDate}}">{{ $user->completed_tickets_auto }}</a></td>
-            <td><a href="/public/westbengal/public/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=Completed&autoclose=Manual&newfrom_date={{$fromDate}}&newto_date={{$toDate}}">{{ $user->completed_tickets_manual }}</a></td>
-            <td><a href="/public/westbengal/public/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=Onhold&newfrom_date={{$fromDate}}&newto_date={{$toDate}}">{{ $user->hold_tickets }}</a></td>
-            <td><a href="/public/westbengal/public/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=OnGoing">{{ $user->pickup_tickets }}</a></td>
+            <td><a href="/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=Completed&autoclose=Auto&newfrom_date={{$fromDate}}&newto_date={{$toDate}}">{{ $user->completed_tickets_auto }}</a></td>
+            <td><a href="/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=Completed&autoclose=Manual&newfrom_date={{$fromDate}}&newto_date={{$toDate}}">{{ $user->completed_tickets_manual }}</a></td>
+            <td><a href="/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=Onhold&newfrom_date={{$fromDate}}&newto_date={{$toDate}}">{{ $user->hold_tickets }}</a></td>
+            <td><a href="/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=OnGoing">{{ $user->pickup_tickets }}</a></td>
             <td>
               @if(request()->has('from_date') && request()->has('to_date'))
-            <a href="/public/westbengal/public/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=NotStarted&from_date={{ $fromDate }}&to_date={{ $toDate }}">
+            <a href="/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=Open&from_date={{ $fromDate }}&to_date={{ $toDate }}">
                 {{ $user->pending_tickets }}
             </a>
         @else
-            <a href="/public/westbengal/public/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=NotStarted">
+            <a href="/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=Open">
                 {{ $user->pending_tickets }}
             </a>
         @endif
             </td>
             <td>
               @if(request()->has('from_date') && request()->has('to_date'))
-            <a href="/public/westbengal/public/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=NotStarted&from_date={{ $fromDate }}&to_date={{ $toDate }}&range=24hr">
+            <a href="/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=Open&from_date={{ $fromDate }}&to_date={{ $toDate }}&range=24hr">
                 {{ $user->pending_tickets_morethen_24 }}
             </a>
         @else
-            <a href="/public/westbengal/public/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=NotStarted&range=24hr">
+            <a href="/admin/tickets?zone_id={{ $user->zone_id }}&team_id={{ $user->team_id }}&status=Open&range=24hr">
                 {{ $user->pending_tickets_morethen_24 }}
             </a>
         @endif

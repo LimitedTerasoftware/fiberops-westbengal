@@ -7,7 +7,7 @@
 <div class="content-area py-1">
     <div class="container-fluid">
     	<div class="box box-block bg-white">
-            <a href="#" class="btn btn-default pull-right"><i class="fa fa-angle-left"></i> Back</a>
+            <button  onclick="history.back() class="btn btn-default pull-right"><i class="fa fa-angle-left"></i> Back</button>
 
 			<h5>On Hold Form</h5>
 

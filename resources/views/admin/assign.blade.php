@@ -3,7 +3,13 @@
 @section('title', 'Assign Form')
 
 @section('content')
-
+@php
+    $user = Session::get('user');
+    $DistId = null; 
+    if ($user && isset($user->district_id)) {
+        $DistId = $user->district_id;
+    }
+@endphp
 <style>
 	.custom_card{
 		background-color: #2B3EB1;
@@ -108,7 +114,7 @@
 						<select class="form-control select-box" name="district_id" required id="district_id">
 							<option value="">Please Select</option>
 							<?php foreach($districts as $district) { ?>
-							<option value="{{$district->id}}">{{$district->name}}</option>
+							<option value="{{$district->id}}" {{ ($DistId && $DistId == $district->id) ? 'selected' : ''}}>{{$district->name}}</option>
 						    <?php } ?>
 						</select>
 					</div>
@@ -146,7 +152,8 @@ $('#district_id').change(function(){
         if(nid){
         $.ajax({
            type:"get",
-            url: 'https://fleet.terasoftware.com/public/westbengal/public/admin/getSearchproviderlist/'+ nid,
+              url: "{{ url('/admin/getSearchproviderlist') }}/" + nid,
+
             success:function(res)
            {       
                 if(res)

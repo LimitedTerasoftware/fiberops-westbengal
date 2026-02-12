@@ -16,6 +16,16 @@ class Block extends Model
         
     ];
 
+    public function district()
+    {
+        return $this->belongsTo(District::class);
+    }
+
+    public function oltLocations()
+    {
+        return $this->hasMany(OltLocation::class);
+    }
+
     /**
      * The attributes that should be hidden for arrays.
      *

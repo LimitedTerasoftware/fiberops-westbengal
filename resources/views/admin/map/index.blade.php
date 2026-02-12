@@ -3,7 +3,13 @@
 @section('title', 'Map View ')
 
 @section('content')
-
+@php
+    $user = Session::get('user');
+    $DistId = null; 
+    if ($user && isset($user->district_id)) {
+        $DistId = $user->district_id;
+    }
+    @endphp
 <div class="content-area py-1">
     <div class="container-fluid">
         	<div class="box box-block bg-white"> 
@@ -13,7 +19,10 @@
                    <select class="form-control selectpicker" data-show-subtext="true" data-live-search="true" name="district_id" required>
                    	<option value="">Please Select District</option>
                     @foreach($districts as $district)
-                    <option value="{{$district->id}}" @if(Request::get('district_id')) @if(@Request::get('district_id') == $district->id) selected @endif @endif>{{$district->name}} </option> 
+                    <option value="{{$district->id}}" 
+                    {{ (request('district_id') == $district->id) || ($DistId && $DistId == $district->id) ? 'selected' : '' }}>
+
+                        {{$district->name}} </option> 
                    @endforeach 
                   </select>
                 </div>
@@ -72,96 +81,106 @@
 
 @section('scripts')
 <script>
-    var map;
-    var users;
-    var districtdata = document.getElementById('districtdata').value;
-    var providers;
-    var ajaxMarkers = [];
-    var googleMarkers = [];
-    var mapIcons = {
-        user: '{{ asset("asset/img/marker-user.png") }}',
-        active: '{{ asset("asset/img/marker-user.png") }}',
-        riding: '{{ asset("asset/img/marker-user.png") }}',
-        offline: '{{ asset("asset/img/map-marker-red.png") }}',
-        unactivated: '{{ asset("asset/img/marker-plus.png") }}'
-    }
-
-    function initMap() {
-        map = new google.maps.Map(document.getElementById('map'), {
-            center: {lat: 20.8444, lng: 85.1511},
-            zoom: 8,
-            minZoom: 1
-        });
-
-        setInterval(ajaxMapData, 3000);
-
-        var legend = document.getElementById('legend');
-       
-
-
-        // var div = document.createElement('div');
-        // div.innerHTML = '<img src="' + mapIcons['user'] + '"> ' + 'User';
-        // legend.appendChild(div);
-
-        var div = document.createElement('div');
-        div.innerHTML = '<img src="' + mapIcons['offline'] + '"> ' + 'offline';
-        legend.appendChild(div);
-        
-        var div = document.createElement('div');
-        div.innerHTML = '<img src="' + mapIcons['active'] + '"> ' + 'online';
-        legend.appendChild(div);
-        
-        //var div = document.createElement('div');
-       // div.innerHTML = '<img src="' + mapIcons['unactivated'] + '"> ' + 'Unactivated';
-        //legend.appendChild(div);
-
-        map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(legend);
-        
-        google.maps.Map.prototype.clearOverlays = function() {
-            for (var i = 0; i < googleMarkers.length; i++ ) {
-                googleMarkers[i].setMap(null);
-            }
-            googleMarkers.length = 0;
+     var map;
+        var users;
+        var districtdata = document.getElementById('districtdata').value;
+        var providers;
+        var googleMarkers = {};
+        var mapIcons = {
+            user: '{{ asset("asset/img/marker-user.png") }}',
+            active: '{{ asset("asset/img/marker-user.png") }}',
+            riding: '{{ asset("asset/img/marker-user.png") }}',
+            offline: '{{ asset("asset/img/map-marker-red.png") }}',
+            unactivated: '{{ asset("asset/img/marker-plus.png") }}'
         }
 
-    }
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 20.8444, lng: 85.1511 },
+                zoom: 8,
+                minZoom: 1
+            });
 
-    function ajaxMapData() {
-        map.clearOverlays();
-        $.ajax({
-            url: 'https://fleet.terasoftware.com/public/westbengal/public/admin/map/ajax?district_id='+ districtdata,
-            dataType: "JSON",
-            headers: {'X-CSRF-TOKEN': window.Laravel.csrfToken },
-            type: "GET",
-            success: function(data) {
-                console.log('Ajax Response', data);
-                ajaxMarkers = data;
+            // Load initial data
+            ajaxMapData();
+
+            // Auto-update every 3 seconds
+            setInterval(ajaxMapData, 3000);
+
+            var legend = document.getElementById('legend');
+
+            var div = document.createElement('div');
+            div.innerHTML = '<img src="' + mapIcons['offline'] + '"> ' + 'offline';
+            legend.appendChild(div);
+
+            var div = document.createElement('div');
+            div.innerHTML = '<img src="' + mapIcons['active'] + '"> ' + 'online';
+            legend.appendChild(div);
+
+            map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(legend);
+        }
+
+        function ajaxMapData() {
+            $.ajax({
+                url: 'https://westbengal.terasoftware.com/admin/map/ajax?district_id=' + districtdata,
+                dataType: "JSON",
+                headers: { 'X-CSRF-TOKEN': window.Laravel.csrfToken },
+                type: "GET",
+                success: function (data) {
+                    updateMarkers(data);
+                }
+            });
+        }
+
+        function updateMarkers(data) {
+            var currentIds = [];
+
+            data.forEach(function (element) {
+                currentIds.push(element.id);
+                var lat = parseFloat(element.latitude);
+                var lng = parseFloat(element.longitude);
+                var position = { lat: lat, lng: lng };
+                var status = element.service ? element.service.status : element.status;
+                var icon = mapIcons[status] || mapIcons['user'];
+
+                if (googleMarkers[element.id]) {
+                    // Update existing marker
+                    var marker = googleMarkers[element.id];
+                    marker.setPosition(position);
+                    marker.setIcon(icon);
+                } else {
+                    // Add new marker
+                    var baddress = element.service && element.service.address ? element.service.address : (element.latitude + "," + element.longitude);
+                    var marker = new google.maps.Marker({
+                        position: position,
+                        map: map,
+                        title: element.first_name + " " + element.last_name + "\n" + baddress,
+                        icon: icon,
+                        id: element.id
+                    });
+
+                    // Add click listener
+                    google.maps.event.addListener(marker, 'click', function () {
+                        window.location.href = '/admin/currentlocation/' + element.id;
+                    });
+
+                    googleMarkers[element.id] = marker;
+                }
+            });
+
+            // Remove markers that are no longer in the data
+            for (var id in googleMarkers) {
+                if (!currentIds.includes(parseInt(id))) {
+                    googleMarkers[id].setMap(null);
+                    delete googleMarkers[id];
+                }
             }
-        });
+        }
 
-        ajaxMarkers ? ajaxMarkers.forEach(addMarkerToMap) : '';
-    }
-
-    function addMarkerToMap(element, index) {
-    	var baddress = element.service.address?element.service.address:(element.latitude + "," + element.longitude);
-        marker = new google.maps.Marker({
-            position: {
-                lat: element.latitude,
-                lng: element.longitude
-            },
-            id: element.id,
-            map: map,
-            title: element.first_name + " " +element.last_name + "\n" + baddress,
-            icon : mapIcons[element.service ? element.service.status : element.status],
-        });
-
-        googleMarkers.push(marker);
-
-        google.maps.event.addListener(marker, 'click', function() {
-            //window.location.href = '/admin/' + element.service ? 'provider' : 'user' + '/' +element.user_id;
-            window.location.href = '/admin/currentlocation/'+element.id;
-        });
-    }
+        if (typeof google !== 'undefined') {
+            initMap();
+        } else {
+            window.addEventListener('load', initMap);
+        }
 </script>
-<script src="//maps.googleapis.com/maps/api/js?key={{ Setting::get('map_key') }}&libraries=places&callback=initMap" async defer></script>
 @endsection

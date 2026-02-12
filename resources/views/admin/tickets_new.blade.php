@@ -69,10 +69,10 @@
                     ** Demo Mode : @lang('admin.demomode')
                 </div>
                 @endif
-             @if(auth()->user()->role == 'admin' ||  auth()->user()->role == 'super_admin')
+
             <a href="{{ route('admin.tickets.create') }}" style="margin-left: 1em;" class="btn btn-primary pull-right b-a-radius-0-5"><i class="fa fa-plus"></i> Add New Ticket</a>
             <a href="{{ route('admin.import') }}" style="margin-left: 1em;" class="btn btn-success pull-right b-a-radius-0-5"><i class="fa fa-upload"></i> Upload CSV File</a>
-             @endif
+
             <h4 class="mb-2">Tickets History</h4>
 
             <ul class="nav nav-pills mb-1 b-b nav-cstm">
@@ -333,7 +333,7 @@ $formattedTime = sprintf("%02d:%02d", $hours, $minutes);
         </div>
          Showing {{$tickets->currentPage() != 1 ? $tickets->currentPage() * 10 - 9 : $tickets->currentPage()}} to {{$tickets->currentPage() * $tickets->perPage()}} of {{$tickets->total()}} entries
     </div>
-      {{ $tickets->appends(['status' => @$status_get,'district_id'=>@$district_id_get,'searchinfo'=>@$serch_term_get,'zone_id'=>@$zone_id_get,'team_id'=>@$team_id_get,'block_id'=>@$block_id_get,'from_date'=>@$from_date_get,'to_date'=>@$to_date_get,'autoclose'=>@$autoclose_get,'default_autoclose'=>@$default_autoclose_get,'category'=>@$category_get,'newfrom_date'=>@$newfrom_date_get,'newto_date'=>@$newto_date_get,'range'=>@$range_get])->links()  }}
+      {{ $tickets->appends(['status' => @$status_get,'district_id'=>@$district_id_get,'searchinfo'=>@$serch_term_get,'zone_id'=>@$zone_id_get,'team_id'=>@$team_id_get,'block_id'=>@$block_id_get,'from_date'=>@$from_date_get,'to_date'=>@$to_date_get,'autoclose'=>@$autoclose_get,'default_autoclose'=>@$default_autoclose_get,'searchinfo'=>@$searchinfo_get,'category'=>@$category_get,'newfrom_date'=>@$newfrom_date_get,'newto_date'=>@$newto_date_get,'range'=>@$range_get])->links()  }}
    </div>
 @endsection
 @section('scripts')

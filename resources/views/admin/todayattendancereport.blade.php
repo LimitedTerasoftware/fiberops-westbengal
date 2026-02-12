@@ -29,7 +29,7 @@
                      <tr>
                        <td><a href="{{ route('admin.provider.index') }}" target="_blank">{{$totalusers}}</a></td> 
                        <td><a href="{{ route('admin.attendance') }}" target="_blank">{{$loggedinusers}}</a></td>
-                       <td><a href="{{ route('admin.provider.index') }}?status=offline" target="_blank">{{$totalusers - $loggedinusers}}</a></td> 			
+                       <td><a href="{{ route('admin.attendance_list') }}?status=absent" target="_blank">{{$totalusers - $loggedinusers}}</a></td> 			
                     </tr>
                 </tbody>
                 <!--<tfoot>

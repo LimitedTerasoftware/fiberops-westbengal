@@ -3,6 +3,13 @@
 @section('title', 'Map View ')
 
 @section('content')
+@php
+    $user = Session::get('user');
+    $DistId = null; 
+    if ($user && isset($user->district_id)) {
+        $DistId = $user->district_id;
+    }
+@endphp
 
 <div class="content-area py-1">
         <div class="container-fluid ">
@@ -13,7 +20,10 @@
                    <select class="form-control selectpicker" data-show-subtext="true" data-live-search="true" name="district_id" id="district" required>
                    	<option value="">Please Select District</option>
                     @foreach($districts as $district)
-                    <option value="{{$district->id}}" @if(Request::get('district_id')) @if(@Request::get('district_id') == $district->id) selected @endif @endif>{{$district->name}} </option> 
+                    <option value="{{$district->id}}" 
+                        {{ (request('district_id') == $district->id) || ($DistId && $DistId == $district->id) ? 'selected' : '' }}>
+
+                    {{$district->name}} </option> 
                    @endforeach 
                   </select>
                 </div>
@@ -132,100 +142,120 @@ $("select[id='block']").change(function(){
 
 </script>
 <script>
-    var map;
-    var users;
-    var districtdata = document.getElementById('districtdata').value;
-    var blockdata = document.getElementById('blockdata').value;
-    var providers;
-    var ajaxMarkers = [];
-    var googleMarkers = [];
-    var mapIcons = {
+        var map;
+        var users;
+        var districtdata = document.getElementById('districtdata').value;
+        var blockdata = document.getElementById('blockdata').value;
+        var fromdate = document.getElementById('fromdate').value;
+        var todate = document.getElementById('todate').value;
+        var providerid = document.getElementById('providerid').value;
+        var providers;
+        var googleMarkers = {}; // Changed to object for easier updating by ID
+
+        var mapIcons = {
         user: '{{ asset("asset/img/marker-user.png") }}',
         active: '{{ asset("asset/img/marker-user.png") }}',
         riding: '{{ asset("asset/img/marker-user.png") }}',
         offline: '{{ asset("asset/img/map-marker-red.png") }}',
         unactivated: '{{ asset("asset/img/marker-plus.png") }}'
-    }
+        }
 
-    function initMap() {
+        function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
-            center: {lat: 20.8444, lng: 85.1511},
-            zoom: 8,
-            minZoom: 1
+        center: {lat: 20.8444, lng: 85.1511},
+        zoom: 8,
+        minZoom: 1
         });
 
+        // Load initial data
+        ajaxMapData();
+
+        // Auto-update every 3 seconds
         setInterval(ajaxMapData, 3000);
 
         var legend = document.getElementById('legend');
-       
 
-
-        // var div = document.createElement('div');
-        // div.innerHTML = '<img src="' + mapIcons['user'] + '"> ' + 'User';
-        // legend.appendChild(div);
 
         var div = document.createElement('div');
         div.innerHTML = '<img src="' + mapIcons['offline'] + '"> ' + 'offline';
         legend.appendChild(div);
-        
+
         var div = document.createElement('div');
         div.innerHTML = '<img src="' + mapIcons['active'] + '"> ' + 'online';
         legend.appendChild(div);
-        
-        //var div = document.createElement('div');
-       // div.innerHTML = '<img src="' + mapIcons['unactivated'] + '"> ' + 'Unactivated';
-        //legend.appendChild(div);
 
         map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(legend);
-        
-        google.maps.Map.prototype.clearOverlays = function() {
-            for (var i = 0; i < googleMarkers.length; i++ ) {
-                googleMarkers[i].setMap(null);
-            }
-            googleMarkers.length = 0;
         }
 
-    }
-
-    function ajaxMapData() {
-        map.clearOverlays();
+        function ajaxMapData() {
         $.ajax({
-            url: 'https://fleet.terasoftware.com/public/westbengal/public/admin/map/ajax?district_id='+ districtdata+'&block_id='+blockdata+'&provider_id='+providerid +'&from_date='+fromdate+'&to_date='+todate,
-            dataType: "JSON",
-            headers: {'X-CSRF-TOKEN': window.Laravel.csrfToken },
-            type: "GET",
-            success: function(data) {
-                console.log('Ajax Response', data);
-                ajaxMarkers = data;
-            }
+        url: 'https://westbengal.terasoftware.com/admin/map/ajax?district_id='+
+        districtdata+'&block_id='+blockdata+'&provider_id='+providerid +'&from_date='+fromdate+'&to_date='+todate,
+        dataType: "JSON",
+        headers: {'X-CSRF-TOKEN': window.Laravel.csrfToken },
+        type: "GET",
+        success: function(data) {
+        updateMarkers(data);
+        }
         });
+        }
 
-        ajaxMarkers ? ajaxMarkers.forEach(addMarkerToMap) : '';
-    }
+        function updateMarkers(data) {
+        var currentIds = [];
 
-    function addMarkerToMap(element, index) {
-    	//var baddress = element.service.address?element.service.address:(element.latitude + "," + element.longitude);
-        var baddress = (element.service && element.service.address) 
-        ? element.service.address 
+        data.forEach(function(element) {
+        currentIds.push(element.id);
+        var lat = parseFloat(element.latitude);
+        var lng = parseFloat(element.longitude);
+        var position = { lat: lat, lng: lng };
+        var status = element.service ? element.service.status : element.status;
+        var icon = mapIcons[status] || mapIcons['user'];
+
+        // Handle address
+        var baddress = (element.service && element.service.address)
+        ? element.service.address
         : (element.latitude + "," + element.longitude);
-        marker = new google.maps.Marker({
-            position: {
-                lat: element.latitude,
-                lng: element.longitude
-            },
-            id: element.id,
-            map: map,
-            title: element.first_name + " " +element.last_name + "\n" + baddress,
-            icon : mapIcons[element.service ? element.service.status : element.status],
+
+        if (googleMarkers[element.id]) {
+        // Update existing marker
+        var marker = googleMarkers[element.id];
+        marker.setPosition(position);
+        marker.setIcon(icon);
+        marker.setTitle(element.first_name + " " + element.last_name + "\n" + baddress);
+        } else {
+        // Add new marker
+        var marker = new google.maps.Marker({
+        position: position,
+        map: map,
+        title: element.first_name + " " +element.last_name + "\n" + baddress,
+        icon: icon,
+        id: element.id
         });
 
-        googleMarkers.push(marker);
-
+        // Add click listener
         google.maps.event.addListener(marker, 'click', function() {
-            //window.location.href = '/admin/' + element.service ? 'provider' : 'user' + '/' +element.user_id;
-            window.location.href = 'https://fleet.terasoftware.com/public/westbengal/public/admin/currentlocation/'+element.id;
+        window.location.href = 'https://fleet.terasoftware.com/public/westbengal/public/admin/currentlocation/'+element.id;
         });
-    }
-</script>
-<script src="//maps.googleapis.com/maps/api/js?key={{ Setting::get('map_key') }}&libraries=places&callback=initMap" async defer></script>
+
+        googleMarkers[element.id] = marker;
+        }
+        });
+
+        // Remove markers that are no longer in the data
+        for (var id in googleMarkers) {
+        if (!currentIds.includes(parseInt(id))) {
+        googleMarkers[id].setMap(null);
+        delete googleMarkers[id];
+        }
+        }
+        }
+
+        // Call initMap explicitly since the script is now in base
+        if(typeof google !== 'undefined') {
+        initMap();
+        } else {
+        window.addEventListener('load', initMap);
+        }
+        </script>
+
 @endsection

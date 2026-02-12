@@ -1,0 +1,217 @@
+@extends('admin.layouts.master')
+
+@section('css')
+    <link rel="stylesheet" href="{{ asset('assets/modules/select2/dist/css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/modules/bootstrap-social/bootstrap-social.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/modules/summernote/summernote-bs4.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/modules/bootstrap-datepicker/css/bootstrap-datepicker.min.css') }}">
+@endsection
+
+@section('main-content')
+
+    <section class="section">
+        <div class="section-header shadow">
+            <h1>{{ __('visitor.visitors') }}</h1>
+            {{ Breadcrumbs::render('visitors/edit') }}
+        </div>
+
+        <div class="section-body">
+            <div class="row">
+                <div class="col-12 col-md-12 col-lg-12">
+                    <div class="card shadow">
+                    <form action="{{ route('admin.visitors.store') }}" method="POST" enctype="multipart/form-data">
+                            @csrf
+                            @method('POST')
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col">
+                                        <label for="first_name">{{ __('visitor.first_name') }}</label> <span class="text-danger">*</span>
+                                        <input id="first_name" type="text" name="first_name" class="form-control {{ $errors->has('first_name') ? " is-invalid " : '' }}" value="{{ old('first_name',$visitor->first_name) }}">
+                                        @error('first_name')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                    <div class="form-group col">
+                                        <label for="last_name">{{ __('visitor.last_name') }}</label> <span class="text-danger">*</span>
+                                        <input id="last_name" type="text" name="last_name" class="form-control {{ $errors->has('last_name') ? " is-invalid " : '' }}" value="{{ old('last_name',$visitor->last_name) }}">
+                                        @error('last_name')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col">
+                                        <label>{{ __('visitor.email_address') }}</label> 
+                                        <input type="text" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email',$visitor->email) }}">
+                                        @error('email')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                    <div class="form-group col">
+                                        <label>{{ __('visitor.phone') }}</label> <span class="text-danger">*</span>
+                                        <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone',$visitor->phone) }}">
+                                        @error('phone')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col">
+                                        <label for="gender">{{ __('visitor.gender') }}</label> <span class="text-danger">*</span>
+                                        <select id="gender" name="gender" class="form-control @error('gender') is-invalid @enderror">
+                                            @foreach(trans('genders') as $key => $gender)
+                                                <option value="{{ $key }}" {{ (old('gender',$visitor->gender) == $key) ? 'selected' : '' }}>{{ $gender }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('gender')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                    <div class="form-group col">
+                                        <label>{{ __('visitor.dob') }}</label><span class="text-danger">*</span>
+                                        <input type="date" name="date_of_birth" class="form-control @error('age') is-invalid @enderror datepicker" value="{{ old('age',$visitor->date_of_birth) }}">
+                                        @error('date_of_birth')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col">
+                                        <label>{{ __('visitor.national_identification_no') }}</label>
+                                        <input type="text" name="national_identification_no" class="form-control @error('national_identification_no') is-invalid @enderror" value="{{ old('national_identification_no',$visitor->national_identification_no) }}">
+                                        @error('national_identification_no')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                    @if(auth()->user()->getrole->name == 'Employee')
+                                    <div class="form-group col">
+                                        <label for="employee_id">{{ __('visitor.select_employee') }}</label> <span class="text-danger">*</span>
+                                        <select id="employee_id" name="employee_id" class="form-control select2 @error('employee_id') is-invalid @enderror">
+                                            @foreach($centers as $key => $employee)
+                                                <option value="{{ $employee->id }}" {{ (old('employee_id',$visitor->employee_id) == $employee->id) ? 'selected' : '' }}>{{ $employee->name }} ( {{$employee->department->name}} )</option>
+                                            @endforeach
+                                        </select>
+                                        @error('employee_id')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                    @else
+                                    <div class="form-group col">
+                                        <label for="employee_id">{{ __('visitor.select_employee') }}</label> <span class="text-danger">*</span>
+                                        <select id="employee_id" name="employee_id" class="form-control select2 @error('employee_id') is-invalid @enderror">
+                                            @foreach($employees as $key => $employee)
+                                                <option value="{{ $employee->id }}" {{ (old('employee_id',$visitor->employee_id) == $employee->id) ? 'selected' : '' }}>{{ $employee->name }} ( {{$employee->department->name}} )</option>
+                                            @endforeach
+                                        </select>
+                                        @error('employee_id')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                    @endif
+                                </div>
+                                <div class="form-row">
+                                <div class="form-group col">
+                                        <label for="purpose">{{ __('visitor.purpose') }}</label> <span class="text-danger">*</span>
+                                        <select id="used_content" name="used_content" class="form-control select2 @error('used_content') is-invalid @enderror" required>
+                                         <option value="">--Select Category--</option>
+                                        @foreach($contensts as $key => $contenst)
+                                        <option value="{{ $contenst->content }}" {{ (old('used_content',$visitor->used_content) == $contenst->content) ? 'selected' : '' }}>{{ $contenst->content }} </option>     
+                                            @endforeach
+                                        </select>
+                                        
+                                        @error('used_content')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                    <div class="form-group col">
+                                    <label for="language">{{ __('visitor.ln') }}</label><span class="text-danger">*</span>
+                                        <select id="language" name="language" class="form-control select2 @error('language') is-invalid @enderror">
+                                        <option value="English" {{ (old('language',$visitor->language) == 'English') ? 'selected' : '' }}>English</option>
+                                        <option value="Hindi" {{ (old('language',$visitor->language) == 'Hindi') ? 'selected' : '' }}>Hindi</option>
+                                        <option value="Kannada" {{ (old('language',$visitor->language) == 'Kannada') ? 'selected' : '' }}>Kannada</option>
+                                        </select>
+                            
+                                        @error('language')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                    <div class="form-group col">
+                                        <label for="address">{{ __('visitor.address') }}</label>
+                                        <textarea name="address"
+                                                  class="summernote-simple form-control height-textarea @error('address')
+                                                      is-invalid @enderror"
+                                                  id="address" >
+                                            {{ old('address',$visitor->address) }}
+                                        </textarea>
+                                        @error('address')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            <!--    <div class="form-row">
+                                    <div class="form-group col-6">
+                                        <label for="customFile">{{ __('visitor.image') }}</label>
+                                        <div class="custom-file">
+                                            <input name="image" type="file" class="custom-file-input @error('image') is-invalid @enderror" id="customFile" onchange="readURL(this);">
+                                            <label  class="custom-file-label" for="customFile">{{ __('visitor.choose_file') }}</label>
+                                        </div>
+                                        @if ($errors->has('image'))
+                                            <div class="help-block text-danger">
+                                                {{ $errors->first('image') }}
+                                            </div>
+                                        @endif
+                                        @if($visitor->getFirstMediaUrl('visitor'))
+                                            <img class="img-thumbnail image-width mt-4 mb-3" id="previewImage" src="{{ asset($visitor->getFirstMediaUrl('visitor')) }}" alt="your image"/>
+                                        @else
+                                            <img class="img-thumbnail image-width mt-4 mb-3" id="previewImage" src="{{ asset('assets/img/default/user.png') }}" alt="your image"/>
+                                        @endif
+                                    </div>
+
+                                </div>
+                            </div> -->
+
+                            <div class="card-footer ">
+                                <button class="btn btn-primary mr-1" type="submit">{{ __('visitor.add') }}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+@endsection
+
+@section('scripts')
+    <script src="{{ asset('assets/modules/select2/dist/js/select2.full.min.js') }}"></script>
+    <script src="{{ asset('assets/modules/summernote/summernote-bs4.js') }}"></script>
+    <script src="{{ asset('assets/modules/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
+    <script src="{{ asset('assets/modules/bootstrap-timepicker/js/bootstrap-timepicker.min.js') }}"></script>
+    <script src="{{ asset('js/visitor/edit.js') }}"></script>
+@endsection

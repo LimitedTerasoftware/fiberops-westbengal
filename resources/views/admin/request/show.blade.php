@@ -1,6 +1,6 @@
 @extends('admin.layout.base')
 
-@section('title', 'Request details ')
+@section('title', 'Request details')
 
 @section('content')
 
@@ -21,7 +21,7 @@
     $lastmap  = end($data_array);
  //echo "<pre>";
 //print_r( json_encode($data_array));    exit();
-  
+ 
   //print_r($request->provider->latitude); exit;
   ?>
 <?php
@@ -39,6 +39,38 @@ $miles = $dist * 60 * 1.1515;
 
 $distance = ($miles * 1.609344).' km';
 //print_r($$request);exit;
+if (!function_exists('getDuration')) {
+    function getDuration($start, $end) {
+        if (!$start || !$end) return '-';
+
+        $startTime = \Carbon\Carbon::parse($start);
+        $endTime   = \Carbon\Carbon::parse($end);
+
+        if ($endTime->lessThan($startTime)) {
+            return '-';
+        }
+
+        $diff = $startTime->diff($endTime);
+
+        $parts = [];
+        if ($diff->d > 0) {
+            $parts[] = $diff->d . 'd';
+        }
+        if ($diff->h > 0) {
+            $parts[] = $diff->h . 'h';
+        }
+        if ($diff->i > 0) {
+            $parts[] = $diff->i . 'm';
+        }
+        if ($diff->s > 0) {
+            $parts[] = $diff->s . 's';
+        }
+
+        return implode(' ', $parts);
+    }
+}
+
+
 ?>
 <div class="content-area py-4 mt-5">
     <div class="container-fluid">
@@ -137,6 +169,18 @@ $distance = ($miles * 1.609344).' km';
                                
                             </div>
                         </div>
+                        @if($request->assigned_at)
+                        <div class="timeline-connector">
+                            <div class="duration">
+                                {{ getDuration($ticket->downdate . ' ' . $ticket->downtime, $request->assigned_at) }}
+
+                            </div>
+                            <div class="icon">
+                                <i class="bi bi-bicycle"></i>
+                            </div>
+                        </div>
+                         @endif      
+
                         
                         @if($request->assigned_at)
                         <div class="timeline-step completed">
@@ -153,6 +197,17 @@ $distance = ($miles * 1.609344).' km';
                             </div>
                         </div>
                         @endif
+                           @if($request->started_at)
+                        <div class="timeline-connector">
+                            <div class="duration">
+                                {{ getDuration($request->assigned_at, $request->started_at) }}
+
+                            </div>
+                            <div class="icon">
+                                <i class="bi bi-bicycle"></i>
+                            </div>
+                        </div>
+                         @endif      
 
                         @if($request->started_at)
                         <div class="timeline-step completed">
@@ -169,7 +224,17 @@ $distance = ($miles * 1.609344).' km';
                             </div>
                         </div>
                         @endif
+                         @if($request->finished_at)
+                        <div class="timeline-connector">
+                            <div class="duration">
+                                {{ getDuration($request->started_at, $request->finished_at) }}
 
+                            </div>
+                            <div class="icon">
+                                <i class="bi bi-bicycle"></i>
+                            </div>
+                        </div>
+                         @endif     
                         @if($request->finished_at)
                         <div class="timeline-step completed">
                             <div class="timeline-dot"></div>
@@ -201,7 +266,7 @@ $distance = ($miles * 1.609344).' km';
             <!-- Ticket Details Card -->
             <div class="card mb-4">
                 <div class="card-header bg-white border-bottom">
-                    <h5 class="mb-0">@lang('admin.request.ticket_details')</h5>
+                    <h5 class="mb-0">@lang('admin.request.ticket_details')</h5>a_type
                     <small class="text-muted">ID: {{ $request->booking_id }}</small>
                 </div>
                 <div class="card-body p-1">
@@ -243,14 +308,46 @@ $distance = ($miles * 1.609344).' km';
                                 <label class="detail-label">GP Name</label>
                                 <div class="detail-value">{{ $request->gpname }}</div>
                             </div>
+                             <div class="detail-group mb-3">
+                                <label class="detail-label">Joint Enclousre LatLong 1</label>
+                                <div class="detail-value">{{ isset($documents->joint_enclosurebefore_latlong ) ?$documents->joint_enclosurebefore_latlong  : ''}}</div>
+                            </div>
+                             <div class="detail-group mb-3">
+                                <label class="detail-label">Joint Enclousre LatLong 2</label>
+                                <div class="detail-value">{{isset($documents->joint_enclosureafter_latlong ) ? $documents->joint_enclosureafter_latlong : '' }}</div>
+                            </div>
+                             <div class="detail-group mb-3">
+                                <label class="detail-label">Before Image LatLong</label>
+                                <div class="detail-value">{{isset($documents->before_img_latlong ) ? $documents->before_img_latlong : '' }}</div>
+                            </div> 
+                            <div class="detail-group mb-3">
+                                <label class="detail-label">After Image LatLong</label>
+                                <div class="detail-value">{{isset($documents->after_img_latlong ) ? $documents->after_img_latlong : '' }}</div>
+                            </div>
+                              <div class="detail-group mb-3">
+                                <label class="detail-label">OTDR Image LatLong</label>
+                                <div class="detail-value">{{isset($documents->otdr_img_latlong ) ? $documents->otdr_img_latlong : '' }}</div>
+                            </div>
+                              @if($request->downreason ==='Fiber')
+                              <div class="detail-group mb-3">
+                                <label class="detail-label">Owner Ship</label>
+                                <div class="detail-value">{{ isset($request->ownership) ? $request->ownership : '' }}</div>
+                            </div>
+                            @endif
                             
                         
                         </div>
+                        
 
                         <!-- Column 2 -->
                         <div class="col-md-3">
-                            <div class="detail-group mb-3">
+                             <div class="detail-group mb-3">
                                 <label class="detail-label">Issue Type</label>
+                                <div class="detail-value">{{ isset($request->issue_type) ? $request->issue_type : '' }}</div>
+                            </div>
+                           
+                            <div class="detail-group mb-3">
+                                <label class="detail-label">Issue Reason</label>
                                 <div class="detail-value">{{ isset($request->downreason) ? $request->downreason : '' }}</div>
                             </div>
 
@@ -258,9 +355,22 @@ $distance = ($miles * 1.609344).' km';
                                 <label class="detail-label">Issue Overview</label>
                                 <div class="detail-value">{{ isset($request->downreasonindetailed)  ? $request->downreasonindetailed : '' }}</div>
                             </div>
-                        
-
-                            
+                           @if($request->downreason ==='Fiber')
+                            <div class="detail-group mb-3">
+                                <label class="detail-label">Construction Type</label>
+                                <div class="detail-value">{{ isset($documents->construction_type)  ? $documents->construction_type : '' }}</div>
+                            </div>
+                           
+   
+                              <div class="detail-group mb-3">
+                                <label class="detail-label">Fiber Type</label>
+                                <div class="detail-value">{{ isset($documents->fiber_type)  ? $documents->fiber_type : '' }}</div>
+                            </div>
+                              <div class="detail-group mb-3">
+                                <label class="detail-label">Construction Type - RESTORATION</label>
+                                <div class="detail-value">{{ isset($documents->consttype_restoration)  ? $documents->consttype_restoration : '' }}</div>
+                            </div>
+                           @endif
                             <div class="detail-group mb-3">
                                 <label class="detail-label">Assigned Team</label>
                                 <div class="detail-value text-primary">
@@ -286,23 +396,26 @@ $distance = ($miles * 1.609344).' km';
                                     </div>
                                 </div>
 
-                                <div class="detail-group mb-3">
-                                    <label class="detail-label">Assigned Time</label>
-                                    <div class="detail-value">
-                                        {{ $request->assigned_at ? date('d-m-Y h:i:s A', strtotime($request->assigned_at)) : '-' }}
-                                    </div>
-                                </div>
+                               
                             @endif
-                        </div>
-
-                        <!-- Column 3 -->
-                        <div class="col-md-3">
-                        
-
-                        <div class="detail-group mb-3">
+                            <div class="detail-group mb-3">
+                                <label class="detail-label">Assigned Time</label>
+                                <div class="detail-value">
+                                    {{ $request->assigned_at ? date('d-m-Y h:i:s A', strtotime($request->assigned_at)) : '-' }}
+                                </div>
+                            </div>
+                            <div class="detail-group mb-3">
                                 <label class="detail-label">Estimated Time</label>
                                 <div class="detail-value">4 Hours</div>
                             </div>
+                        </div>
+                        
+
+                        <!-- Column 3 -->
+                        <div class="col-md-3">
+                      
+                            
+                      
                             <div class="detail-group mb-3">
                                 <label class="detail-label">Started Time</label>
                                 <div class="detail-value">
@@ -329,17 +442,13 @@ $distance = ($miles * 1.609344).' km';
                                     @endif
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Column 4 -->
-                        <div class="col-md-3">
-                            <div class="detail-group mb-3">
+                              <div class="detail-group mb-3">
                                 <label class="detail-label">Closed Time</label>
                                 <div class="detail-value">
                                     {{ $request->finished_at ? date('d-m-Y h:i:s A', strtotime($request->finished_at)) : '-' }}
                                 </div>
                             </div>
-                            <?php 
+                                 <?php 
                             if(!empty($request->finished_at) && !empty($ticket->downdate)){
                             if($request->status == 'COMPLETED'){ ?>   
                             <?php 
@@ -357,7 +466,7 @@ $distance = ($miles * 1.609344).' km';
                             </div>
                             
                                 <?php } }?>
-                                <?php 
+                                      <?php 
                             if(!empty($request->started_latitude)){ ?>
                             <?php 
                             $latitudeFrom = $request->started_latitude;
@@ -396,11 +505,23 @@ $distance = ($miles * 1.609344).' km';
                             </div>
                                 
                             <?php } ?>
-                            <?php if($documents->before_image != ''){  
+                             @if(auth()->user()->role == 'admin')
+                             <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#uploadImageModal">
+                            <i class="fa fa-upload"></i> Upload Images
+                            </button>
+                            @endif
+                        </div>
+
+                        <!-- Column 4 -->
+                        <div class="col-md-3">
+                            
+                             
+                       
+                             <?php if($documents->before_image != ''){  
                                         ?>
                             <div class="detail-group mb-3">
                                 <label class="detail-label">Issue Before Images</label>
-                                <div class="detail-value">
+                                <div class="detail-value" id="beforeuploadimages">
                                     <?php if ((is_array(json_decode($documents->before_image, true))) == 1) { ?>   
                                     <?php 
                                         $beforedata = json_decode($documents->before_image);
@@ -430,7 +551,7 @@ $distance = ($miles * 1.609344).' km';
                                 if($documents->after_image != ''){ ?>
                                 <div class="detail-group mb-3">
                                 <label class="detail-label">Issue After Images</label>
-                                <div class="detail-value">
+                                <div class="detail-value"  id="afteruploadimages">
                                     <?php if ((is_array(json_decode($documents->after_image, true))) == 1) { ?>   
                                     <?php 
                                         $afterdata = json_decode($documents->after_image);
@@ -451,10 +572,89 @@ $distance = ($miles * 1.609344).' km';
                                 <a data-magnify="gallery" data-group="a">  
                                 <img src="data:image/png;base64, {{$afterimage }}" alt="Red dot" style="width:100px;height:70px;"/></a> 
                                 <?php } }?>
-                                </dd>
+                                </div>
                                 <?php } } }?>
                                 
-                                </div>
+
+                              @php
+                                    // Helper function to get images array from a field
+                                    function getImages($documents, $field) {
+                                        if(empty($documents) || !isset($documents->$field) || $documents->$field == '') {
+                                            return [];
+                                        }
+
+                                        $data = json_decode($documents->$field, true);
+                                        if(is_array($data)) {
+                                            return $data;
+                                        }
+
+                                        // Fallback for comma-separated values
+                                        return explode(',', $documents->$field);
+                                    }
+                                @endphp
+
+                                {{-- Joint Enclouser Before Images --}}
+                                @php $beforeImages = getImages($documents ?? null, 'joint_enclouser_beforeimg'); @endphp
+                                @if(count($beforeImages))
+                                    <div class="detail-group mb-3">
+                                        <label class="detail-label">Joint Enclouser Before Images</label>
+                                        <div class="detail-value" id="Jointbeforeuploadimages">
+                                            @foreach($beforeImages as $image)
+                                                <a data-magnify="gallery" data-group="before">
+                                                    <img src="{{ asset('/uploads/SubmitFiles/'.$image) }}" style="width:100px;height:70px;" alt="Image"/>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Joint Enclouser After Images --}}
+                                @php $afterImages = getImages($documents ?? null, 'joint_enclouser_afterimg'); @endphp
+                                @if(count($afterImages))
+                                    <div class="detail-group mb-3">
+                                        <label class="detail-label">Joint Enclouser After Images</label>
+                                        <div class="detail-value" id="JointAfteruploadimages">
+                                            @foreach($afterImages as $image)
+                                                <a data-magnify="gallery" data-group="after">
+                                                    <img src="{{ asset('/uploads/SubmitFiles/'.$image) }}" style="width:100px;height:70px;" alt="Image"/>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- OTDR Images --}}
+                                @php $otdrImages = getImages($documents ?? null, 'otdr_img'); @endphp
+                                @if(count($otdrImages))
+                                    <div class="detail-group mb-3">
+                                        <label class="detail-label">OTDR Images</label>
+                                        <div class="detail-value" id="otdrimg">
+                                            @foreach($otdrImages as $image)
+                                                <a data-magnify="gallery" data-group="otdr">
+                                                    <img src="{{ asset('/uploads/SubmitFiles/'.$image) }}" style="width:100px;height:70px;" alt="Image"/>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+                                @if(!empty($documents->video))
+                                    <div class="detail-group mb-3">
+                                        <label class="detail-label">Video</label>
+                                        <div class="detail-value">
+                                            <video width="200" height="200" controls>
+                                                <source src="{{ asset('uploads/SubmitFiles/videos/'.$documents->video) }}" type="video/mp4">
+                                                Your browser does not support the video tag.
+                                            </video>
+                                        </div>
+                                    </div>
+                                @endif
+
+
+                                                        
+
+
+
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -475,25 +675,103 @@ $distance = ($miles * 1.609344).' km';
     </div>
 </div>
 
-<!-- Image Modal -->
-<div class="modal fade" id="imagemodal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+
+<!-- Upload Image Modal -->
+<div class="modal fade" id="uploadImageModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
+
             <div class="modal-header">
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">Upload Images</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
             </div>
-            <div class="modal-body text-center">
-                <img src="" class="imagepreview img-fluid">
-            </div>
+
+            <form id="uploadImageForm" enctype="multipart/form-data" method="POST" action="{{ route('admin.upload-otdr-images') }}">
+                {{csrf_field()}}
+                <input type="hidden" name="request_id" value="{{ $request->booking_id}}">
+
+                <div class="modal-body">
+
+                    <label class="font-weight-bold">Select Images</label>
+                    <input type="file" name="images[]" id="imagesInput" class="form-control" multiple accept="image/*">
+
+                    <div class="row mt-3" id="previewContainer"></div>
+
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Upload</button>
+                </div>
+               
+            </form>
+
         </div>
     </div>
 </div>
 
-@endsection
 
+<!-- Image Modal -->
+<div class="modal fade" id="imagemodal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">              
+      <div class="modal-body">
+        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+        <img src="" class="imagepreview" style="width: 100%;" >
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+@endsection
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 @section('styles')
 <style>
 /* Modern Card Styles */
+.timeline-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+}
+
+.timeline-connector::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 2px;
+    width: 100%;
+    background: #d1d5db;
+    z-index: 0;
+}
+
+.timeline-connector .duration {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
+    background: #f9fafb;
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 1;
+}
+
+.timeline-connector .icon {
+    font-size: 1.4rem;
+    color: #3b82f6;
+    background: #fff;
+    padding: 4px;
+    border-radius: 50%;
+    z-index: 1;
+}
+
 .card {
     border: 1px solid #e3e6f0;
     box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
@@ -848,11 +1126,108 @@ $distance = ($miles * 1.609344).' km';
 .shadow-sm {
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
+
+/* Modal Background */
+.modal.fade .modal-dialog {
+    transform: translateY(-30px);
+    transition: all 0.3s ease-in-out;
+}
+
+.modal.show .modal-dialog {
+    transform: translateY(0);
+}
+
+/* Modal Content */
+.modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0px 10px 25px rgba(0,0,0,0.15);
+}
+
+/* Header Styling */
+.modal-header {
+    background: #f8f9fc;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 1rem 1.25rem;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.modal-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.modal-header .close span {
+    font-size: 1.8rem;
+    color: #6b7280;
+}
+
+.modal-header .close:hover span {
+    color: #ef4444;
+}
+
+/* Modal Body */
+.modal-body {
+    padding: 1.4rem;
+}
+
+/* File Input */
+#imagesInput {
+    border: 1px solid #d1d5db;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* Preview Container */
+#previewContainer img {
+    border-radius: 10px;
+    border: 2px solid #e5e7eb;
+    transition: 0.2s;
+}
+
+#previewContainer img:hover {
+    transform: scale(1.05);
+    border-color: #3b82f6;
+}
+
+/* Modal Footer */
+.modal-footer {
+    border-top: 1px solid #e5e7eb;
+    padding: 0.75rem 1.25rem;
+}
+
+/* Button Styling */
+.modal-footer .btn {
+    font-weight: 500;
+    padding: 0.55rem 1.1rem;
+    border-radius: 8px;
+}
+
+.btn-success {
+    background-color: #10b981;
+    border-color: #10b981;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+}
+
+.btn-secondary {
+    background-color: #6b7280;
+    color: #fff;
+}
+
+.btn-secondary:hover {
+    background-color: #4b5563;
+}
+
 </style>
 @endsection
 
 @section('scripts')
-<script src="https://maps.googleapis.com/maps/api/js?key={{ Setting::get('map_key') }}&libraries=places"></script>
 
 @if($request->status != 'COMPLETED')
 <script type="text/javascript">
@@ -938,8 +1313,12 @@ $distance = ($miles * 1.609344).' km';
         bounds.extend(markerSecond.getPosition());
         map.fitBounds(bounds);
     }
+    if (typeof google !== 'undefined') {
+        initMap();
+    } else {
+        window.addEventListener('load', initMap);
+    }
 
-    google.maps.event.addDomListener(window, "load", initMap);
 </script>
 @else
 <script type="text/javascript">
@@ -1032,23 +1411,63 @@ $(document).ready(function() {
         ezoom.onInit($('#beforeuploadimages img'), {
             hideControlBtn: false,
             onClose: function (result) {
-                console.log(result);
             },
             onRotate: function (result) {
-                console.log(result);
             },
         });
 
         ezoom.onInit($('#afteruploadimages img'), {
             hideControlBtn: false,
             onClose: function (result) {
-                console.log(result);
             },
             onRotate: function (result) {
-                console.log(result);
             },
         });
+          ezoom.onInit($('#Jointbeforeuploadimages img'), {
+            hideControlBtn: false,
+            onClose: function (result) {
+            },
+            onRotate: function (result) {
+            },
+        });
+          ezoom.onInit($('#JointAfteruploadimages img'), {
+            hideControlBtn: false,
+            onClose: function (result) {
+            },
+            onRotate: function (result) {
+            },
+        });
+             ezoom.onInit($('#otdrimg img'), {
+            hideControlBtn: false,
+            onClose: function (result) {
+            },
+            onRotate: function (result) {
+            },
+        });
+       
     }
 });
 </script>
+
+<script>
+document.getElementById('imagesInput').addEventListener('change', function (event) {
+
+    let preview = document.getElementById('previewContainer');
+    preview.innerHTML = ""; 
+
+    [...event.target.files].forEach(file => {
+        let reader = new FileReader();
+        reader.onload = function (e) {
+
+            preview.innerHTML += `
+                <div class="col-md-3 mb-3">
+                    <img src="${e.target.result}" class="img-thumbnail" style="height:120px; object-fit:cover;">
+                </div>`;
+        };
+        reader.readAsDataURL(file);
+    });
+
+});
+</script>
+
 @endsection

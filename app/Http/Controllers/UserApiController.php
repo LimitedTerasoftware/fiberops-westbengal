@@ -43,7 +43,16 @@ use App\MasterCoordinate;
 use App\ProviderHistory;
 use App\Http\Controllers\ProviderResources\TripController;
 use App\Services\ServiceTypes;
-
+use App\Services\GisService;
+use App\Block;
+use App\EmpStockTransaction;
+use App\Material_serial_Allocations;
+use App\MaterialSerial;
+use App\Material;
+use App\EmpStockBalance;
+use App\EmployeeMaterialLedger;
+use App\Services\GoogleMapsService;
+use GuzzleHttp\Client;
 
 
 class UserApiController extends Controller
@@ -492,14 +501,11 @@ class UserApiController extends Controller
         }
 
         try{
+            $googleMaps = new GoogleMapsService();
+            $details = $googleMaps->getDirections($request->s_latitude, $request->s_longitude, $request->d_latitude, $request->d_longitude);
+            $route_key = isset($details['routes'][0]['overview_polyline']['points']) ? $details['routes'][0]['overview_polyline']['points'] : '';
 
-            $details = "https://maps.googleapis.com/maps/api/directions/json?origin=".$request->s_latitude.",".$request->s_longitude."&destination=".$request->d_latitude.",".$request->d_longitude."&mode=driving&key=".Setting::get('map_key');
 
-            $json = curl($details);
-
-            $details = json_decode($json, TRUE);
-
-            $route_key = $details['routes'][0]['overview_polyline']['points'];
 
             $UserRequest = new UserRequests;
             $UserRequest->booking_id = Helper::generate_booking_id();
@@ -1639,6 +1645,7 @@ class UserApiController extends Controller
             $Request->downreasonindetailed = $downreasonindetailed;
             $Request->status = 'INCOMING';
             $Request->current_provider_id = $Provider->id;
+            $Request->description = $description;
             $Request->save();
 
           
@@ -1684,35 +1691,87 @@ class UserApiController extends Controller
            ini_set('upload_max_filesize', '100M');
 
             $documents = $request->all();
+             Log::info('Received request data:', $documents); 
             $downreason = $request->category;
             $downreasondetailed = $request->description;
+            $issue_type	= $request->issue_type ? $request->issue_type : null;
+            $ownership=$request->ownership ? $request->ownership : null;
             
             $request_ids = $documents['request_id'];
             $requestids= explode(',',$request_ids);
+                    Log::info('Request IDs to process:', $requestids);
+
              //dd($requestids);   
                $i=0;    
               $beforefile_names = [];
-                 $afterfile_names = [];
+              $afterfile_names = [];
+              $otdrfile_names=[];
+              $joint_beforeimgs = [];
+              $joint_afterimgs=[];
+              $video_name = null;
 
              foreach($requestids as $request_id){
-               
+                           Log::info("Processing request ID: $request_id");
+
                  DB::table('user_requests')->where('id',$request_id)->update(array(
                                  'status'=>'COMPLETED',
                                  'downreason'=>$downreason,
                                  'downreasonindetailed'=>$downreasondetailed,
+                                 'issue_type'=>$issue_type,
+                                 'ownership'=>$ownership,
                                  'autoclose'=>'Manual',
                                  'finished_at'=> date('Y-m-d H:i:s')
                   ));
+              Log::info("Updated user_requests for request ID: $request_id");
 
                  
                    if($i==0){
+                        $getLatLong = function ($key) use ($request) {
+
+                            $lat = '0_0';
+                            $long = '0_0';
+
+                            if ($request->has($key)) {
+                                $val = $request->input($key);
+
+                                if ($val) {
+                                    // remove quotes, spaces
+                                    $val = trim($val, "\"' ");
+
+                                    // support both "lat,long" and "lat:long"
+                                    if (str_contains($val, ',')) {
+                                        [$lat, $long] = explode(',', $val);
+                                    } elseif (str_contains($val, ':')) {
+                                        [$lat, $long] = explode(':', $val);
+                                    }
+                                }
+                            }
+
+                            // make filename-safe
+                            // $lat  = str_replace(['.', '-', '"'], '_', $lat);
+                            // $long = str_replace(['.', '-', '"'], '_', $long);
+
+                            return [
+                                'lat' => $lat,
+                                'long' => $long
+                            ];
+                        };
+
+
 
                 if ($request->hasFile('before_image')) {
                         $before_image = $request->before_image;
+                        $coords = $getLatLong('before_img_latlong');
+
                         foreach ($before_image as $image) {
-                           $beforefilename = $image->getClientOriginalName();                         
-                           $image->move(public_path('uploads/SubmitFiles'), $beforefilename);
+                            $extension = $image->getClientOriginalExtension();
+                            $beforefilename =  time() . uniqid() . '_' .
+                                                $coords['lat'] . '_' .
+                                                $coords['long'] .
+                                                '.' . $extension;
+                            $image->move(public_path('uploads/SubmitFiles'), $beforefilename);
                            array_push($beforefile_names, $beforefilename);
+                        Log::info("Uploaded before_image: $beforefilename");
 
                           }
                 }
@@ -1720,14 +1779,76 @@ class UserApiController extends Controller
 
                 if ($request->hasFile('after_image')) {
                         $after_image = $request->after_image;
-
+                        $coords = $getLatLong('after_img_latlong');
                         foreach ($after_image as $image) {
-                           $afterfilename= $image->getClientOriginalName();                         
+                           $extension = $image->getClientOriginalExtension();
+                           $afterfilename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
+
                            $image->move(public_path('uploads/SubmitFiles'), $afterfilename);
                            array_push($afterfile_names, $afterfilename);
+                        Log::info("Uploaded after_image: $afterfilename");
 
                           }
                 }
+                if ($request->hasFile('otdr_img')) {
+                        $otdr_img = $request->otdr_img;
+                        $coords = $getLatLong('otdr_img_latlong');
+
+                        foreach ($otdr_img as $image) {
+                            $extension = $image->getClientOriginalExtension();
+                            $otdrfilename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
+                            $image->move(public_path('uploads/SubmitFiles'), $otdrfilename);
+                           array_push($otdrfile_names, $otdrfilename);
+                        Log::info("Uploaded otdr_img: $otdrfilename");
+
+                          }
+                }
+                if ($request->hasFile('joint_enclouser_beforeimg')) {
+                        $joint_befimg = $request->joint_enclouser_beforeimg;
+                        $coords = $getLatLong('joint_enclosurebefore_latlong');
+
+                        foreach ($joint_befimg as $image) {
+                            $extension = $image->getClientOriginalExtension();
+                            $joint_before_filename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
+                       
+                           $image->move(public_path('uploads/SubmitFiles'), $joint_before_filename);
+                           array_push($joint_beforeimgs, $joint_before_filename);
+                        Log::info("Uploaded joint_enclouser_beforeimg: $joint_before_filename");
+
+                          }
+                }
+                if ($request->hasFile('joint_enclouser_afterimg')) {
+                        $joint_aftimg = $request->joint_enclouser_afterimg;
+                        $coords = $getLatLong('joint_enclosureafter_latlong');
+
+
+                        foreach ($joint_aftimg as $image) {
+                            $extension = $image->getClientOriginalExtension();
+                            $joint_after_filename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
+                        
+                           $image->move(public_path('uploads/SubmitFiles'), $joint_after_filename);
+                           array_push($joint_afterimgs, $joint_after_filename);
+                        Log::info("Uploaded joint_enclouser_afterimg: $joint_after_filename");
+
+                          }
+                }
+                 if ($request->hasFile('video')) {
+                        $video = $request->video;
+                        $extension = $video->getClientOriginalExtension();
+                        $allowedExtensions = ['mp4', 'avi', 'mov', 'wmv'];
+                        if (in_array(strtolower($extension), $allowedExtensions)) {
+                            $videofilename = $video->getClientOriginalName();
+                            $destinationPath = public_path('uploads/SubmitFiles/videos');
+                            if (!file_exists($destinationPath)) {
+                                mkdir($destinationPath, 0777, true);
+                            }
+                            $video->move($destinationPath, $videofilename);
+                            $video_name = $videofilename;
+                            Log::info("Uploaded video: $videofilename");
+                        } else {
+                            return response()->json(['error' => 'Invalid video format. Allowed: mp4, avi, mov, wmv'], 422);
+                        }
+                    }
 
                  }  
                  $i++;
@@ -1736,10 +1857,15 @@ class UserApiController extends Controller
                 $documents['request_id'] =$request_id;
                 $documents['before_image'] =json_encode($beforefile_names);
                 $documents['after_image'] =json_encode($afterfile_names);
-                
+                $documents['otdr_img'] =json_encode($otdrfile_names);
+                $documents['joint_enclouser_beforeimg'] =json_encode($joint_beforeimgs);
+                $documents['joint_enclouser_afterimg'] =json_encode($joint_afterimgs);
+                $documents['video'] = $video_name;
+
                   //Log::info($documents);
 
-                 
+                 Log::info("Inserting SubmitFile record:", $documents);
+
                 SubmitFile::create($documents);
 
               $UserRequest = UserRequests::where('id', $request_id)
@@ -1788,6 +1914,565 @@ class UserApiController extends Controller
         }
 
     }
+
+private function getAvailableQty($employeeId, $materialId, $serial = null)
+{
+    $query = EmployeeMaterialLedger::where([
+        'employee_id' => $employeeId,
+        'material_id' => $materialId
+    ]);
+
+    if ($serial) {
+        $query->where('serial_number', $serial);
+    }
+
+    $issued = (clone $query)->where('transaction_type', 'ISSUE')->sum('quantity');
+    $used   = (clone $query)->where('transaction_type', 'USED')->sum('quantity');
+    $return = (clone $query)->where('transaction_type', 'RETURN')->sum('quantity');
+
+    return $issued - $used - $return;
+}
+
+
+public function consumeMaterials(Request $request)
+{
+    DB::beginTransaction();
+      Log::info('Request Details:', $request->all());
+
+    try {
+           ini_set('post_max_size', '100M');
+           ini_set('upload_max_filesize', '100M');
+           $validator = Validator::make($request->all(), [
+                'request_id'  => 'required',
+                'ticket_id'   => 'required',
+                'employee_id' => 'required|integer',
+                'state_id'    => 'required|integer',
+                'district_id' => 'required|integer',
+                'materials'    => 'required|array',
+                'materials.data' => 'required|array|min:1',
+                'materials.issues' => 'nullable|array',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+        $employeeId = $request->employee_id;
+        $stateId    = $request->state_id;
+        $districtId = $request->district_id;
+        $ticketId   = $request->ticket_id;
+        $documents = $request->all();
+        $downreason = $request->category;
+        $downreasondetailed = $request->description;
+        $issue_type	= $request->issue_type ? $request->issue_type : null;
+        $ownership=$request->ownership ? $request->ownership : null;
+        
+        $request_ids = $documents['request_id'];
+        $requestids= explode(',',$request_ids);
+                Log::info('Request IDs to process:', $requestids);
+
+            $i=0;    
+            $beforefile_names = [];
+            $afterfile_names = [];
+            $otdrfile_names=[];
+            $joint_beforeimgs = [];
+            $joint_afterimgs=[];
+            $video_name = null;
+
+            $materialsData = $request->input('materials.data', []);
+            $issuesData    = $request->input('materials.issues', []);
+
+        $materialIds = collect($materialsData)
+            ->pluck('material_id')
+            ->unique()
+            ->toArray();
+
+        $materialsMaster = Material::whereIn('id', $materialIds)
+            ->pluck('name', 'id');
+        $materialUsage = [];
+
+        foreach ($materialsData as $item) {
+
+            $materialId = $item['material_id'];
+            $materialName = $materialsMaster[$materialId] ?? null;
+
+            if (!$materialName) {
+                continue;
+            }
+
+            // Non-serial material
+            if ($item['is_serial'] == 0) {
+                $qty = (float) $item['quantity'];
+
+                if ($qty > 0) {
+                    $materialUsage[$materialName] =
+                        ($materialUsage[$materialName] ?? 0) + $qty;
+                }
+            }
+
+            // Serial material (drum, cable, etc.)
+            if ($item['is_serial'] == 1 && !empty($item['serials'])) {
+
+                foreach ($item['serials'] as $serial) {
+                    $qty = (float) $serial['quantity'];
+
+                    if ($qty > 0) {
+                        $materialUsage[$materialName] =
+                            ($materialUsage[$materialName] ?? 0) + $qty;
+                    }
+                }
+            }
+        }
+
+        $parts = [];
+
+        foreach ($materialUsage as $name => $qty) {
+            if ($qty > 0) {
+                $parts[] = "{$name}={$qty}";
+            }
+        }
+
+        $materialsString = '{' . implode(', ', $parts) . '}';
+
+
+
+        foreach($requestids as $request_id){
+                Log::info("Processing request ID: $request_id");
+
+                 DB::table('user_requests')->where('id',$request_id)->update(array(
+                                 'status'=>'COMPLETED',
+                                 'downreason'=>$downreason,
+                                 'downreasonindetailed'=>$downreasondetailed,
+                                 'issue_type'=>$issue_type,
+                                 'ownership'=>$ownership,
+                                 'autoclose'=>'Manual',
+                                 'finished_at'=> date('Y-m-d H:i:s')
+                  ));
+              Log::info("Updated user_requests for request ID: $request_id");
+
+                 
+            if($i==0){
+                 $getLatLong = function ($key) use ($request) {
+
+                            $lat = '0_0';
+                            $long = '0_0';
+
+                            if ($request->has($key)) {
+                                $val = $request->input($key);
+
+                                if ($val) {
+                                    // remove quotes, spaces
+                                    $val = trim($val, "\"' ");
+
+                                    // support both "lat,long" and "lat:long"
+                                    if (str_contains($val, ',')) {
+                                        [$lat, $long] = explode(',', $val);
+                                    } elseif (str_contains($val, ':')) {
+                                        [$lat, $long] = explode(':', $val);
+                                    }
+                                }
+                            }
+
+                            // make filename-safe
+                            // $lat  = str_replace(['.', '-', '"'], '_', $lat);
+                            // $long = str_replace(['.', '-', '"'], '_', $long);
+
+                            return [
+                                'lat' => $lat,
+                                'long' => $long
+                            ];
+                        };
+
+
+              
+                if ($request->hasFile('before_image')) {
+                        $before_image = $request->before_image;
+                        $coords = $getLatLong('before_img_latlong');
+
+                        foreach ($before_image as $image) {
+                            $extension = $image->getClientOriginalExtension();
+                            $beforefilename =  time() . uniqid() . '_' .
+                                                $coords['lat'] . '_' .
+                                                $coords['long'] .
+                                                '.' . $extension;
+                            $image->move(public_path('uploads/SubmitFiles'), $beforefilename);
+                           array_push($beforefile_names, $beforefilename);
+                        Log::info("Uploaded before_image: $beforefilename");
+
+                          }
+                }
+
+
+                if ($request->hasFile('after_image')) {
+                        $after_image = $request->after_image;
+                        $coords = $getLatLong('after_img_latlong');
+                        foreach ($after_image as $image) {
+                           $extension = $image->getClientOriginalExtension();
+                           $afterfilename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
+
+                           $image->move(public_path('uploads/SubmitFiles'), $afterfilename);
+                           array_push($afterfile_names, $afterfilename);
+                        Log::info("Uploaded after_image: $afterfilename");
+
+                          }
+                }
+                if ($request->hasFile('otdr_img')) {
+                        $otdr_img = $request->otdr_img;
+                        $coords = $getLatLong('otdr_img_latlong');
+
+                        foreach ($otdr_img as $image) {
+                            $extension = $image->getClientOriginalExtension();
+                            $otdrfilename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
+                            $image->move(public_path('uploads/SubmitFiles'), $otdrfilename);
+                           array_push($otdrfile_names, $otdrfilename);
+                        Log::info("Uploaded otdr_img: $otdrfilename");
+
+                          }
+                }
+                if ($request->hasFile('joint_enclouser_beforeimg')) {
+                        $joint_befimg = $request->joint_enclouser_beforeimg;
+                        $coords = $getLatLong('joint_enclosurebefore_latlong');
+
+                        foreach ($joint_befimg as $image) {
+                            $extension = $image->getClientOriginalExtension();
+                            $joint_before_filename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
+                       
+                           $image->move(public_path('uploads/SubmitFiles'), $joint_before_filename);
+                           array_push($joint_beforeimgs, $joint_before_filename);
+                        Log::info("Uploaded joint_enclouser_beforeimg: $joint_before_filename");
+
+                          }
+                }
+                if ($request->hasFile('joint_enclouser_afterimg')) {
+                        $joint_aftimg = $request->joint_enclouser_afterimg;
+                        $coords = $getLatLong('joint_enclosureafter_latlong');
+
+
+                        foreach ($joint_aftimg as $image) {
+                            $extension = $image->getClientOriginalExtension();
+                            $joint_after_filename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
+                        
+                           $image->move(public_path('uploads/SubmitFiles'), $joint_after_filename);
+                           array_push($joint_afterimgs, $joint_after_filename);
+                        Log::info("Uploaded joint_enclouser_afterimg: $joint_after_filename");
+
+                          }
+                }
+                if($request->hasFile('video')) {
+                        $video = $request->video;
+                        $extension = $video->getClientOriginalExtension();
+                        $allowedExtensions = ['mp4', 'avi', 'mov', 'wmv'];
+                        if (in_array(strtolower($extension), $allowedExtensions)) {
+                            $videofilename = $video->getClientOriginalName();
+                            $destinationPath = public_path('uploads/SubmitFiles/videos');
+                            if (!file_exists($destinationPath)) {
+                                mkdir($destinationPath, 0777, true);
+                            }
+                            $video->move($destinationPath, $videofilename);
+                            $video_name = $videofilename;
+                            Log::info("Uploaded video: $videofilename");
+                        } else {
+                            return response()->json(['error' => 'Invalid video format. Allowed: mp4, avi, mov, wmv'], 422);
+                        }
+                    }
+
+            }  
+                 $i++;
+ 
+                 
+            
+                $documents['request_id'] =$request_id;
+                $documents['before_image'] =json_encode($beforefile_names);
+                $documents['after_image'] =json_encode($afterfile_names);
+                $documents['otdr_img'] =json_encode($otdrfile_names);
+                $documents['joint_enclouser_beforeimg'] =json_encode($joint_beforeimgs);
+                $documents['joint_enclouser_afterimg'] =json_encode($joint_afterimgs);
+                $documents['materials']  = $materialsString;
+                $documents['issues'] = json_encode($issuesData);
+                $documents['video'] = $video_name;
+
+               Log::info("Inserting SubmitFile record:", $documents);
+
+                SubmitFile::create($documents);
+
+               $UserRequest = UserRequests::where('id', $request_id)
+                ->where('status', 'COMPLETED')
+                ->firstOrFail();
+
+                        if($UserRequest->rating == null) {
+                UserRequestRating::create([
+                        'provider_id' => $UserRequest->provider_id,
+                        'user_id' => $UserRequest->user_id,
+                        'request_id' => $UserRequest->id,
+                        'provider_rating' => 5,
+                        'provider_comment' => 'test',
+                    ]);
+            } else {
+                $UserRequest->rating->update([
+                        'provider_rating' => 5,
+                        'provider_comment' => 'test',
+                    ]);
+            }
+
+            $UserRequest->update(['provider_rated' => 1]);
+
+           //MasterTicket::where('ticketid', 'like', '%TKTN1115%')->update(['status' =>1]);
+
+            DB::table('master_tickets')->where('ticketid',$UserRequest->booking_id)->update(array(
+                                 'status'=>1,
+                  ));
+
+
+            // Delete from filter so that it doesn't show up in status checks.
+            RequestFilter::where('request_id', $request_id)->delete();
+
+            ProviderService::where('provider_id',$UserRequest->provider_id)->update(['status' =>'active']);
+
+             }
+       foreach ($materialsData as $item) {
+
+            /* ---------------- NON SERIAL ---------------- */
+            if ($item['is_serial'] == 0) {
+
+                $available = $this->getAvailableQty(
+                    $employeeId,
+                    $item['material_id']
+                );
+
+                if ($item['quantity'] > $available) {
+                    throw new Exception('Insufficient stock for material ID ' . $item['material_id']);
+                }
+
+                EmployeeMaterialLedger::create([
+                    'request_id'       => $item['request_id'] ?? null,
+                    'issued_item_id'   => $item['issued_item_id'] ?? null,
+                    'indent_no'        =>$item['indent_no'] ?? null,
+                    'employee_id'      => $employeeId,
+                    'state_id'         => $stateId,
+                    'district_id'      => $districtId,
+                    'material_id'      => $item['material_id'],
+                    'material_code'    =>$item['material_code'],
+                    'has_serial'       => 0,
+                    'transaction_type' => 'USED',
+                    'quantity'         => $item['quantity'],
+                    'ticket_id'        => $ticketId,
+                    'issue_date'       => Carbon::now(),
+                ]);
+            }
+
+            /* ---------------- SERIAL ---------------- */
+            if ($item['is_serial'] == 1) {
+
+                foreach ($item['serials'] as $serial) {
+
+                    $available = $this->getAvailableQty(
+                        $employeeId,
+                        $item['material_id'],
+                        $serial['serial_id']
+                    );
+
+                    if ($serial['quantity'] > $available) {
+                        throw new Exception(
+                            "Insufficient stock for serial {$serial['serial_id']}"
+                        );
+                    }
+
+                    EmployeeMaterialLedger::create([
+                        'request_id'       => $serial['request_id'] ?? null,
+                        'issued_item_id'   => $serial['issued_item_id'] ?? null,
+                        'indent_no'        =>$serial['indent_no'] ?? null,
+                        'employee_id'       => $employeeId,
+                        'state_id'          => $stateId,
+                        'district_id'       => $districtId,
+                        'material_id'       => $item['material_id'],
+                        'material_code'    =>$item['material_code'],
+                        'has_serial'        => 1,
+                        'serial_number'     => $serial['serial_id'],
+                        'replaced_serial_number' => $serial['old_serial_number'] ?? null,
+                        'transaction_type'  => 'USED',
+                        'quantity'          => $serial['quantity'],
+                        'ticket_id'         => $ticketId,
+                        'issue_date'        =>  Carbon::now(),
+                    ]);
+                }
+            }
+        }
+                 
+    DB::commit();
+
+        return response()->json([
+           'success' => 'true','status'=>1
+        ]);
+
+    } catch (Exception $e) {
+        DB::rollBack();
+
+        return response()->json([
+            'status' => false,
+            'message' => $e->getMessage()
+        ], 422);
+    }
+}
+
+
+public function getEmployeeMaterials(Request $request)
+{
+    $employeeId = $request->emp_id;
+    $stateId    = $request->state_id;
+    $districtId = $request->dist_id;
+
+    if (!$employeeId || !$stateId || !$districtId) {
+        return response()->json([
+            'status'  => false,
+            'message' => 'emp_id, state_id and dist_id are required'
+        ], 422);
+    }
+
+    $ledgerRows = EmployeeMaterialLedger::with('material')
+        ->where('employee_id', $employeeId)
+        ->where('state_id', $stateId)
+        ->where('district_id', $districtId)
+        ->get();
+
+    $materials = [];
+
+    foreach ($ledgerRows as $row) {
+
+        $materialId = $row->material_id;
+
+        if (!isset($materials[$materialId])) {
+            $materials[$materialId] = [
+                'request_id'    =>$row->request_id,
+                'issued_item_id' =>$row->issued_item_id,
+                'indent_no'=>$row->indent_no,
+                'material_id'   => $materialId,
+                'material_code' => $row->material->code,
+                'material_name' => $row->material->name,
+                'base_unit'     => $row->material->base_unit,
+                'is_serial'     => (bool)$row->has_serial,
+                'issued'        => 0,
+                'used'          => 0,
+                'quantity'      => 0,
+                'serials'       => []
+            ];
+        }
+
+        if ($row->transaction_type === 'ISSUE') {
+            $materials[$materialId]['issued'] += $row->quantity;
+        }
+
+        if ($row->transaction_type === 'USED') {
+            $materials[$materialId]['used'] += $row->quantity;
+        }
+
+        if ($row->has_serial && $row->serial_number) {
+
+            if (!isset($materials[$materialId]['serials'][$row->serial_number])) {
+                $materials[$materialId]['serials'][$row->serial_number] = [
+                    'request_id'    =>$row->request_id,
+                    'issued_item_id' =>$row->issued_item_id,
+                    'indent_no'=>$row->indent_no,
+                    'serial_number' => $row->serial_number,
+                    'issued' => 0,
+                    'used' => 0,
+                    'balance' => 0
+                ];
+            }
+
+            if ($row->transaction_type === 'ISSUE') {
+                $materials[$materialId]['serials'][$row->serial_number]['issued'] += $row->quantity;
+            }
+
+            if ($row->transaction_type === 'USED') {
+                $materials[$materialId]['serials'][$row->serial_number]['used'] += $row->quantity;
+            }
+        }
+    }
+
+    foreach ($materials as &$mat) {
+        $mat['quantity'] = $mat['issued'] - $mat['used'];
+
+        if ($mat['is_serial']) {
+            foreach ($mat['serials'] as &$s) {
+                $s['balance'] = $s['issued'] - $s['used'];
+                if ($s['balance'] <= 0) {
+                    unset($s);
+                }
+            }
+            $mat['serials'] = array_values($mat['serials']);
+        }
+
+        if ($mat['quantity'] <= 0) {
+            unset($mat);
+        }
+    }
+
+    return response()->json([
+        'status' => true,
+        'data'   => array_values($materials)
+    ]);
+}
+
+
+public function updateJointImages(Request $request, $id)
+{
+    try {
+
+        ini_set('post_max_size', '100M');
+        ini_set('upload_max_filesize', '100M');
+
+        $submitFile = SubmitFile::findOrFail($id);
+
+        $joint_beforeimgs = [];
+        $joint_afterimgs  = [];
+
+        // upload before images
+        if ($request->hasFile('joint_enclouser_beforeimg')) {
+            foreach ($request->file('joint_enclouser_beforeimg') as $image) {
+                $filename = time() . '_' . $image->getClientOriginalName();
+                $image->move(public_path('uploads/SubmitFiles'), $filename);
+                $joint_beforeimgs[] = $filename;
+            }
+        }
+
+        // upload after images
+        if ($request->hasFile('joint_enclouser_afterimg')) {
+            foreach ($request->file('joint_enclouser_afterimg') as $image) {
+                $filename = time() . '_' . $image->getClientOriginalName();
+                $image->move(public_path('uploads/SubmitFiles'), $filename);
+                $joint_afterimgs[] = $filename;
+            }
+        }
+
+        // Update only if images are uploaded
+        if (!empty($joint_beforeimgs)) {
+            $submitFile->joint_enclouser_beforeimg = json_encode($joint_beforeimgs);
+        }
+
+        if (!empty($joint_afterimgs)) {
+            $submitFile->joint_enclouser_afterimg = json_encode($joint_afterimgs);
+        }
+
+        $submitFile->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Joint enclosure images updated successfully',
+            'data' => $submitFile
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+
 
 
       /**
@@ -1904,6 +2589,43 @@ class UserApiController extends Controller
     }
 
 
+public function userhistory(Request $request){
+            try{
+           
+            $user_id = $request->input('user_id');
+            $total_tickets = UserRequests::where('provider_id',$user_id)->count();
+            $total_tickets_data = UserRequests::where('provider_id',$user_id)->get();
+            $income_tickets = UserRequests::where('status','INCOMING')->where('provider_id',$user_id)->count();
+            $income_tickets_data = UserRequests::where('status','INCOMING')->where('provider_id',$user_id)->get();
+            $ongoing_tickets = UserRequests::where('status','PICKEDUP')->where('provider_id',$user_id)->count();
+            $ongoing_tickets_data = UserRequests::where('status','PICKEDUP')->where('provider_id',$user_id)->get();
+            $completed_tickets = UserRequests::where('status','COMPLETED')->where('provider_id',$user_id)->count();
+            $completed_tickets_data = UserRequests::where('status','COMPLETED')->where('provider_id',$user_id)->get();
+            $hold_tickets = UserRequests::where('status','HOLD')->where('provider_id',$user_id)->count();
+            $hold_tickets_data = UserRequests::where('status','HOLD')->where('provider_id',$user_id)->get();
+            
+             $data = array(
+             "total" =>  $total_tickets,
+             "total_data" =>  $total_tickets_data,
+             "ongoing" =>  $ongoing_tickets,
+             //"ongoing_data" =>  $ongoing_tickets_data,
+             "completed" =>  $completed_tickets,
+             //"completed_data" =>  $completed_tickets_data,
+             "open" =>  $income_tickets,
+             //"open_data" =>  $income_tickets_data,
+             "hold" =>  $hold_tickets,
+             //"hold_data" =>  $hold_tickets_data
+             );
+            return response()->json(['success' => 'true','data'=>$data,'status'=>1]);
+
+        } catch(Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+
+    }
+
+
+
 
     /**
      * Save the Track histroy.
@@ -1922,6 +2644,8 @@ class UserApiController extends Controller
 
         $assigned = $userRequests->count();
         $resolved = $userRequests->where('status', 'COMPLETED')->count();
+        $opened = $userRequests->where('status', 'INCOMING')->count();
+
 
         // SLA Met: if 'finished_at' exists and is within X time (e.g., 4 hours) from 'started_at'
         $slaThresholdMinutes = 240; // example SLA window
@@ -1952,16 +2676,41 @@ class UserApiController extends Controller
         $totalTimeSpent = $timeDurations->sum();
         $avgTimePerTicket = $timeDurations->count() > 0 ? round($timeDurations->avg(), 2) : 0;
 
+        $checklistCount = \DB::table('patroller_checklists')
+            ->where('provider_id', $user_id)
+            ->count();
+
+        $lastChecklist = \DB::table('patroller_checklists')
+            ->where('provider_id', $user_id)
+            ->orderBy('created_at', 'desc')
+            ->value('created_at');
+
+        $lastChecklistFormatted = $lastChecklist
+            ? \Carbon\Carbon::parse($lastChecklist)->format('Y-m-d H:i:s')
+            : null;
+
+       $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
+       $endOfMonth = \Carbon\Carbon::now()->endOfMonth();
+
+       $attendanceCount = \DB::table('attendance')
+       ->where('provider_id', $user_id)
+       ->whereBetween('start_time', [$startOfMonth, $endOfMonth])
+       ->count();
+
         return response()->json([
             'status' => true,
             'data' => [
-                'tickets_assigned' => $assigned,
+                'total_tickets' => $assigned,
                 'tickets_resolved' => $resolved,
+                'tickets_opened' => $opened,
                 'sla_met' => $slaMet,
                 'sla_missed' => $slaMissed,
                 'total_distance_traveled' => round($totalDistance, 2) . ' Kms',
                 'total_time_spent_minutes' => $totalTimeSpent,
                 'avg_time_per_ticket_minutes' => $avgTimePerTicket,
+                'checklist_count' => $checklistCount,
+                'last_checklist_submission' => $lastChecklistFormatted,
+                'attendance_current_month' => $attendanceCount,
             ]
         ]);
     } catch (\Exception $e) {
@@ -1971,6 +2720,81 @@ class UserApiController extends Controller
         ], 500);
     }
     }
+
+
+public function gpperformance(Request $req)
+{
+    $lat = $req->latitude;
+    $lng = $req->longitude;
+    $phone = $req->phone_number;
+
+    // Query with Distance + Joins + extra fields
+    $gpList = DB::table('gp_list')
+        ->select(
+            'gp_list.id',
+            'gp_list.gp_name',
+            'gp_list.phase',
+            'gp_list.lgd_code',
+            'gp_list.petroller_contact_no',
+            'gp_list.petroller',
+            'gp_list.latitude',
+            'gp_list.longitude',
+            'gp_list.status',
+            'gp_list.olt_lgdcode as OLT_Code',
+
+            // State, District, Block names
+            'states.state_name',
+            'districts.name as district_name',
+            'blocks.name as block_name',
+
+            DB::raw("(
+                6371 * acos(
+                    cos(radians($lat)) *
+                    cos(radians(gp_list.latitude)) *
+                    cos(radians(gp_list.longitude) - radians($lng)) +
+                    sin(radians($lat)) *
+                    sin(radians(gp_list.latitude))
+                )
+            ) AS distance_km")
+        )
+        ->leftJoin('states', 'states.state_id', '=', 'gp_list.state_id')
+        ->leftJoin('districts', 'districts.id', '=', 'gp_list.district_id')
+        ->leftJoin('blocks', 'blocks.id', '=', 'gp_list.block_id')
+        ->where('gp_list.petroller_contact_no', $phone)
+        ->orderBy('distance_km', 'asc')
+        ->get();
+
+    // Add Distance & ETA to each GP
+    $processed = $gpList->map(function ($row) {
+        $row->distance_km = round($row->distance_km, 2);
+        $row->eta_minutes = round(($row->distance_km / 40) * 60, 2); // ETA at 40km/h
+
+        $statusCounts = DB::table('user_requests')
+            ->join('master_tickets', 'user_requests.booking_id','=','master_tickets.ticketid')
+            ->where('master_tickets.lgd_code', $row->lgd_code)
+            ->selectRaw("
+                SUM(IF(user_requests.status='PICKEDUP',1,0)) AS inprogress,
+                SUM(IF(user_requests.status='COMPLETED',1,0)) AS completed,
+                SUM(IF(user_requests.status='INCOMING',1,0)) AS pending,
+                SUM(IF(user_requests.status='ONHOLD',1,0)) AS hold
+            ")
+            ->first();
+        $row->status_counts = $statusCounts;
+        return $row;
+    });
+
+    $OltData = DB::table('olt_locations')->select('olt_location','olt_location_code','lgd_code as OLT_Code','olt_ip','no_of_gps')->get();
+
+    return response()->json([
+        "success" => true,
+        "data" => [
+            "totalgp" => $processed->count(),
+            "totalgp_data" => $processed,
+            "OltData"=>$OltData
+        ],
+        "status" => 1
+    ]);
+}
 
 
 
@@ -2014,7 +2838,6 @@ class UserApiController extends Controller
 
    public function PilotAcceptedRejected(Request $request){
         try{
-dd(asdasd);
             info($request->all());
             $booking_id = $request->booking_id;
             $provider_id = $request->provider_id;
@@ -2072,11 +2895,24 @@ dd(asdasd);
             $provider_id = $request->provider_id;
             $status = $request->status;
 
+            if ($status == 'PICKEDUP') {
 
+                $statusDetails = [
+                    'status' => $status,
+                ];
 
-            $statusDetails = [
-           'status' =>$status,
-            ];
+                if (!empty($request->started_at)) {
+                    $statusDetails['started_at'] = date('Y-m-d H:i:s', strtotime($request->started_at));
+                }
+
+            } else {
+
+                $statusDetails = [
+                    'status' => $status,
+                ];
+            }
+
+           
 
 
              DB::table('user_requests')
@@ -2087,7 +2923,11 @@ dd(asdasd);
            return response()->json(['success' => 'true','status'=>1]);
            
         } catch (Exception $e) {
-              info($e);
+             
+        Log::error("startdate Exception: " . $e->getMessage(), [
+            'request' => $request->all(),
+            'trace' => $e->getTraceAsString()
+        ]);
              return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
 
@@ -2096,10 +2936,13 @@ dd(asdasd);
 
   public function ProviderWorkStatus(Request $request){
         try{
-              info($request->all());
+
+            Log::info('ProviderWorkStatus Request:', $request->all());
+
             $request_id = $request->request_id;
             $provider_id = $request->provider_id;
             $status= $request->status;
+            Log::info("Processing status '{$status}' for request_id: {$request_id}, provider_id: {$provider_id}");
 
            
            if($status == 'ONCALL'){
@@ -2109,11 +2952,15 @@ dd(asdasd);
              'started_latitude' =>isset($request->started_latitude)?($request->started_latitude):'',
              'started_longitude' =>isset($request->started_longitude)?($request->started_longitude):'',
             ];
+           Log::info('Updating user_requests table with ONCALL details:', $statusDetails);
+
 
               DB::table('user_requests')
             ->where('id',$request_id)
             ->where('provider_id',$provider_id)
             ->update($statusDetails);
+
+            Log::info("ONCALL update successful for request_id: {$request_id}");
 
           return response()->json(['success' => 'true','status'=>1]);
 
@@ -2125,11 +2972,14 @@ dd(asdasd);
            'reached_location' =>$request->reached_location,
             ];
 
+            Log::info('Updating user_requests table with REACHED details:', $statusDetails);
+
              DB::table('user_requests')
             ->where('id',$request_id)
             ->where('provider_id',$provider_id)
             ->update($statusDetails);
-           
+            Log::info("REACHED update successful for request_id: {$request_id}");
+
              return response()->json(['success' => 'true','status'=>1]);
 
 
@@ -2142,6 +2992,11 @@ dd(asdasd);
             }
            
         } catch (Exception $e) {
+        Log::error("ProviderWorkStatus Exception: " . $e->getMessage(), [
+            'request' => $request->all(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
              return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
 
@@ -2360,5 +3215,1213 @@ dd(asdasd);
                exit;
     }
 
+   public function getBharatNetNeStatus(Request $request)
+    {
+        $stateName = $request->query('stateName');
+        $stateCode = $request->query('stateCode');
+        if (!$stateName || !$stateCode) {
+            return response()->json([
+                "reqstatus" => "FAILURE",
+                "remarks" => "Mandatory parameters missing"
+            ], 400);
+        }
 
+        $service = new GisService();
+        // Service will handle session key generation internally
+        $result = $service->getBharatNetNeStatus($stateName, $stateCode);
+        return response()->json($result);
+    }
+      
+
+public function insertBharatNetNeStatus(Request $request)
+{
+
+    ini_set('max_execution_time', 300);
+
+    $oltcode = $request->input('oltcode');
+    $ontcode = $request->input('ontcode');
+  
+    $service = new GisService();
+    $result = $service->getOntStatus($oltcode, $ontcode);
+
+   $responseArray = json_decode(json_encode($result), true);
+  
+
+    if (!isset($responseArray['ontStatusDetails']) || empty($responseArray['ontStatusDetails'])) {
+        return response()->json([
+            'reqstatus' => 'FAILURE',
+            'message' => 'No ONT status details found'
+        ]);
+    }
+
+    $records = [];
+    foreach ($responseArray['ontStatusDetails'] as $ont) {
+       
+        $alarm = $ont['alarmInfo'];
+        $incomingType = strtolower(trim($alarm['type'] ? $alarm['type'] : '' ));     
+        $incomingCategory = strtolower(trim( $alarm['category'] ? $alarm['category'] : '' )); 
+        $match = DB::table('alarm_masters')
+                ->whereRaw('LOWER(alarm_type) = ?', [$incomingType])
+                ->whereRaw('LOWER(category) = ?', [$incomingCategory])
+                ->first();
+        if ($match) {
+            $downreason = $match->bin_type;     
+            $downreasonDetails = $match->alarm_type; 
+        } else {
+           $downreason = $alarm['type'] ? $alarm['type'] : 'OTHERS';
+           $downreasonDetails = $alarm['category'] ? $alarm['category']  : null;
+        }        
+        $records[] = [
+            'lgd_code' => $ont['ontnecode'],
+            'gp_type' => strtolower($ont['ontStatus']) === 'unknown' 
+                            ? 'down' 
+                            : strtolower($ont['ontStatus']),
+            'autoclose'=> 'Auto',
+            'datetime' => $alarm && isset($alarm['occurrenceTime']) 
+                        ? $alarm['occurrenceTime'] 
+                        : Carbon::now()->toDateTimeString(),
+            'downreason' => $downreason,                     
+            'downreasonindetailed' => $downreasonDetails,
+        ];
+    }
+  
+    $inserted_ids = [];
+    $ignored = [];
+    
+    foreach ($records as $filedata) {
+    try {
+        $lgd_code_record = DB::table('gp_list')->where('lgd_code', $filedata['lgd_code'])->first();
+
+        if (!$lgd_code_record) {
+            $ignored[] = $filedata['lgd_code'];
+            continue;
+        }
+
+        $gp_type = strtolower($filedata['gp_type'] ? $filedata['gp_type'] : 'down');
+        $datetime = Carbon::parse($filedata['datetime']);
+        $formattedDate = $datetime->format('Y-m-d');
+        $formattedTime = $datetime->format('h:i:s a');
+
+        $district = District::findOrFail($lgd_code_record->district_id);
+        if (!$district) {
+            \Log::warning("District not found for LGD: {$lgd_code_record->lgd_code}");
+            continue;
+        }
+        $block = Block::findOrFail($lgd_code_record->block_id);
+        if (!$block) {
+            \Log::warning("Block not found for LGD: {$lgd_code_record->lgd_code}, Block ID: {$lgd_code_record->block_id}");
+            continue; 
+        }
+        // Check if ticket exists
+        if ($gp_type === 'down') {
+            $existing_ticket = DB::table('master_tickets')
+                                ->leftJoin('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
+                                ->where('lat', $lgd_code_record->latitude)
+                                ->where('log', $lgd_code_record->longitude)
+                                ->where('lgd_code', $lgd_code_record->lgd_code)
+                                ->whereIn('user_requests.status', ['SEARCHING','INCOMING','PICKEDUP','CANCELLED','ONHOLD'])
+                                ->whereNull('up_date')
+                                ->whereNull('up_time')
+                                ->where('user_requests.autoclose', '!=' ,'Manual')
+                                ->orderBy('master_tickets.id', 'DESC')
+                                ->first();
+            if ($existing_ticket) {
+                $hasActiveRequest = DB::table('user_requests')
+                                        ->where('booking_id', $existing_ticket->ticketid)
+                                        ->where('status', '!=', 'ONHOLD')
+                                        ->where('downreason','!=','Permanent Down')
+                                        ->exists();
+
+                if ($hasActiveRequest) {
+
+                    DB::table('master_tickets')
+                        ->where('ticketid', $existing_ticket->ticketid)
+                        ->update([
+                            'downreason' => $filedata['downreason'],
+                            'updated_at' => Carbon::now()
+                        ]);
+
+                    DB::table('user_requests')
+                        ->where('booking_id', $existing_ticket->ticketid)
+                        ->where('status', '!=', 'ONHOLD')
+                        ->update([
+                            'downreason' => $filedata['downreason'],
+                            'updated_at' => Carbon::now()
+                        ]);
+                }
+
+             
+                continue;
+            }
+            // $ticket_id = $existing_ticket ? $existing_ticket->ticketid : 'TK25'.mt_rand(100000, 9999999);
+            //   $ticket_id = 'TK26' . mt_rand(100000, 9999999);
+                    
+                do {
+                    $ticket_id = 'TK26' . mt_rand(100000, 9999999);
+                } while (DB::table('master_tickets')->where('ticketid', $ticket_id)->exists());
+
+
+
+            $master_data = [
+                'ticketid' => $ticket_id,
+                'district' => $district->name ? $district->name : '-' ,
+                'mandal' => $block->name ? $block->name : '-',
+                'gpname' => $lgd_code_record->gp_name,
+                'lgd_code' => $lgd_code_record->lgd_code,
+                'downreason' => $filedata['downreason'],
+                'downreasonindetailed' => $filedata['downreasonindetailed'],
+                'subsategory' => "",
+                'lat' => $lgd_code_record->latitude,
+                'log' => $lgd_code_record->longitude,
+                'ticketinsertstage' => 1,
+                'downdate' => $formattedDate,
+                'downtime' => $formattedTime
+            ];
+             DB::table('master_tickets')->insert($master_data);
+          
+           
+
+            // UserRequests assignment
+            $checkcat = strtolower(trim($filedata['downreason']));
+            if (strpos($checkcat, 'fiber') !== false) {
+                 $mobile = $lgd_code_record->contact_no;
+            } else {
+                $mobile = $lgd_code_record->petroller_contact_no;
+
+            }
+
+            $provider = DB::table('providers')
+                ->leftJoin('provider_devices', 'providers.id', '=', 'provider_devices.provider_id')
+                ->where('mobile', $mobile)
+                ->select('providers.id as provider_id', 'providers.*', 'provider_devices.*')
+                ->first();
+
+            
+
+            if (!$provider) {
+                \Log::error("Provider not found for mobile: {$mobile}");
+                continue;
+            }
+
+            // Addresses
+            $googleMaps = new GoogleMapsService();
+            $daddress = $googleMaps->getReverseGeocode($lgd_code_record->latitude, $lgd_code_record->longitude);
+
+            $saddress = $googleMaps->getReverseGeocode($provider->latitude, $provider->longitude);
+
+            $direction_json = $googleMaps->getDirections($provider->latitude, $provider->longitude, $lgd_code_record->latitude, $lgd_code_record->longitude);
+            $route_key = isset($direction_json['routes'][0]['overview_polyline']['points']) ? $direction_json['routes'][0]['overview_polyline']['points'] : null;
+            $UserRequest = new UserRequests;
+                            $UserRequest->booking_id = $ticket_id;
+                            $UserRequest->gpname = $lgd_code_record->gp_name;
+                            $UserRequest->downreason =$filedata['downreason'];
+                            $UserRequest->downreasonindetailed =$filedata['downreasonindetailed'];
+                            $UserRequest->user_id =45;                    
+                         
+                            $UserRequest->current_provider_id = $provider->provider_id;
+                            $UserRequest->provider_id = $provider->provider_id;
+
+                            $UserRequest->service_type_id = 2;
+                            $UserRequest->rental_hours = 10;
+                            $UserRequest->payment_mode = 'CASH';
+                            $UserRequest->promocode_id = 0;
+                            $UserRequest->default_autoclose = $filedata['autoclose'];
+                            $UserRequest->autoclose =$filedata['autoclose'];
+                            
+                            $UserRequest->status = 'INCOMING';
+                            $UserRequest->s_address =$saddress;
+                            $UserRequest->d_address =$daddress;
+
+                            $UserRequest->s_latitude = $provider->latitude;
+                            $UserRequest->s_longitude = $provider->longitude;
+
+                            $UserRequest->d_latitude = $lgd_code_record->latitude;
+                            $UserRequest->d_longitude = $lgd_code_record->longitude;
+                            $UserRequest->distance = 1;
+                            $UserRequest->unit = Setting::get('distance', 'Kms');
+                   
+                            $UserRequest->use_wallet = 0;
+
+                            if(Setting::get('track_distance', 0) == 1){
+                                $UserRequest->is_track = "YES";
+                            }
+
+                            $UserRequest->otp = mt_rand(1000 , 9999);
+                            $UserRequest->company_id= $lgd_code_record->company_id;
+                            $UserRequest->state_id= $lgd_code_record->state_id;
+                            $UserRequest->district_id= $lgd_code_record->district_id;
+
+
+                            $UserRequest->assigned_at = Carbon::now();
+                            $UserRequest->route_key = $route_key;
+                            $UserRequest->save();
+           
+
+            DB::table('gp_list')->where('lgd_code', $lgd_code_record->lgd_code)->update(['status' => 1]);
+             $inserted_ids[] = $ticket_id;
+        }
+
+        // Handle UP tickets
+        if ($gp_type === 'up') {
+
+               $existing_ticket = DB::table('master_tickets')
+                                ->leftJoin('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
+                                ->where('master_tickets.lat', $lgd_code_record->latitude)
+                                ->where('master_tickets.log', $lgd_code_record->longitude)
+                                ->where('master_tickets.lgd_code', $lgd_code_record->lgd_code)
+                                ->whereNull('master_tickets.up_date')
+                                ->whereNull('master_tickets.up_time')
+                                ->where('user_requests.autoclose','=', 'Auto')
+                                ->orderBy('master_tickets.id', 'DESC')
+                                ->get();
+
+                foreach ($existing_ticket as $t) {
+
+                    DB::table('master_tickets')
+                        ->where('ticketid', $t->ticketid)
+                        ->update([
+                            'up_date' => $formattedDate,
+                            'up_time' => $formattedTime,
+                            'status'  => 1,
+                        ]);
+
+                    UserRequests::where('booking_id', $t->ticketid)
+                        ->update([
+                            'status' => 'COMPLETED',
+                            'finished_at' => Carbon::now(),
+                            'autoclose' => 'Auto',
+                            'default_autoclose' => 'Auto',
+                        ]);
+
+                    $inserted_ids[] = $t->ticketid;
+                }
+
+                DB::table('gp_list')
+                    ->where('lgd_code', $lgd_code_record->lgd_code)
+                    ->update(['status' => 0]);
+            }
+
+      
+         } catch (\Throwable $e) {
+        \Log::error("Error processing LGD code {$filedata['lgd_code']}: " . $e->getMessage());
+        continue;
+    }
+    }
+    return response()->json([
+        'reqstatus' => 'SUCCESS',
+        'processed_ids' => $inserted_ids,
+        'ignored_lgd_codes' => $ignored,
+        'message' => count($inserted_ids) . " records processed successfully"
+    ]);
+}
+
+
+
+private function mapDownReason($input)
+{
+    $text = strtolower(trim($input));
+
+    if (strpos($text, 'power') !== false) {
+        return 'POWER';
+    }
+    if (in_array($text, ['pon_los', 'pon_losi'])) {
+        return 'FIBER';
+    }
+
+    if ($text === 'ont power off') {
+        return 'POWER';
+    }
+
+    if (in_array($text, ['losi_dgi'])) {
+        return 'OTHERS';
+    }
+
+    if ($text === 'pon_sufi') {
+        return 'SOFTWARE/HARDWARE';
+    }
+
+    // if ($text === 'gp unknown') {
+    //     return 'OLT DOWN';
+    // }
+  
+    return 'OTHERS';
+}
+
+
+  public function getOltStatus(Request $request)
+    {
+        $oltcode = $request->query('oltcode'); // can be null
+        $service = new GisService();
+        $result = $service->getOltStatus($oltcode);
+        return response()->json($result);
+    }
+
+    public function getOntStatus(Request $request)
+    { 
+        $oltcode = $request->query('oltcode');
+       
+        $ontcode = $request->query('ontcode');
+        $service = new GisService();
+        $result = $service->getOntStatus($oltcode, $ontcode);
+        return response()->json($result);
+    }
+
+public function raise_ticket(Request $request)
+{
+    try {
+Log::info('raised request: ' . json_encode($request->all()));
+
+        $data = $request->only([
+            'patroller_id',
+            'gp_name',
+            'date',
+            'time',
+            'latitude',
+            'longitude',
+            'landmark',
+            'issue_type',
+            'issue_sub_type',
+            'priority',
+            'details',
+        ]);
+
+        $attachments = [];
+        $attachment_latlong=[];
+
+        // Handle multiple image uploads
+        if ($request->hasFile('attachment')) {
+
+            $destinationPath = public_path('uploads/patroller_tickets');
+
+            // Ensure directory exists
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+            $latlongs = $request->input('attachment_latlong', []);
+
+
+            foreach ($request->file('attachment') as $index => $image) {
+                if(!$image->isValid()){
+                    continue;
+                }
+                $coords = $this->parseLatLong(
+                    $latlongs[$index] ?? null,
+                    $request->latitude,
+                    $request->longitude
+                );
+                $imageName = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $image->getClientOriginalExtension();
+                $image->move($destinationPath, $imageName);
+                $attachments[] = 'uploads/patroller_tickets/' . $imageName;
+                $attachment_latlong[] = $coords['lat'] . ',' . $coords['long'];
+
+
+              
+            }
+        }
+
+        // Save as JSON (recommended)
+        $data['attachments'] = !empty($attachments) ? json_encode($attachments) : null;
+        $data['attachment_latlong'] = $attachment_latlong ? json_encode($attachment_latlong) : null;
+
+        $data['created_at'] = date('Y-m-d H:i:s');
+        $data['updated_at'] = date('Y-m-d H:i:s');
+
+        $inserted = DB::table('raise_tickets')->insert($data);
+
+        if ($inserted) {
+            return response()->json([
+                'status' => 1,
+                'message' => 'Request inserted successfully with images'
+            ], 201);
+        }
+
+        return response()->json([
+            'status' => 0,
+            'message' => 'Failed to insert request'
+        ], 500);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 0,
+            'message' => 'Error: ' . $e->getMessage()
+        ], 500);
+    }
+}
+private function parseLatLong($val, $fallbackLat = null, $fallbackLong = null)
+{
+    $lat  = $fallbackLat ?? '0.0';
+    $long = $fallbackLong ?? '0.0';
+
+    if (!empty($val)) {
+
+        // Remove brackets, quotes & spaces
+        $val = trim($val);
+        $val = str_replace(['[', ']', '"', "'"], '', $val);
+        $val = preg_replace('/\s+/', '', $val);
+
+        if (str_contains($val, ',')) {
+            [$lat, $long] = explode(',', $val);
+        } elseif (str_contains($val, ':')) {
+            [$lat, $long] = explode(':', $val);
+        }
+    }
+
+    return [
+        'lat'  => $lat,
+        'long' => $long,
+        'lat_safe'  => str_replace(['.', '-'], '_', $lat),
+        'long_safe' => str_replace(['.', '-'], '_', $long),
+    ];
+}
+
+
+
+
+public function patroller_checklist(Request $request)
+{
+    try {
+
+        // Collect main fields
+        $data = $request->only([
+            'provider_id',
+            'patroller_name',
+            'patrol_start_time',
+            'patrol_end_time',
+            'auto_location',
+            'gp_name',
+
+            // Route Surveillance
+            'civil_activity',
+            'agency_involved',
+            'manhole_chamber',
+            'manhole_status',
+            'route_marker',
+            'route_marker_status',
+            'overhead_cable_sagging',
+            'joint_enclosure',
+            'bridge_culvert_status',
+            'fire_hazard',
+
+            // Power
+            'power_available',
+            'ups_backup_working',
+            'earthing_condition',
+
+            // Equipment
+            'olt_ont_router_working',
+            'rack_condition',
+            'cable_dressing',
+
+            // Signage
+            'rack_labels',
+            'port_labels',
+            'ofc_cable_labels',
+
+            // Issues
+            'issue_identified',
+            'issue_category',
+            'severity',
+            'remarks'
+        ]);
+
+        /* ---------------------------------------------
+           Handle Multiple Photo Uploads
+        ----------------------------------------------- */
+        $photoPaths = [];
+
+        if ($request->hasFile('photos')) {
+
+            foreach ($request->file('photos') as $photo) {
+                if ($photo->isValid()) {
+
+                    $imageName = time() . '_' . uniqid() . '.' . $photo->getClientOriginalExtension();
+                    $destinationPath = public_path('uploads/patroller_checklist');
+
+                    if (!file_exists($destinationPath)) {
+                        mkdir($destinationPath, 0755, true);
+                    }
+
+                    $photo->move($destinationPath, $imageName);
+
+                    $photoPaths[] = 'uploads/patroller_checklist/' . $imageName;
+                }
+            }
+        }
+
+        // Store photos as JSON
+        $data['photos'] = json_encode($photoPaths);
+
+        // JSON encode multi-select fields
+        if ($request->has('agency_involved')) {
+            $data['agency_involved'] = json_encode($request->agency_involved);
+        }
+
+        // Add timestamps
+        $data['created_at'] =  date('Y-m-d H:i:s');
+        $data['updated_at'] =  date('Y-m-d H:i:s');
+
+        // Insert into DB
+        $inserted = DB::table('patroller_checklists')->insert($data);
+
+        if ($inserted) {
+            return response()->json([
+                'status' => 1,
+                'message' => 'Patroller checklist submitted successfully'
+            ], 201);
+        }
+
+        return response()->json([
+            'status' => 0,
+            'message' => 'Failed to insert patroller checklist'
+        ], 500);
+
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 0,
+            'message' => 'Error: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function patrollerChecklistRecent(Request $request)
+{
+    try {
+
+        $provider_id = $request->input('provider_id');
+
+        if (!$provider_id) {
+            return response()->json([
+                'status' => 0,
+                'message' => 'provider_id is required'
+            ], 400);
+        }
+
+        // Latest submission
+        $latest = DB::table('patroller_checklists')
+            ->where('provider_id', $provider_id)
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        // Last 5 submissions
+        $recentList = DB::table('patroller_checklists')
+            ->where('provider_id', $provider_id)
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Total checklist count
+        $total = DB::table('patroller_checklists')
+            ->where('provider_id', $provider_id)
+            ->count();
+
+        return response()->json([
+            'status' => 1,
+            'message' => 'Recent checklist activity fetched successfully',
+            'data' => [
+                'provider_id' => $provider_id,
+                'total_checklists' => $total,
+                'latest_submission' => $latest,
+                'recent_5_submissions' => $recentList
+            ]
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 0,
+            'message' => 'Error: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+
+public function saveTracking(Request $request)
+{
+    try {
+
+        DB::table('patroller_checklist_tracking')->insert([
+            'provider_id' => $request->provider_id,
+            'track'       => json_encode($request->track),
+            'created_at'  => date('Y-m-d H:i:s')
+        ]);
+
+        return response()->json([
+            'status' => 1,
+            'message' => 'Tracking saved successfully'
+        ], 201);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'status' => 0,
+            'message' => 'Error: '.$e->getMessage()
+        ], 500);
+
+    }
+}
+
+public function get_employee_list(Request $request)
+{
+    try {
+
+        $district_code = $request->query('district_code');
+        $state_code    = $request->query('state_code');
+
+        $query = DB::table('providers as p')
+            ->join('districts as d', 'd.id', '=', 'p.district_id')
+            ->select(
+                'p.id',
+                'p.first_name',
+                'p.last_name',
+                'p.mobile as phone_number'
+            )->where('p.type',2)->where('p.status','approved');
+
+        if (!empty($district_code)) {
+            $query->where('d.district_code', $district_code);
+        }
+
+        if (!empty($state_code)) {
+            $query->where('d.state_code', $state_code);
+        }
+
+        $employees = $query->get();
+
+        return response()->json([
+            'status'  => 1,
+            'message' => 'Employee list fetched successfully',
+            'data'    => $employees
+        ], 200);
+
+    } catch (\Throwable $e) {
+
+        return response()->json([
+            'status'  => 0,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+ public function createmastertickets(Request $request)
+    {
+        try {
+            $mappedData = $this->mapKolkataRequest($request->all());
+
+            return $this->processTicketData($mappedData);
+        } catch (\Exception  $e) {
+            return response()->json([
+            'err' => 'X',
+            'message' => $e->getMessage(),
+            ], 500);
+        }
+      
+    }
+
+ private function mapKolkataRequest(array $payload)
+    {
+        return [[
+            'district' => $payload['CI_DISTRICT'] ?? null,
+            'mandal'   => $payload['CI_BLOCK'] ?? null,
+            'gname'    => $payload['CI_GP'] ?? null,
+            'lat'      => $payload['CI_LATITUDE'] ?? null,
+            'log'      => $payload['CI_LONGITUDE'] ?? null,
+
+            'downtime' => $payload['ADDITIONAL_DATA']['alert_timestamp'] ?? Carbon::now(),
+            'downdate' => $payload['ADDITIONAL_DATA']['alert_timestamp'] ?? Carbon::now(),
+            'update'   => date('Y-m-d H:i:s'),
+            'uptime'   => date('Y-m-d H:i:s'),
+
+            'downreason'           => $payload['ERROR_DESCROIION'] ?? null,
+            'downreasonindetailed' => $payload['DETAILED_DESCRIPTION'] ?? null,
+            'subsategory'          => $payload['PRIORITY_ID'] ?? null,
+            'ticketid'             => $payload['TICKET_ID'],
+            'type'                 => $payload['SERIAL_NO'] ?? null,
+            'pop_map_key'          => $payload['HOST_NAME'] ?? null,
+
+            // provider mobile must come from Kolkata
+            'number' => $payload['PROVIDER_MOBILE'] ?? null
+        ]];
+    }
+
+private function processTicketData(array $jsonData)
+{
+    ini_set('max_execution_time', 5000);
+    ini_set('memory_limit', '500M');
+    error_reporting(0);
+
+    Log::info('Ticket bulk process started', [
+        'total_records' => count($jsonData)
+    ]);
+
+    $success_count = 0;
+    $failed_count  = 0;
+    $results = [];
+    $hasError = false;
+    $errormeg="";
+
+    DB::beginTransaction();
+
+    try {
+
+        foreach ($jsonData as $index => $keyvalue) {
+
+            $ticketId = $keyvalue['ticketid'] ?? null;
+
+            if (!$ticketId) {
+                $failed_count++;
+                $hasError = true;
+                $errormeg = 'Ticket ID missing';
+                Log::warning('Ticket ID missing', $keyvalue);
+                continue;
+            }
+
+            Log::info('Processing ticket', [
+                'index' => $index,
+                'ticketid' => $ticketId
+            ]);
+
+            // Duplicate check
+            if (DB::table('master_tickets')->where('ticketid', $ticketId)->exists()) {
+                $failed_count++;
+                $hasError = true;
+                $errormeg='Duplicate ticket detected';
+
+                Log::warning('Duplicate ticket detected', [
+                    'ticketid' => $ticketId
+                ]);
+
+                $results[] = [
+                    'ticketid' => $ticketId,
+                    'error' => 'Duplicate ticket'
+                ];
+                continue;
+            }
+
+            //  Prepare master ticket data
+            $data = [
+                'district' => $keyvalue['district'],
+                'mandal' => $keyvalue['mandal'],
+                'gpname' => $keyvalue['gname'],
+                'lat' => $keyvalue['lat'],
+                'log' => $keyvalue['log'],
+                'downtime' => date('h:i:s a', strtotime($keyvalue['downtime'])),
+                'downdate' => date('Y-m-d', strtotime($keyvalue['downdate'])),
+                'up_date' => date('Y-m-d', strtotime($keyvalue['update'])),
+                'up_time' => date('h:i:s a', strtotime($keyvalue['uptime'])),
+                'downreason' => $keyvalue['downreason'],
+                'downreasonindetailed' => $keyvalue['downreasonindetailed'],
+                'subsategory' => $keyvalue['subsategory'],
+                'ticketid' => $ticketId,
+                'ticketinsertstage' => 0, // default UNASSIGNED
+                'olt_type' => $keyvalue['type'],
+                'pop_map_key' => $keyvalue['pop_map_key']
+            ];
+
+            // Insert master ticket (always)
+            if (!DB::table('master_tickets')->insert($data)) {
+                Log::error('Master ticket insert failed', [
+                    'ticketid' => $ticketId
+                ]);
+                $failed_count++;
+                continue;
+            }
+
+            //  Find nearest provider by lat/long
+            $lat = $keyvalue['lat'];
+            $lng = $keyvalue['log'];
+
+            $provider = $this->getNearestProvider($lat, $lng);
+
+            Log::info('Nearest provider lookup', [
+                'ticketid' => $ticketId,
+                'lat' => $lat,
+                'lng' => $lng,
+                'provider_found' => $provider ? $provider->id : null
+            ]);
+
+            if (!$provider) {
+                // $hasError = true;
+                // $errormeg='Ticket created but not assigned (no provider)';
+
+                Log::warning('Ticket created but not assigned (no provider)', [
+                    'ticketid' => $ticketId
+                ]);
+
+                // $results[] = [
+                //     'ticketid' => $ticketId,
+                //     'status' => 'CREATED_NOT_ASSIGNED'
+                // ];
+
+                continue;
+            }
+
+            $UserRequest = new UserRequests;
+            $UserRequest->booking_id = $ticketId;
+            $UserRequest->gpname = $keyvalue['gname'];
+            $UserRequest->downreason = $keyvalue['downreasonindetailed'];
+            $UserRequest->downreasonindetailed = $keyvalue['downreasonindetailed'];
+            $UserRequest->user_id = 45;
+            $UserRequest->provider_id = $provider->id;
+            $UserRequest->current_provider_id = $provider->id;
+            $UserRequest->service_type_id = 2;
+            $UserRequest->status = 'SEARCHING';
+            $UserRequest->s_latitude = $provider->latitude;
+            $UserRequest->s_longitude = $provider->longitude;
+            $UserRequest->d_latitude = $lat;
+            $UserRequest->d_longitude = $lng;
+            $UserRequest->otp = mt_rand(1000, 9999);
+            $UserRequest->assigned_at = Carbon::now();
+            $UserRequest->save();
+
+            // Request filter
+            $filter = new RequestFilter;
+            $filter->request_id = $UserRequest->id;
+            $filter->provider_id = $provider->id;
+            $filter->save();
+
+            // Update ticket as assigned
+            DB::table('master_tickets')
+                ->where('ticketid', $ticketId)
+                ->update(['ticketinsertstage' => 1]);
+
+            $success_count++;
+
+            Log::info('Ticket created and assigned', [
+                'ticketid' => $ticketId,
+                'provider_id' => $provider->id
+            ]);
+
+            $results[] = [
+                'ticketid' => $ticketId,
+                'provider_id' => $provider->id,
+                'status' => 'CREATED_AND_ASSIGNED'
+            ];
+        }
+
+        DB::commit();
+
+        Log::info('Ticket bulk process completed', [
+            'success' => $success_count,
+            'failed' => $failed_count
+        ]);
+
+        return response()->json([
+            'err' => $hasError ? 'X' : '',
+            'message' => $hasError
+                ? $errormeg
+                : 'Ticket created successfully',
+              ], 200);
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        Log::error('Ticket bulk process exception', [
+            'exception' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'err' => 'X',
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+private function getNearestProvider($lat, $lng, $radius = 150)
+{
+    return DB::table('providers')
+        ->select(
+            'providers.id',
+            'providers.latitude',
+            'providers.longitude',
+            DB::raw("
+                (6371 * acos(
+                    cos(radians($lat))
+                    * cos(radians(latitude))
+                    * cos(radians(longitude) - radians($lng))
+                    + sin(radians($lat))
+                    * sin(radians(latitude))
+                )) AS distance
+            ")
+        )
+        ->having('distance', '<=', $radius)
+        ->orderBy('distance', 'ASC')
+        ->first();
+}
+
+
+private function mapSnocStatusId($statusId)
+{
+    switch ($statusId) {
+        case 5:
+            return 'resolved';
+        case 2:
+            return 'onhold';
+        case 3:
+            return 'active';
+        default:
+            return null;
+    }
+}
+
+private function updateSnocTicketStatus($incidentId, $teamId, $projectId, $status, $comments, $rcaFlag)
+{
+    $statusId = $this->mapSnocStatusId($status);
+
+    if (!$statusId) {
+        throw new \Exception('Invalid SNOC status mapping');
+    }
+
+    $finalComment = $comments;
+    if ($rcaFlag === 'rca') {
+        $finalComment .= ' | RCA included';
+    }
+
+    try {
+        $client = new Client([
+            'base_uri' => 'http://61.246.80.58:8084',
+            'timeout'  => 30,
+        ]);
+
+        $response = $client->post('/snoc/changeTicketStatus', [
+            'auth' => ['snoc', 'Welcome@123'], // Basic Auth
+            'json' => [
+                'incidentId'       => $incidentId,
+                'teamId'           => $teamId,
+                'projectId'        => $projectId,
+                'statusId'         => $statusId,
+                'incidentComments' => $finalComment,
+                'incidentRcaFlag'  => $rcaFlag ?? ''
+            ]
+        ]);
+
+        $body = json_decode($response->getBody(), true);
+
+        return $body;
+
+    } catch (\GuzzleHttp\Exception\RequestException $e) {
+        throw new \Exception(
+            $e->hasResponse()
+                ? $e->getResponse()->getBody()->getContents()
+                : 'SNOC status update failed'
+        );
+    }
+}
+
+
+public function getticketstatus(Request $request)
+{
+    try {
+
+        $ticketId = $request->incidentId;
+        $comments = $request->incidentComments;
+        $rcaFlag  = $request->incidentRCAFlag;
+        $status   = $request->status;
+        $teamId    = 1;
+        $projectId = 'TeraProject';
+   
+
+        if (!$ticketId) {
+             return response()->json([
+                'err' => 'X',
+                'message' => 'incidentId missing',
+                ], 400);
+        }
+        $mappedStatus = $this->mapStatus($status);
+        if ($mappedStatus === 'UNKNOWN') {
+             return response()->json([
+                'err' => 'X',
+                'message' => 'Invalid status value',
+                ], 400);
+        }
+        $ticketExists = DB::table('master_tickets')
+            ->where('ticketid', $ticketId)
+            ->exists();
+
+        if (!$ticketExists) {
+            return response()->json([
+                'err' => 'X',
+                'message' => 'Ticket not found',
+                ], 404);
+        }
+
+        $finalReason = $comments . ' | ' . $rcaFlag;
+
+        $masterUpdated = DB::table('master_tickets')
+            ->where('ticketid', $ticketId)
+            ->update([
+                'status'=>$status
+            ]);
+
+        $userUpdated = DB::table('user_requests')
+            ->where('booking_id', $ticketId)
+            ->update([
+                'description' => $finalReason,
+                'status' => $mappedStatus
+
+            ]);
+
+         $this->updateSnocTicketStatus(
+   	 $ticketId,
+    	$teamId,
+    	$projectId,
+    	$status,
+    	$comments,
+    	$rcaFlag
+	);
+
+        if ($masterUpdated === 0 && $userUpdated === 0) {
+           return response()->json([
+                'err' => 'X',
+                'message' => 'No records updated',
+              ], 409);
+        }
+
+
+         return response()->json([
+            'err' => '',
+            'message' => 'Ticket updated successfully',
+            'Result' => [
+                'ticketid' => $ticketId,
+                'master_status' => $status,
+                'user_request_status' => $mappedStatus,
+                'remarks' => $finalReason
+            ]
+        ], 200);
+
+    } catch (\Exception $e) {
+
+            return response()->json([
+            'err' => 'X',
+            'message' => $e->getMessage(),
+             ], 500);
+    }
+}
+
+   private function mapStatus($status)
+{
+    return [
+        1 => 'ACCEPTED',
+        2 => 'ONHOLD',
+        3 => 'PICKEDUP',
+        4 => 'ARRIVED',
+        5 => 'COMPLETED',
+    ][$status] ?? 'UNKNOWN';
+}
+   public function exportNonGeotaggedImages()
+    {
+        ini_set('max_execution_time', 0);
+        ini_set('memory_limit', '-1');
+
+        $filename = "non_geotagged_images_" . date('Y-m-d_H-i-s') . ".csv";
+        $headers = [
+            "Content-type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ];
+
+        $callback = function () {
+            $file = fopen('php://output', 'w');
+
+            // Add BOM for Excel utf-8 compatibility
+            fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF)));
+
+            $columns = [
+                'Record ID',
+                'Request ID',
+                'Image Type',
+                'Filename',
+                'DB LatLong',
+                'GPS Status'
+            ];
+            fputcsv($file, $columns);
+
+           
+            \App\SubmitFile::where(function ($q) {
+                $q->whereNotNull('joint_enclouser_beforeimg')
+                    ->orWhereNotNull('joint_enclouser_afterimg');
+            })
+                ->orderBy('id', 'desc')
+                ->chunk(50, function ($records) use ($file) {
+
+                    foreach ($records as $rec) {
+
+                        $imagesToCheck = [];
+
+                        // 1. Process Joint Enclosure Before Images
+                        $beforeImgs = json_decode($rec->joint_enclouser_beforeimg, true);
+                        // Handle case where it might be a simple string or invalid JSON
+                        if (!is_array($beforeImgs) && !empty($rec->joint_enclouser_beforeimg)) {
+                            $beforeImgs = [$rec->joint_enclouser_beforeimg];
+                        }
+                        if (is_array($beforeImgs)) {
+                            foreach ($beforeImgs as $img) {
+                                $imagesToCheck[] = [
+                                    'type' => 'Joint Enclosure Before',
+                                    'filename' => $img,
+                                    'db_latlong' => $rec->joint_enclosurebefore_latlong
+                                ];
+                            }
+                        }
+
+                        // 2. Process Joint Enclosure After Images
+                        $afterImgs = json_decode($rec->joint_enclouser_afterimg, true);
+                        if (!is_array($afterImgs) && !empty($rec->joint_enclouser_afterimg)) {
+                            $afterImgs = [$rec->joint_enclouser_afterimg];
+                        }
+                        if (is_array($afterImgs)) {
+                            foreach ($afterImgs as $img) {
+                                $imagesToCheck[] = [
+                                    'type' => 'Joint Enclosure After',
+                                    'filename' => $img,
+                                    'db_latlong' => $rec->joint_enclosureafter_latlong
+                                ];
+                            }
+                        }
+
+                        // Check each image
+                        foreach ($imagesToCheck as $item) {
+                            $status = 'OK';
+
+                            $path = public_path('uploads/SubmitFiles/' . $item['filename']);
+
+                            if (file_exists($path)) {
+                                if (function_exists('exif_read_data')) {
+                                    // Suppress errors for files without EXIF or invalid format
+                                    $exif = @exif_read_data($path);
+
+                                    if ($exif && isset($exif['GPSLatitude']) && isset($exif['GPSLongitude'])) {
+                                        $status = 'OK';
+                                    } else {
+                                        $status = 'Missing EXIF GPS';
+                                    }
+                                } else {
+                                    $status = 'EXIF Extension Missing';
+                                }
+                            } else {
+                                $status = 'File Not Found';
+                            }
+
+                            // If not OK, add to Report
+                            if ($status !== 'OK') {
+                                fputcsv($file, [
+                                    $rec->id,
+                                    $rec->request_id,
+                                    $item['type'],
+                                    $item['filename'],
+                                    $item['db_latlong'],
+                                    $status
+                                ]);
+                            }
+                        }
+                    }
+                });
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }

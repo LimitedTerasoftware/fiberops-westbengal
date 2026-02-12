@@ -3,6 +3,13 @@
 @section('title', 'Attendance Reports ')
 
 @section('content')
+@php
+    $user = Session::get('user');
+    $DistId = null; 
+    if ($user && isset($user->district_id)) {
+        $DistId = $user->district_id;
+    }
+@endphp
 
 <div class="content-area py-1">
     <div class="container-fluid">
@@ -13,7 +20,10 @@
                    <select class="form-control selectpicker" data-show-subtext="true" data-live-search="true" name="district_id" id="district_id">
                    	<option value="">Please Select District</option>
                     @foreach($districts as $district)
-                    <option value="{{$district->id}}" @if(Request::get('district_id')) @if(@Request::get('district_id') == $district->id) selected @endif @endif>{{$district->name}} </option> 
+                    <option value="{{$district->id}}" 
+                    {{ (request('district_id') == $district->id) || ($DistId && $DistId == $district->id) ? 'selected' : '' }}>
+
+                    {{$district->name}} </option> 
                    @endforeach 
                   </select>
                 </div>
@@ -61,135 +71,52 @@
                         <th>@lang('admin.district')</th>
                         <th>@lang('admin.name')</th>
                         <th>@lang('admin.designation')</th>
-                        <th>@lang('admin.mobile')</th>                       
+                        <th>@lang('admin.mobile')</th> 
+                        <th>Date of Joining</th>                       
                         <th>@lang('admin.totalwork')</th>
+                        <th>Absent</th>
                         <th>@lang('admin.leaves')</th>
 						<th>@lang('admin.presentday')</th>
-                        @php
-                            if((Request::get('from_date') != '') && (Request::get('to_date') != ''))
-                            {
-                                $startDate = new DateTime(Request::get('from_date'));
-                                $endDate = new DateTime(Request::get('to_date'));
-                            } else {
-                                $startDate = new DateTime(date('Y-m-d', strtotime('first day of this month')));
-                                $endDate = new DateTime();
-                            }
-                            $intervall = $startDate->diff($endDate);
-                            $dayss = $intervall->days;
-                            $total_dates = [];
-
-                        @endphp
-                        @foreach(range(0, $dayss) as $np)
-                            <th style="display:none;">{{ $startDate->format('d-m-Y') }}</th>
-                            @php
-                                $total_dates[] = $startDate->format('Y-m-d');
-                                $startDate->modify('+1 day');
-                            @endphp
-                        @endforeach
+                      
                     </tr>
                 </thead>
                 <tbody>
 				
 				
-                	@if(count($providers) > 0)
+                	@if(count($results ) > 0)
 				  @php($i=0)
-                @foreach($providers as $index => $provider)
+                @foreach($results  as $index => $r)
                    @php($i++)
-				    <?php
-					if((Request::get('from_date') != '') && (Request::get('to_date') != '')){
-						
-						$from_date = strtotime(Request::get('from_date'));
-						$to_date  =  strtotime(Request::get('to_date'));
-						$datediff = $to_date - $from_date;
-						$totaldays = round($datediff / (60 * 60 * 24))+1;
-							 
-						$absentdays = array();
-						/* for($i=0; $i<$totaldays; $i++){
-						   $t = $i;
-						$absentdays[] = date('Y-m-d',strtotime("$t day"));
-						
-
-						} */
-						
-						$begin = new DateTime(Request::get('from_date'));
-						$end = new DateTime(Request::get('to_date'));
-
-						$interval = DateInterval::createFromDateString('1 day');
-						$period = new DatePeriod($begin, $interval, $end);
-
-						foreach ($period as $dt) {
-							$absentdays[] = $dt->format("Y-m-d");
-						}
-
-					}else{
-						
-						$from_date = strtotime(date('Y-m-d', strtotime('first day of this month')));
-                                                $findfirst_day = date('d', strtotime('first day of this month'));
-                                                $findlast_day = date('d', strtotime('last day of this month'));                                          	$to_date  =  strtotime(date('Y-m-d', strtotime('last day of this month')));
-						$datediff = $to_date - $from_date;
-						$totaldays = round($datediff / (60 * 60 * 24)) + 1;
-
-                                                //print_r($datediff);
-
-
-						//dd($totaldays);
-						$absentdays = array();
-						
-                        $begin = new DateTime(date('Y-m-01', strtotime('first day of this month')));
-						$end = new DateTime(date('Y-m-d', strtotime('last day of this month')));
-
-						$interval = DateInterval::createFromDateString('1 day');
-						$period = new DatePeriod($begin, $interval, $end);
-
-						foreach ($period as $dt) {
-							$absentdays[] = $dt->format("Y-m-d");
-						}
-						
-					}
-					
-					?>
+				
                     <tr>
-                        <td>{{$i}}</td>
-                         <td>{{$provider->district_name}}</td>
-                        <td>{{ $provider->first_name }} {{ $provider->last_name }}</td> 
-                        @if($provider->type == 1)
-                        <td>POP Engineer</td>
-                        @else 
-                         <td>FRT Engineer</td>
-                        @endif
-                        <td>{{ $provider->mobile }}</td>
-						<td>{{$totaldays}}</td>
-						<td>{{($totaldays) - ($provider->present)}}</td>
-						<td>{{$provider->present}}</td>
+                       
+                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $r['provider']->district_name }}</td>
+                        <td>{{ $r['provider']->first_name }} {{ $r['provider']->last_name }}</td>
+                          @if ($r['provider']->type == 1)
+                                <td>POP Engineer</td>
+                            @endif
 
-                        @foreach($total_dates as $np)
-                        @php
-                          $pdates =explode( ',', $provider->presentdates);
-                          $pdates_formated = [];
-                          foreach($pdates as $datees)
-                          {
-                            $np_dat = new DateTime($datees);
-                            $pdates_formated[] = $np_dat->format('Y-m-d');
-                          }
+                            @if ($r['provider']->type == 2)
+                                <td>Patroller Engineer</td>
+                            @endif
 
-                          $adates =explode(',', $provider->origindate);
-                          $new_list = [];
-                          if(count($absentdays)>0 && count($adates)>0)
-                            {
-                              $new_list=array_diff($absentdays,$adates);                              
-                            }
+                            @if ($r['provider']->type == 5)
+                                <td>FRT Engineer</td>
+                            @endif
 
-                            if(in_array($np, $pdates_formated))
-                            {
-                                $valll = "P";
-                            } else if(in_array($np, $new_list)) {
-                                $valll = "A";
-                            } else {
-                                $valll = "-";
-                            }
-                        @endphp
-                            <td style="display:none;">{{ $valll }}</td>
-                        @endforeach		
+                            @if (!in_array($r['provider']->type, [1, 2, 5]))
+                                <td>Other Engineer</td>
+                            @endif
+
+                        <td>{{ $r['provider']->mobile }}</td>
+                        <td>{{ $r['provider']->joiningdate ? \Carbon\Carbon::parse($r['provider']->joiningdate)->format('d-m-Y') : '' }}</td>
+                        <td>{{ $r['total_working_days'] }}</td>
+                        <td>{{ $r['absent_days'] }}</td>
+                        <td>{{ $r['leave_days'] }}</td>
+                        <td>{{ $r['present_days'] }}</td>
+                        
+                 
 						
                     </tr>
                 @endforeach

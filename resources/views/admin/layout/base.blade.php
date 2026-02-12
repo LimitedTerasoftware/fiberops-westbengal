@@ -59,8 +59,30 @@
         .rating-symbol-foreground {
             color: #ffe000!important;
         }
+           .fixed-header .site-content{
+            padding-top:0px !important;
+        }
+       @media (max-width: 768px) {
+        .compact-sidebar .site-content{
+            margin-left:0px !important;
+            padding-top:60px !important;
+        }
+        .fixed-header .site-content{
+            padding-top: 60px !important;
+        }
+     
+
+        }
+        @media (min-width: 768px)  {
+            .terrasoft-sidebar-collapsed .site-content{
+            margin-left:60px !important;
+            padding-top:0px !important;
+        }
+        }
     </style>
     @yield('styles')
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
 </head>
 <body class="fixed-sidebar fixed-header content-appear skin-default">
 
@@ -70,7 +92,6 @@
 
         @include('admin.include.nav')
 
-        @include('admin.include.header')
 
         <div class="site-content">
 
@@ -117,6 +138,13 @@
     <script type="text/javascript" src="{{asset('main/vendor/bootstrap-daterangepicker/daterangepicker.js')}}"></script>
 
     <!-- Neptune JS -->
+     <script>
+        window.Laravel = {!! json_encode([
+        'csrfToken' => csrf_token(),
+    ]) !!};
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ Setting::get('map_key') }}&libraries=places"></script>
+
     <script type="text/javascript" src="{{asset('main/assets/js/app.js')}}"></script>
     <script type="text/javascript" src="{{asset('main/assets/js/demo.js')}}"></script>
     <script type="text/javascript" src="{{asset('main/assets/js/forms-pickers.js')}}"></script>

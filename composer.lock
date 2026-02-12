@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9415cf22a6f207a9a3446fa64d34c150",
+    "content-hash": "ded29853a167b598c365bd4546d2279c",
     "packages": [
         {
             "name": "anlutro/l4-settings",
@@ -55,6 +55,66 @@
                 "source": "https://github.com/anlutro/laravel-settings/tree/master"
             },
             "time": "2016-08-24T14:06:54+00:00"
+        },
+        {
+            "name": "barryvdh/laravel-dompdf",
+            "version": "v0.8.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/barryvdh/laravel-dompdf.git",
+                "reference": "7dcdecfa125c174d0abe723603633dc2756ea3af"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/barryvdh/laravel-dompdf/zipball/7dcdecfa125c174d0abe723603633dc2756ea3af",
+                "reference": "7dcdecfa125c174d0abe723603633dc2756ea3af",
+                "shasum": ""
+            },
+            "require": {
+                "dompdf/dompdf": "^0.8",
+                "illuminate/support": "5.1.x|5.2.x|5.3.x|5.4.x|5.5.x|5.6.x",
+                "php": ">=5.5.9"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "PDF": "Barryvdh\\DomPDF\\Facade"
+                    },
+                    "providers": [
+                        "Barryvdh\\DomPDF\\ServiceProvider"
+                    ]
+                },
+                "branch-alias": {
+                    "dev-master": "0.8-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Barryvdh\\DomPDF\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Barry vd. Heuvel",
+                    "email": "barryvdh@gmail.com"
+                }
+            ],
+            "description": "A DOMPDF Wrapper for Laravel",
+            "keywords": [
+                "dompdf",
+                "laravel",
+                "pdf"
+            ],
+            "support": {
+                "issues": "https://github.com/barryvdh/laravel-dompdf/issues",
+                "source": "https://github.com/barryvdh/laravel-dompdf/tree/master"
+            },
+            "time": "2018-02-07T17:43:25+00:00"
         },
         {
             "name": "barryvdh/laravel-translation-manager",
@@ -819,6 +879,78 @@
                 "source": "https://github.com/doctrine/lexer/tree/1.0.2"
             },
             "time": "2019-06-08T11:03:04+00:00"
+        },
+        {
+            "name": "dompdf/dompdf",
+            "version": "v0.8.6",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/dompdf/dompdf.git",
+                "reference": "db91d81866c69a42dad1d2926f61515a1e3f42c5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/dompdf/dompdf/zipball/db91d81866c69a42dad1d2926f61515a1e3f42c5",
+                "reference": "db91d81866c69a42dad1d2926f61515a1e3f42c5",
+                "shasum": ""
+            },
+            "require": {
+                "ext-dom": "*",
+                "ext-mbstring": "*",
+                "phenx/php-font-lib": "^0.5.2",
+                "phenx/php-svg-lib": "^0.3.3",
+                "php": "^7.1"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.3",
+                "phpunit/phpunit": "^7.5",
+                "squizlabs/php_codesniffer": "^3.5"
+            },
+            "suggest": {
+                "ext-gd": "Needed to process images",
+                "ext-gmagick": "Improves image processing performance",
+                "ext-imagick": "Improves image processing performance",
+                "ext-zlib": "Needed for pdf stream compression"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-develop": "0.7-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Dompdf\\": "src/"
+                },
+                "classmap": [
+                    "lib/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-2.1"
+            ],
+            "authors": [
+                {
+                    "name": "Fabien Ménager",
+                    "email": "fabien.menager@gmail.com"
+                },
+                {
+                    "name": "Brian Sweeney",
+                    "email": "eclecticgeek@gmail.com"
+                },
+                {
+                    "name": "Gabriel Bull",
+                    "email": "me@gabrielbull.com"
+                }
+            ],
+            "description": "DOMPDF is a CSS 2.1 compliant HTML to PDF converter",
+            "homepage": "https://github.com/dompdf/dompdf",
+            "support": {
+                "issues": "https://github.com/dompdf/dompdf/issues",
+                "source": "https://github.com/dompdf/dompdf/tree/master"
+            },
+            "time": "2020-08-30T22:54:22+00:00"
         },
         {
             "name": "firebase/php-jwt",
@@ -2072,6 +2204,88 @@
             "time": "2017-11-29T21:47:00+00:00"
         },
         {
+            "name": "maatwebsite/excel",
+            "version": "2.1.30",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Maatwebsite/Laravel-Excel.git",
+                "reference": "f5540c4ba3ac50cebd98b09ca42e61f926ef299f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Maatwebsite/Laravel-Excel/zipball/f5540c4ba3ac50cebd98b09ca42e61f926ef299f",
+                "reference": "f5540c4ba3ac50cebd98b09ca42e61f926ef299f",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/cache": "^5.0",
+                "illuminate/config": "^5.0",
+                "illuminate/filesystem": "^5.0",
+                "illuminate/support": "^5.0",
+                "jeremeamia/superclosure": "^2.3",
+                "nesbot/carbon": "~1.0",
+                "php": ">=5.5",
+                "phpoffice/phpexcel": "^1.8.1",
+                "tijsverkoyen/css-to-inline-styles": "~2.0"
+            },
+            "require-dev": {
+                "mockery/mockery": "~1.0",
+                "orchestra/testbench": "3.1.*|3.2.*|3.3.*|3.4.*|3.5.*|3.6.*",
+                "phpseclib/phpseclib": "~1.0",
+                "phpunit/phpunit": "~4.0"
+            },
+            "suggest": {
+                "illuminate/http": "^5.0",
+                "illuminate/queue": "^5.0",
+                "illuminate/routing": "^5.0",
+                "illuminate/view": "^5.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Excel": "Maatwebsite\\Excel\\Facades\\Excel"
+                    },
+                    "providers": [
+                        "Maatwebsite\\Excel\\ExcelServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-0": {
+                    "Maatwebsite\\Excel\\": "src/"
+                },
+                "classmap": [
+                    "src/Maatwebsite/Excel"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Maatwebsite.nl",
+                    "email": "patrick@maatwebsite.nl"
+                }
+            ],
+            "description": "Supercharged Excel exports in Laravel",
+            "keywords": [
+                "PHPExcel",
+                "batch",
+                "csv",
+                "excel",
+                "export",
+                "import",
+                "laravel"
+            ],
+            "support": {
+                "issues": "https://github.com/Maatwebsite/Laravel-Excel/issues",
+                "source": "https://github.com/Maatwebsite/Laravel-Excel/tree/2.1"
+            },
+            "time": "2018-09-04T19:00:09+00:00"
+        },
+        {
             "name": "mjaschen/phpgeo",
             "version": "1.3.8",
             "source": {
@@ -2513,6 +2727,161 @@
                 "source": "https://github.com/paragonie/random_compat"
             },
             "time": "2022-02-16T17:07:03+00:00"
+        },
+        {
+            "name": "phenx/php-font-lib",
+            "version": "0.5.6",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/dompdf/php-font-lib.git",
+                "reference": "a1681e9793040740a405ac5b189275059e2a9863"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/dompdf/php-font-lib/zipball/a1681e9793040740a405ac5b189275059e2a9863",
+                "reference": "a1681e9793040740a405ac5b189275059e2a9863",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*"
+            },
+            "require-dev": {
+                "symfony/phpunit-bridge": "^3 || ^4 || ^5 || ^6"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "FontLib\\": "src/FontLib"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-2.1-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Fabien Ménager",
+                    "email": "fabien.menager@gmail.com"
+                }
+            ],
+            "description": "A library to read, parse, export and make subsets of different types of font files.",
+            "homepage": "https://github.com/PhenX/php-font-lib",
+            "support": {
+                "issues": "https://github.com/dompdf/php-font-lib/issues",
+                "source": "https://github.com/dompdf/php-font-lib/tree/0.5.6"
+            },
+            "time": "2024-01-29T14:45:26+00:00"
+        },
+        {
+            "name": "phenx/php-svg-lib",
+            "version": "v0.3.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/PhenX/php-svg-lib.git",
+                "reference": "5fa61b65e612ce1ae15f69b3d223cb14ecc60e32"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/PhenX/php-svg-lib/zipball/5fa61b65e612ce1ae15f69b3d223cb14ecc60e32",
+                "reference": "5fa61b65e612ce1ae15f69b3d223cb14ecc60e32",
+                "shasum": ""
+            },
+            "require": {
+                "sabberworm/php-css-parser": "^8.3"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^5.5|^6.5"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Svg\\": "src/Svg"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-3.0"
+            ],
+            "authors": [
+                {
+                    "name": "Fabien Ménager",
+                    "email": "fabien.menager@gmail.com"
+                }
+            ],
+            "description": "A library to read, parse and export to PDF SVG files.",
+            "homepage": "https://github.com/PhenX/php-svg-lib",
+            "support": {
+                "issues": "https://github.com/PhenX/php-svg-lib/issues",
+                "source": "https://github.com/PhenX/php-svg-lib/tree/master"
+            },
+            "time": "2019-09-11T20:02:13+00:00"
+        },
+        {
+            "name": "phpoffice/phpexcel",
+            "version": "1.8.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/PHPOffice/PHPExcel.git",
+                "reference": "1441011fb7ecdd8cc689878f54f8b58a6805f870"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/PHPOffice/PHPExcel/zipball/1441011fb7ecdd8cc689878f54f8b58a6805f870",
+                "reference": "1441011fb7ecdd8cc689878f54f8b58a6805f870",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "ext-xml": "*",
+                "ext-xmlwriter": "*",
+                "php": "^5.2|^7.0"
+            },
+            "require-dev": {
+                "squizlabs/php_codesniffer": "2.*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-0": {
+                    "PHPExcel": "Classes/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-2.1"
+            ],
+            "authors": [
+                {
+                    "name": "Maarten Balliauw",
+                    "homepage": "http://blog.maartenballiauw.be"
+                },
+                {
+                    "name": "Erik Tilt"
+                },
+                {
+                    "name": "Franck Lefevre",
+                    "homepage": "http://rootslabs.net"
+                },
+                {
+                    "name": "Mark Baker",
+                    "homepage": "http://markbakeruk.net"
+                }
+            ],
+            "description": "PHPExcel - OpenXML - Read, Create and Write Spreadsheet documents in PHP - Spreadsheet engine",
+            "homepage": "https://github.com/PHPOffice/PHPExcel",
+            "keywords": [
+                "OpenXML",
+                "excel",
+                "php",
+                "spreadsheet",
+                "xls",
+                "xlsx"
+            ],
+            "support": {
+                "issues": "https://github.com/PHPOffice/PHPExcel/issues",
+                "source": "https://github.com/PHPOffice/PHPExcel/tree/master"
+            },
+            "abandoned": "phpoffice/phpspreadsheet",
+            "time": "2018-11-22T23:07:24+00:00"
         },
         {
             "name": "phpseclib/phpseclib",
@@ -3005,6 +3374,72 @@
             "time": "2021-09-25T23:07:42+00:00"
         },
         {
+            "name": "sabberworm/php-css-parser",
+            "version": "v8.9.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/MyIntervals/PHP-CSS-Parser.git",
+                "reference": "d8e916507b88e389e26d4ab03c904a082aa66bb9"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/MyIntervals/PHP-CSS-Parser/zipball/d8e916507b88e389e26d4ab03c904a082aa66bb9",
+                "reference": "d8e916507b88e389e26d4ab03c904a082aa66bb9",
+                "shasum": ""
+            },
+            "require": {
+                "ext-iconv": "*",
+                "php": "^5.6.20 || ^7.0.0 || ~8.0.0 || ~8.1.0 || ~8.2.0 || ~8.3.0 || ~8.4.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "5.7.27 || 6.5.14 || 7.5.20 || 8.5.41",
+                "rawr/cross-data-providers": "^2.0.0"
+            },
+            "suggest": {
+                "ext-mbstring": "for parsing UTF-8 CSS"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "9.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Sabberworm\\CSS\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Raphael Schweikert"
+                },
+                {
+                    "name": "Oliver Klee",
+                    "email": "github@oliverklee.de"
+                },
+                {
+                    "name": "Jake Hotson",
+                    "email": "jake.github@qzdesign.co.uk"
+                }
+            ],
+            "description": "Parser for CSS Files written in PHP",
+            "homepage": "https://www.sabberworm.com/blog/2010/6/10/php-css-parser",
+            "keywords": [
+                "css",
+                "parser",
+                "stylesheet"
+            ],
+            "support": {
+                "issues": "https://github.com/MyIntervals/PHP-CSS-Parser/issues",
+                "source": "https://github.com/MyIntervals/PHP-CSS-Parser/tree/v8.9.0"
+            },
+            "time": "2025-07-11T13:20:48+00:00"
+        },
+        {
             "name": "stripe/stripe-php",
             "version": "v4.13.0",
             "source": {
@@ -3185,6 +3620,62 @@
                 "source": "https://github.com/symfony/console/tree/3.1"
             },
             "time": "2017-01-08T20:43:43+00:00"
+        },
+        {
+            "name": "symfony/css-selector",
+            "version": "v3.1.10",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/css-selector.git",
+                "reference": "722a87478a72d95dc2a3bcf41dc9c2d13fd4cb2d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/css-selector/zipball/722a87478a72d95dc2a3bcf41dc9c2d13fd4cb2d",
+                "reference": "722a87478a72d95dc2a3bcf41dc9c2d13fd4cb2d",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.5.9"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "3.1-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\CssSelector\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Jean-François Simon",
+                    "email": "jeanfrancois.simon@sensiolabs.com"
+                },
+                {
+                    "name": "Fabien Potencier",
+                    "email": "fabien@symfony.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Symfony CssSelector Component",
+            "homepage": "https://symfony.com",
+            "support": {
+                "source": "https://github.com/symfony/css-selector/tree/3.1"
+            },
+            "time": "2017-01-02T20:31:54+00:00"
         },
         {
             "name": "symfony/debug",
@@ -4544,6 +5035,59 @@
                 "source": "https://github.com/symfony/var-dumper/tree/3.1"
             },
             "time": "2017-01-24T13:02:38+00:00"
+        },
+        {
+            "name": "tijsverkoyen/css-to-inline-styles",
+            "version": "v2.2.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/tijsverkoyen/CssToInlineStyles.git",
+                "reference": "83ee6f38df0a63106a9e4536e3060458b74ccedb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/tijsverkoyen/CssToInlineStyles/zipball/83ee6f38df0a63106a9e4536e3060458b74ccedb",
+                "reference": "83ee6f38df0a63106a9e4536e3060458b74ccedb",
+                "shasum": ""
+            },
+            "require": {
+                "ext-dom": "*",
+                "ext-libxml": "*",
+                "php": "^5.5 || ^7.0 || ^8.0",
+                "symfony/css-selector": "^2.7 || ^3.0 || ^4.0 || ^5.0 || ^6.0 || ^7.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^4.8.35 || ^5.7 || ^6.0 || ^7.5 || ^8.5.21 || ^9.5.10"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "2.2.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "TijsVerkoyen\\CssToInlineStyles\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "BSD-3-Clause"
+            ],
+            "authors": [
+                {
+                    "name": "Tijs Verkoyen",
+                    "email": "css_to_inline_styles@verkoyen.eu",
+                    "role": "Developer"
+                }
+            ],
+            "description": "CssToInlineStyles is a class that enables you to convert HTML-pages/files into HTML-pages/files with inline styles. This is very useful when you're sending emails.",
+            "homepage": "https://github.com/tijsverkoyen/CssToInlineStyles",
+            "support": {
+                "issues": "https://github.com/tijsverkoyen/CssToInlineStyles/issues",
+                "source": "https://github.com/tijsverkoyen/CssToInlineStyles/tree/v2.2.7"
+            },
+            "time": "2023-12-08T13:03:43+00:00"
         },
         {
             "name": "turbo124/laravel-push-notification",
@@ -6890,62 +7434,6 @@
                 "source": "https://github.com/sebastianbergmann/version/tree/master"
             },
             "time": "2016-10-03T07:35:21+00:00"
-        },
-        {
-            "name": "symfony/css-selector",
-            "version": "v3.1.10",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/symfony/css-selector.git",
-                "reference": "722a87478a72d95dc2a3bcf41dc9c2d13fd4cb2d"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/css-selector/zipball/722a87478a72d95dc2a3bcf41dc9c2d13fd4cb2d",
-                "reference": "722a87478a72d95dc2a3bcf41dc9c2d13fd4cb2d",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=5.5.9"
-            },
-            "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "3.1-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Symfony\\Component\\CssSelector\\": ""
-                },
-                "exclude-from-classmap": [
-                    "/Tests/"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Jean-François Simon",
-                    "email": "jeanfrancois.simon@sensiolabs.com"
-                },
-                {
-                    "name": "Fabien Potencier",
-                    "email": "fabien@symfony.com"
-                },
-                {
-                    "name": "Symfony Community",
-                    "homepage": "https://symfony.com/contributors"
-                }
-            ],
-            "description": "Symfony CssSelector Component",
-            "homepage": "https://symfony.com",
-            "support": {
-                "source": "https://github.com/symfony/css-selector/tree/3.1"
-            },
-            "time": "2017-01-02T20:31:54+00:00"
         },
         {
             "name": "symfony/dom-crawler",

@@ -4,5 +4,4 @@ php_value upload_max_filesize 30M
 RewriteEngine On
 RewriteRule ^(.*)$ public/$1 [L]
 
-#RewriteCond%{HTTP_HOST} ^api.ondabpay.com RewriteRule ^(.*) http://api.ondabpay.com/api/$1 [P]
 </IfModule>

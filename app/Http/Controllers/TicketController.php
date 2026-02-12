@@ -538,8 +538,5 @@ class TicketController extends Controller
 /*curl close*/
 
     }
-
-
-
  
 }

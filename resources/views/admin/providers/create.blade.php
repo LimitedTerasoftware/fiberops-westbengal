@@ -3,6 +3,7 @@
 @section('title', 'Add Provider ')
 
 @section('content')
+
 <style type="text/css">
 	.shadow-gray {
     box-shadow: 0 0 5px 1px #3333332e !important;
@@ -134,6 +135,12 @@
 							<input class="form-control select-box" type="password" name="password_confirmation" id="password_confirmation" placeholder="Re-type Password">
 						</div>
 					</div>
+					 <div class="form-group row">
+                    <label for="date" class="col-xs-2 col-form-label">Joining Date</label>
+                    <div class="col-xs-10">
+                        <input class="form-control" type="date" value="" name="joiningdate" >
+                    </div>
+                </div>
 
 					<div class="form-group row">
 						<label for="picture" class="col-xs-12 col-form-label  ">@lang('admin.profile_picture') </label>
@@ -141,6 +148,7 @@
 							<input type="file" accept="image/*" name="avatar" class="dropify form-control-file" id="picture" aria-describedby="fileHelp">
 						</div>
 					</div>
+					 
 
 					<div class="form-group row">
 						<label for="zipcode" class="col-xs-12 col-form-label"></label>

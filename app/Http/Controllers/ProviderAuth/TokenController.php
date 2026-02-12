@@ -522,7 +522,7 @@ class TokenController extends Controller
             
             $provider_id = $request->provider_id;
             $providerList = Provider::where('id',$provider_id)->get(); 
-            $engineersList =   Provider::whereIn('type',[1,2])->get();
+            $engineersList =   Provider::whereIn('type',[1,2,5])->get();
             $zonalanddisrtictList =  Provider::whereIn('type',[3,4])->get();
            
             $temp['providerList'] = $providerList;

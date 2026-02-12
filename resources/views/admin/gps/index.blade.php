@@ -36,8 +36,9 @@
                 <span class="pull-right">(*personal information hidden in demo)</span>
                 @endif
             </h4>
-            @if(auth()->user()->role != 'super_admin')
+            @if(auth()->user()->role == 'admin')
             <a href="{{ route('admin.gps.create') }}" style="margin-left: 1em;" class="btn btn-primary pull-right btn-cstm"><i class="fa fa-plus"></i>@lang('admin.gp.add_gp')</a>
+            <a href="{{ route('admin.gp_mapping') }}" style="margin-left: 1em;" class="btn btn-success pull-right btn-cstm"><i class="fa fa-map-pin"></i> Gp Mapping</a>
             @endif
             <table class="table row-bordered dataTable nowrap display" id="table-5" style="width:100%">
                 <thead>
@@ -47,12 +48,13 @@
                         <th>@lang('District')</th>
                         <th>@lang('Block')</th>
                         <th>Zonal Incharge</th>
+                        <th>Gp Percentage</th>
                         <th>@lang('LGD Code')</th>
                         <th>FRT Name</th>
                         <th>@lang('Contact No')</th>
                         <th>Patroller Name</th>
                         <th>@lang('Contact No')</th>
-                        @if(auth()->user()->role != 'super_admin')
+                        @if(auth()->user()->role == 'admin')
                         <th>@lang('admin.action')</th>
                         @endif
                     </tr>
@@ -65,13 +67,14 @@
                         <td>{{ $gp->district_name }}</td>
                         <td>{{ $gp->block_name }}</td>
                         <td>{{ $gp->zonal_name }}</td>
+                        <td>{{$gp->avg_uptime}}</td>
                         <td>{{ $gp->lgd_code }}</td>
                         <td>{{ $gp->provider }}</td>
                         <td>{{ $gp->contact_no }}</td>
                         <td>{{ $gp->petroller}}</td>
                         <td>{{ $gp->petroller_contact_no }}</td>
 
-                        @if(auth()->user()->role != 'super_admin')
+                        @if(auth()->user()->role == 'admin')
                         <td>
                             <div class="btn-group" style="width:200px">
                                 @if( Setting::get('demo_mode') == 0)

@@ -15,6 +15,12 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         \App\Console\Commands\CustomCommand::class,
         \App\Console\Commands\DbClearCommand::class,
+        \App\Console\Commands\BharatNetStatusUpdate::class,
+        \App\Console\Commands\AutoLogoutProviders::class,
+        \App\Console\Commands\SyncEmployeeMaterialLedger::class,
+        \App\Console\Commands\ClearLogsWeekly::class,
+
+
     ];
 
     /**
@@ -30,6 +36,17 @@ class Kernel extends ConsoleKernel
            
         $schedule->command('cronjob:demodata')
                 ->weeklyOn(1, '8:00');
+                
+        $schedule->command('attendance:autologout')->dailyAt('23:45');  
+        $schedule->command('bharatnet:update')->cron('*/30 * * * *');
+        $schedule->command('ledger:sync-employee-materials')
+             ->everyTenMinutes()
+             ->withoutOverlapping()
+             ->runInBackground();
+             
+        $schedule->command('logs:clear-old')->weeklyOn(0, '02:00'); 
+     
+  
                          
     }
 

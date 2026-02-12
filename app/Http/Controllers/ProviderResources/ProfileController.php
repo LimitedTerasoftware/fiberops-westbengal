@@ -14,7 +14,7 @@ use Exception;
 use Carbon\Carbon;
 
 use App\Provider;
-
+use App\Leave;
 use App\ProviderProfile;
 use App\UserRequests;
 use App\ProviderService;
@@ -26,6 +26,7 @@ use App\Http\Controllers\SendPushNotification;
 use App\Http\Controllers\ProviderResources\DocumentController;
 use App\ProviderTrackingHistory;
 use DB;
+use Log;
 
 class ProfileController extends Controller
 {
@@ -305,6 +306,99 @@ class ProfileController extends Controller
         }
     }
 
+    public function locationTest(Request $request)
+    {
+            Log::info("=== LocationTest API Hit ===");
+
+            Log::info("Incoming Request Data: ", $request->all());
+        $this->validate($request, [
+            'locations'               => 'required|array',
+            'locations.*.latitude'    => 'required|numeric',
+            'locations.*.longitude'   => 'required|numeric',
+            'locations.*.offon_timestamp' => 'required|date',
+        ]);
+
+        $provider = Auth::user();
+
+        if (!$provider) {
+             Log::error("Provider not found for token.");
+
+            return response()->json(['error' => trans('api.provider.provider_not_found')]);
+        }
+        Log::info("Authenticated Provider ID: " . $provider->id);
+
+        $locations = $request->input('locations', []);
+
+        if (empty($locations)) {
+            Log::warning("No locations array provided in request.");
+
+            return response()->json(['error' => 'No locations provided']);
+        }
+
+
+        $lastLocation = end($locations); 
+        Log::info("Last Location being saved: ", $lastLocation);
+
+        $provider->latitude = $lastLocation['latitude'];
+        $provider->longitude = $lastLocation['longitude'];
+        $provider->save();
+    Log::info("Provider last lat/long updated.");
+
+        foreach ($request->locations as $loc) {
+        Log::info("---- Processing Location ----", $loc);
+
+            // Check if history exists for today
+            $update = ProviderTrackingHistory::where('provider_id', $provider->id)
+                        ->whereDate('created_at', Carbon::today())
+                        ->first();
+              if ($update) {
+                 Log::info("Existing ProviderTrackingHistory found for today. ID: ".$update->id);
+                } else {
+                    Log::info("No ProviderTrackingHistory exists for today. Creating new.");
+                }
+
+            $new_latlng = [
+                'latitude'  => $loc['latitude'],
+                'longitude' => $loc['longitude'],
+                'datetime'  => $loc['offon_timestamp'], 
+            ];
+                    Log::info("New latlng entry to merge: ", $new_latlng);
+
+
+            if ($update) {
+                
+                $old_latlng = json_decode($update->latlng, true);
+                if (!is_array($old_latlng)) $old_latlng = [];
+                Log::info("Old latlng data count: ".count($old_latlng));
+
+                $update->latlng = json_encode(array_merge($old_latlng, [$new_latlng]));
+                $update->save();
+                 Log::info("Updated today's ProviderTrackingHistory latlng.");
+
+            } else {
+                $insert = new ProviderTrackingHistory;
+                $insert->provider_id = $provider->id;
+                $insert->latlng = json_encode([$new_latlng]);
+                $insert->save();
+                            Log::info("New ProviderTrackingHistory created with first latlng.");
+
+            }
+
+            // Insert into provider_tracking table
+            DB::table('provider_tracking')->insert([
+                'provider_id' => $provider->id,
+                'latitude'    => $loc['latitude'],
+                'longitude'   => $loc['longitude'],
+                'created_at'  => $loc['offon_timestamp'], 
+                'updated_at'  => $loc['offon_timestamp'],
+            ]);
+                    Log::info("Inserted into provider_tracking table.");
+
+        }
+
+        return response()->json(['message' => 'Location history updated successfully']);
+    }
+
     public function update_language(Request $request)
     {
         $this->validate($request, [
@@ -342,16 +436,23 @@ class ProfileController extends Controller
      */
     public function available(Request $request)
     {
-    
+      
         $this->validate($request, [
                 'service_status' => 'required|in:active,offline',
             ]);
      
                 $Provider = Auth::user();
                 if ($request->has('version')) {
-        $Provider->update(['version' => $request->version]);
-    }
+                        $Provider->update(['version' => $request->version]);
+                    }
                 $provider_id = $Provider->id;
+                
+                // if ($this->isOnLeave($provider_id)) {
+                //     return response()->json([
+                //         'status' => false,
+                //         'message' => 'You are on leave today. Attendance cannot be marked.'
+                //     ], 200);
+                // }
                 //dd(date('Y-m-d'));
 		       $findattendancerecord = Attendance::where('provider_id',$provider_id)->where('created_at','>=',Carbon::today())->first();
 
@@ -364,12 +465,29 @@ class ProfileController extends Controller
 
                   Attendance::where('provider_id', $provider_id)->where('created_at','>=',Carbon::today())->update(['status'=>$request->service_status,'offaddress'=>$request->address]);  
                    }
+                    if ($request->hasFile('online_image')) {
+                        $file = $request->file('online_image');
+                        $filename = time() . '_' . $file->getClientOriginalName();
+                        $file->move(public_path('uploads/attendance_images'), $filename);
+
+                        // $file->storeAs('attendance_images', $filename); 
+                        Attendance::where('provider_id', $provider_id)->where('created_at','>=',Carbon::today())->update(['online_image'=>$filename]);  
+
+                    }
 
 		       } else {
 		       $attendance = new Attendance;
 		       $attendance->provider_id = $Provider->id;
 		       $attendance->address = $request->address;
 		       $attendance->status = $request->service_status;
+               if ($request->hasFile('online_image')) {
+                    $file = $request->file('online_image');
+                    $filename = time() . '_' . $file->getClientOriginalName();
+                    $file->move(public_path('uploads/attendance_images'), $filename);
+
+                    // $file->storeAs('attendance_images', $filename);
+                    $attendance->online_image = $filename; 
+                }
 		       $attendance->save(); // returns false
 		      }
 		    
@@ -418,9 +536,134 @@ class ProfileController extends Controller
         }
 
         
-
-        return $Provider;
+        //  return response()->json([
+        //                 'status' => true,
+        //                 'message' => 'Success.',
+        //                 'Provider'=>$Provider
+        //             ], 200);
+         return $Provider;
     }
+    public function availableTest(Request $request)
+    {
+      
+        $this->validate($request, [
+                'service_status' => 'required|in:active,offline',
+            ]);
+     
+                $Provider = Auth::user();
+                if ($request->has('version')) {
+                        $Provider->update(['version' => $request->version]);
+                    }
+                $provider_id = $Provider->id;
+                
+                if ($this->isOnLeave($provider_id)) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'You are on leave today. Attendance cannot be marked.',
+                         'Provider'=>$Provider
+                    ], 200);
+                }
+                //dd(date('Y-m-d'));
+		       $findattendancerecord = Attendance::where('provider_id',$provider_id)->where('created_at','>=',Carbon::today())->first();
+
+		       if(count($findattendancerecord)>0){
+                 if($request->service_status == 'active')
+                   {
+                Attendance::where('provider_id', $provider_id)->where('created_at','>=',Carbon::today())->update(['status'=>$request->service_status,'address'=>$request->address]);
+                   }
+                   else{
+
+                  Attendance::where('provider_id', $provider_id)->where('created_at','>=',Carbon::today())->update(['status'=>$request->service_status,'offaddress'=>$request->address]);  
+                   }
+                    if ($request->hasFile('online_image')) {
+                        $file = $request->file('online_image');
+                        $filename = time() . '_' . $file->getClientOriginalName();
+                        $file->move(public_path('uploads/attendance_images'), $filename);
+
+                        // $file->storeAs('attendance_images', $filename); 
+                        Attendance::where('provider_id', $provider_id)->where('created_at','>=',Carbon::today())->update(['online_image'=>$filename]);  
+
+                    }
+
+		       } else {
+		       $attendance = new Attendance;
+		       $attendance->provider_id = $Provider->id;
+		       $attendance->address = $request->address;
+		       $attendance->status = $request->service_status;
+               if ($request->hasFile('online_image')) {
+                    $file = $request->file('online_image');
+                    $filename = time() . '_' . $file->getClientOriginalName();
+                    $file->move(public_path('uploads/attendance_images'), $filename);
+
+                    // $file->storeAs('attendance_images', $filename);
+                    $attendance->online_image = $filename; 
+                }
+		       $attendance->save(); // returns false
+		      }
+		    
+        if($Provider->service) {
+            
+            $provider = $Provider->id;
+            $OfflineOpenRequest = RequestFilter::with(['request.provider','request'])
+                ->where('provider_id', $provider)
+                ->whereHas('request', function($query) use ($provider){
+                    $query->where('status','SEARCHING');
+                    $query->where('current_provider_id','<>',$provider);
+                    $query->orWhereNull('current_provider_id');
+                    })->pluck('id');
+
+            if(count($OfflineOpenRequest)>0) {
+                RequestFilter::whereIn('id',$OfflineOpenRequest)->delete();
+            }   
+           
+            $Provider->service->update(['status' => $request->service_status]);
+           
+
+        } else {
+            if($Provider->type == 2){
+              $service_type_id = 2 ;
+            }
+            else {
+              $a=array("1"=>"1","3"=>"3","4"=>"4");
+              $service_type_id = array_rand($a,1);   
+            }
+
+            
+            
+           $productservice =  ProviderService::create([
+                        'provider_id' => $Provider->id,
+                        'service_type_id' => $service_type_id,
+                        'service_number' => '122',
+                        'service_model' => 'test',
+                        'status'  =>  $request->service_status,
+                        'address' => $request->address
+                    ]);
+
+             
+              
+          
+            //return response()->json(['error' => trans('api.provider.not_approved')]);
+        }
+
+        
+         return response()->json([
+                        'status' => true,
+                        'message' => 'Success.',
+                        'Provider'=>$Provider
+                    ], 200);
+        //  return $Provider;
+    }
+
+    private function isOnLeave($provider_id)
+    {
+        return Leave::where('provider_id', $provider_id)
+            ->where('start_date', '<=', Carbon::today())
+            ->where('end_date', '>=', Carbon::today())
+            ->where('type','leave')
+            ->where('status', 'approved')
+            ->exists();
+    }
+
 
     /**
      * Update password of the provider.

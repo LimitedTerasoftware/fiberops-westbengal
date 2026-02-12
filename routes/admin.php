@@ -15,30 +15,22 @@ Route::get('/tickets', 'AdminController@tickets1')->name('tickets1');
 Route::get('/tickets/create', 'AdminController@addNewTicket')->name('tickets.create');
 Route::post('/tickets/store', 'AdminController@storeTicket')->name('tickets.store');
 Route::get('tickets/{id}/edit', 'AdminController@editTicket')->name('tickets.edit'); 
+Route::delete('/delticket/{id}', 'AdminController@DeleteTicketByAdmin')->name('delticket');
+
 Route::PATCH('tickets/{id}', 'AdminController@updateTicket')->name('tickets.update');
 Route::get('/deleteticket/{id}', 'AdminController@deleteticket')->name('deleteticket');
 Route::get('/getSearchblocklist/{id}','AdminController@getSearchblocklist');
 Route::get('/getSearchproviderlist/{id}','AdminController@getSearchproviderlist');
 Route::get('/addtickets', 'AdminController@addtickets')->name('addtickets');
 Route::get('/heatmap', 'AdminController@heatmap')->name('heatmap');
-
-
-Route::get('/ont-uptime', 'AdminController@ONTdashboard')->name('ont-uptime');
-Route::get('/ont-uptime/csv', 'AdminController@csvManagement')->name('ont-uptime.csv');
-Route::post('/ont-uptime/upload', 'AdminController@uploadCsv')->name('ont-uptime.upload');
-
-// CRUD operations
-Route::get('/ont-uptime/index', 'AdminController@index')->name('ont-uptime.index');
-Route::post('/ont-uptime/store', 'AdminController@store')->name('ont-uptime.store');
-Route::get('/ont-uptime/edit/{id}', 'AdminController@edit')->name('ont-uptime.edit');
-Route::post('/ont-uptime/update/{id}', 'AdminController@update')->name('ont-uptime.update');
-Route::delete('/ont-uptime/delete/{id}', 'AdminController@destroy')->name('ont-uptime.delete');
-
-Route::get('/patroller_attendance', 'AdminController@PatrollerAttendanceIndex')->name('patroller_attendance');
-Route::get('/attendance_track', function () {
-    return view('admin.attendance_track');
-});
-
+Route::get('/employee-pdf-report/{id}/{fromDate}/{toDate}', 'AdminController@generateEmployeePDFReport')->name('employee-pdf-report');
+Route::get('/attendance_dashboard', 'AdminController@AttendanceDashboard')->name('attendance_dashboard');
+Route::get('attendance_list', 'AdminController@PatrollerAttendanceList')->name('attendance_list');
+Route::get('/attendance-export', 'AdminController@exportAttendance')->name('attendance-export');
+Route::get('/staff_details/{id}','AdminController@StaffView')->name('staff_details'); 
+Route::get('/staff_livetrack/{id}','AdminController@showLocationHistory')->name('staff_livetrack'); 
+Route::get('/employee_tracking_data/{id}','AdminController@getTrackingData')->name('employee_tracking_data');
+Route::get('/staff_track/{id}','AdminController@StaffTrack')->name('staff_track'); 
 
 Route::get('/currentlocation/{id}', 'AdminController@currentlocation')->name('currentlocation');
 Route::get('/attendance', 'AdminController@attendance')->name('attendance');
@@ -48,10 +40,13 @@ Route::get('/trackattendance', 'AdminController@trackattendance')->name('trackat
 Route::get('/tracklocations', 'AdminController@tracklocations')->name('tracklocations');
 
 Route::get('/reports', 'Resource\GPResource@gpreports')->name('reports');
+Route::get('/get_completion_trend', 'Resource\GPResource@getCompletionTrend')->name('get_completion_trend');
 
 
 Route::get('/reportattendance', 'AdminController@attendancereport')->name('reportattendance');
 Route::get('/todayattendancereport','AdminController@todayattendancereport')->name('todayattendancereport');
+Route::get('/patrollertickets','AdminController@patrollertickets')->name('patrollertickets');
+
 
 Route::get('/occ', 'AdminController@occ')->name('occ');
 Route::get('/frt', 'AdminController@frt')->name('frt');
@@ -99,6 +94,9 @@ Route::group(['as' => 'provider.'], function () {
     Route::get('provider/{id}/statement', 'Resource\ProviderResource@statement')->name('statement');
     Route::resource('provider/{provider}/document', 'Resource\ProviderDocumentResource');  
     Route::delete('provider/{provider}/service/{document}', 'Resource\ProviderDocumentResource@service_destroy')->name('document.service');
+    Route::post('provider/leave','Resource\ProviderResource@HandleLeaves')->name('leave');
+    Route::delete('provider/del-leaves/{id}','Resource\ProviderResource@DeleteLeaves')->name('del-leaves');
+
 
 });
 Route::get('tracking/provider', 'Resource\ProviderResource@tracking_provider')->name('tracking.provider');
@@ -172,6 +170,7 @@ Route::get('tickets-ups', 'Resource\TripResource@ups')->name('requests.ups');
 Route::get('tickets-fiber', 'Resource\TripResource@fiber')->name('requests.fiber');
 Route::get('tickets-poles', 'Resource\TripResource@poles')->name('requests.poles');
 Route::get('tickets-electronics', 'Resource\TripResource@electronics')->name('requests.electronics');
+
 
 Route::get('push', 'AdminController@push_index')->name('push.index');
 Route::post('push', 'AdminController@push_store')->name('push.store');
@@ -260,9 +259,100 @@ Route::get('todaynotstartedteams', 'AdminController@todaynotstartedteams')->name
 
 Route::get('/teams_status', 'Resource\ProviderFleetResource@teams_status')->name('teams_status');
 
-Route::get('/dashboard-test', 'Resource\ProviderFleetResource@dashboard')->name('dashboard-test');
+//Route::get('/dashboard-test', 'Resource\ProviderFleetResource@dashboard')->name('dashboard-test');
+//Route::get('/dashboard-test', 'Resource\ProviderResource@index_new')->name('dashboard-test');
+
+
+//main dashboard
+Route::get('get_dashboard_data', 'AdminController@getDashboardData')->name('get_dashboard_data');
+Route::get('get_teams_data', 'AdminController@getTeamStatus')->name('get_teams_data');
+Route::get('get_dashboard_map', 'AdminController@dashboardMap')->name('get_dashboard_map');
+
+Route::get('/provider-export', 'AdminController@exportProviders')->name('provider-export');
+
+//Reports
+Route::get('workforce', 'AdminController@dashboard_workforce')->name('workforce');
+Route::get('dailyrepots', 'Resource\GPResource@frtreports')->name('dailyrepots');
+Route::get('get_todayfrtreport', 'Resource\GPResource@gettodayFrtReport')->name('get_todayfrtreport');
+//Route::get('workforce_details', 'Resource\GPResource@getFrtReport')->name('workforce_details');
+Route::get('get_frtreport', 'Resource\GPResource@getFrtReport')->name('get_frtreport');
+Route::get('get_todayfrt_details', 'Resource\GPResource@getTodayFrtDetails')->name('get_todayfrt_details');
+Route::get('workforce_details', 'Resource\GPResource@frtreports_details')->name('workforce_details');
+Route::get('get_districts/{zone_id}', 'Resource\GPResource@get_districts')->name('get_districts');
+Route::get('get_employees/{districtId}', 'Resource\GPResource@get_employees')->name('get_employees');
+Route::get('get_blocks/{districtId}', 'Resource\GPResource@getBlocks')->name('get_blocks');
+
+Route::get('get_sub_categories/{categoryId}', 'Resource\GPResource@getSubCategories')->name('get_sub_categories');
+Route::get('gp_mapping', 'Resource\GPResource@gp_mapping')->name('gp_mapping');
+Route::post('gp_mapping', 'Resource\GPResource@gp_mapping_update')->name('gp_mapping_update');
+Route::get('track', 'Resource\GPResource@tracking')->name('track');
+Route::get('track_data/{id}','Resource\GPResource@getTrackingData')->name('track_data');
+Route::get('/ongoing_ticket_data', 'Resource\GPResource@ongoingTicketData')->name('ongoing_ticket_data');
+Route::get('/ongoing_ticket_range', 'Resource\GPResource@getRangPickupTickets')->name('ongoing_ticket_range');
+Route::get('ongoing_tt_details', 'Resource\GPResource@ongoing_details')->name('ongoing_tt_details');
+
+
+Route::get('/dashboard-test', 'AdminController@dashboard_test')->name('dashboard-test');
+
+Route::get('/velocity', 'AdminController@velocityTrend')->name('velocity');
+Route::get('/district-heatmap', 'AdminController@districtHeatmap')->name('district-heatmap');
+
+
+
+Route::resource('olt-locations', "OltLocationController");
+Route::get('/uptime', "OltLocationController@UptimeMng")->name('uptime');
+Route::get('/ont_data', "OltLocationController@OntData")->name('ont_data');
+Route::get('/uptime_data', "OltLocationController@OntDataList")->name('uptime_data');
+Route::get('/olt_dashboard', "OltLocationController@OltData")->name('olt_dashboard');
+Route::get('/olt_performance', "OltLocationController@OltDataList")->name('olt_performance');
+Route::get('/samriddh_dashboard', "OltLocationController@SamriddhData")->name('samriddh_dashboard');
+Route::get('/samriddh_analytics', "OltLocationController@SamriddhDataList")->name('samriddh_analytics');
+Route::post('upload-otdr-images', 'AdminController@uploadImages')->name('upload-otdr-images');
+
+
+
+Route::post('/ont-upload', "OltLocationController@OntUpload")->name('ont-upload');
+Route::post('/olt-upload', "OltLocationController@OltUpload")->name('olt-upload');
+
+
+Route::get('/olt-export', 'OltLocationController@ExportOlt')->name('olt-export');
+
+
+Route::get('/blocks', "OltLocationController@getBlocks")->name('blocks');
+
+Route::get('/php-test', 'AdminController@php_test')->name('php-test');
+
+
+Route::get('/joint_enclouser_reports', 'Resource\GPResource@joint_enclouser_reports')->name('joint_enclouser_reports');
+
+Route::get('/joint_enclouser_tickets', 'Resource\GPResource@joint_enclouser_tickets')->name('joint_enclouser_tickets');
+
+Route::get('/joint_enclosure_download', 'Resource\GPResource@joint_enclosure_download')->name('joint_enclosure_download');
+Route::get('/joint_enclouser_img_download', 'Resource\GPResource@jointEnclosureDownload')->name('joint_enclouser_img_download');
+
+
 
 
 Route::get('/unassigned_role', function () {
     return view('admin.unassigned_roles');
 });
+
+// -------------------Materials--------------------------------------
+Route::get('stock-entry/get-material-details', 'InventoryMng\InventoryController@getMaterialDetails')->name('stock-entry.get-material-details');
+
+Route::resource('materials', 'InventoryMng\MaterialController');
+Route::resource('stock-entry', 'InventoryMng\InventoryController');
+Route::resource('stock-issue', 'InventoryMng\StockIssueController');
+
+Route::get('materials/{material}/get', 'InventoryMng\MaterialController@getMaterial')->name('materials.get');
+Route::post('materials/bulk-delete', 'InventoryMng\MaterialController@bulkDelete')->name('materials.bulk-delete');
+Route::get('get-employees', 'InventoryMng\InventoryController@getEmployees')->name('get-employees');
+Route::get('emp-stock-blnc', 'InventoryMng\StockIssueController@getEmployeeBalance')->name('emp-stock-blnc');
+Route::get('material-stock-blnc', 'InventoryMng\StockIssueController@getMatBalance')->name('material-stock-blnc');
+Route::get('stock-report', 'InventoryMng\StockIssueController@employeeStockReport')->name('stock-report');
+
+Route::get('/frequently_down_gps', 'InventoryMng\MaterialController@getFrequentlyDownGps')->name('frequently_down_gps');
+Route::get('/get_recurring_gp_trends', 'InventoryMng\MaterialController@getRecurringGpTrends')->name('get_recurring_gp_trends');
+
+
+

@@ -54,6 +54,7 @@ class FavouriteLocationResource extends Controller
      */
     public function store(Request $request)
     {
+        dd($request->all());
         $this->validate($request, [
             'address' => 'required|max:255',
             'latitude' => 'required|numeric',

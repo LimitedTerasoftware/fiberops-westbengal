@@ -19,6 +19,9 @@ use App\RequestFilter;
 use App\ProviderService;
 use App\ServiceType;
 use DB;
+use Session;
+use App\Services\GoogleMapsService;
+
 
 
 class DispatcherController extends Controller
@@ -141,8 +144,25 @@ class DispatcherController extends Controller
 
     public function assignform($id)
     {
-     $districts = DB::table('districts')->get();
-     $providers =Provider::get(); 
+    Session::put('user', Auth::User());
+    $user = Session::get('user');
+ 
+    $district_id = $user->district_id;
+
+    $query = DB::table('districts')->where('state_id',$user->state_id);
+      if (!empty($district_id)) {
+            $query->where('id', $district_id);
+        }
+    $districts = $query->get();
+    $providerQuery = Provider::where('state_id',$user->state_id);
+
+        if (!empty($district_id)) {
+            $providerQuery->where('district_id', $district_id);
+        }
+
+    $providers = $providerQuery->get();
+
+
      $service_types =ServiceType::get(); 
      $userrequest = UserRequests::findOrFail($id);   
      return view('admin.assign',compact('userrequest','providers','service_types','districts'));
@@ -228,14 +248,17 @@ class DispatcherController extends Controller
     public function onholdrequest(Request $request)
     {
         try {
+           
             $data=$request->all();
             $request_id = $data['request_id'];
             $booking_id = $data['booking_id'];
-            $downreason = $data['downreason'];
+            $downreason = $data['downreason_name'];
             $downreasonindetailed = $data['downreasonindetailed'];
+            $subcategory = $data['sub_category_name'];
             $Request = UserRequests::findOrFail($request_id);
             $Request->downreason = $downreason ;
             $Request->downreasonindetailed = $downreasonindetailed;
+            $Request->subcategory =$subcategory;
             $Request->autoclose='Auto';
             $Request->status = 'ONHOLD';
             $Request->save();
@@ -243,7 +266,8 @@ class DispatcherController extends Controller
              $updateinput = array(
                   'status' => 1,
                   'downreason'=> $downreason,
-                  'downreasonindetailed'=>$downreasonindetailed
+                  'downreasonindetailed'=>$downreasonindetailed,
+                  'subsategory'=>$subcategory
                 );
 
             DB::table('master_tickets')
@@ -466,14 +490,11 @@ class DispatcherController extends Controller
         }
 
         try{
+            $googleMaps = new GoogleMapsService();
+            $details = $googleMaps->getDirections($request->s_latitude, $request->s_longitude, $request->d_latitude, $request->d_longitude);
+            $route_key = isset($details['routes'][0]['overview_polyline']['points']) ? $details['routes'][0]['overview_polyline']['points'] : '';
 
-            $details = "https://maps.googleapis.com/maps/api/directions/json?origin=".$request->s_latitude.",".$request->s_longitude."&destination=".$request->d_latitude.",".$request->d_longitude."&mode=driving&key=".Setting::get('map_key');
 
-            $json = curl($details);
-
-            $details = json_decode($json, TRUE);
-
-            $route_key = $details['routes'][0]['overview_polyline']['points'];
 
             $UserRequest = new UserRequests;
             $UserRequest->booking_id = Helper::generate_booking_id();

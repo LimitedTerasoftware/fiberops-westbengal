@@ -1,0 +1,20 @@
+<?php 
+return array(
+    'visitor_report'   => 'Visitors Report',
+    'from_date'        => 'From Date',
+    'to_date'          => 'To Date',
+    'get_report'       => 'Get Report',
+    'total_visitor'    => 'Total Visitors',
+    'checkin_visitor'  => 'Checkin Visitors',
+    'checkout_visitor' => 'Check Out Visitors',
+    'visitor_id'       => 'VisitorID',
+    'employee'         => 'e-Learning Center',
+    'checkin'          => 'Checkin',
+    'check_out'        => 'Check-out',
+    'n/a'              => 'N/A',
+    'print'              => 'Print',
+    'data_not_found'   => 'The Visitors data not found',
+    'content_used_report'  => 'Content Used Report',
+    'vi_d'                => 'Visited Count',
+    'content'                => 'Content',
+);

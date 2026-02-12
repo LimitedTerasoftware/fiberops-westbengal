@@ -38,6 +38,8 @@ class Provider extends Authenticatable
         'block_id',
         'zone_id',
         'version',
+        'joiningdate',
+        "state_id"
     ];
 
     /**

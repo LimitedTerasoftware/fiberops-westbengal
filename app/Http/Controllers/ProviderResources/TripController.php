@@ -40,6 +40,8 @@ use App\UserWallet;
 use App\ProviderWallet;
 use App\FleetWallet;
 use App\WalletRequests;
+use App\MasterTicket;
+use DB;
 
 use Console;
 
@@ -392,8 +394,9 @@ class TripController extends Controller
      */
     public function history(Request $request)
     {
+      
         if($request->ajax()) {
-
+         
             $Jobs = UserRequests::where('provider_id', Auth::user()->id)
                     ->where('status', 'COMPLETED')
                     ->orderBy('finished_at','asc')
@@ -418,6 +421,7 @@ class TripController extends Controller
             }
             return $Jobs;
         }
+        
         $Jobs = UserRequests::where('provider_id', Auth::guard('provider')->user()->id)->with('user', 'service_type', 'payment', 'rating')->get();
         return view('provider.trip.index', compact('Jobs'));
     }
@@ -1694,5 +1698,51 @@ class TripController extends Controller
         return true;
     }
     
+   
+
+public function updateIssueFields(Request $request, $id)
+{
+    $this->validate($request, [
+        'issue_type' => 'required|string',
+        'issue_sub_type' => 'required|string',
+        'reason' => 'required|string',
+    ]);
+
+    try {
+        DB::transaction(function () use ($request, $id) {
+
+            // Update UserRequests
+            $userRequest = UserRequests::findOrFail($id);
+            $userRequest->downreason = $request->issue_type;
+            $userRequest->subcategory = $request->issue_sub_type; 
+            $userRequest->downreasonindetailed = $request->reason;
+            $userRequest->save();
+
+            // Update MasterTicket if exists
+            $masterTicket = MasterTicket::where('ticketid', $userRequest->booking_id)->first();
+            if ($masterTicket) {
+                $masterTicket->downreason = $request->issue_type;
+                $masterTicket->subsategory = $request->issue_sub_type;
+                $masterTicket->downreasonindetailed = $request->reason;
+                $masterTicket->save();
+            }
+
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Fields updated successfully'
+        ]);
+
+    } catch (ModelNotFoundException $e) {
+        Log::error("updateIssueFields - Request not found: ID {$id}, Error: ".$e->getMessage());
+        return response()->json(['error' => 'Request not found'], 404);
+
+    } catch (\Exception $e) {
+        Log::error("updateIssueFields - Something went wrong: ID {$id}, Error: ".$e->getMessage());
+        return response()->json(['error' => 'Something went wrong'], 500);
+    }
+}
+
 
 }

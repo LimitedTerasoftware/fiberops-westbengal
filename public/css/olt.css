@@ -1,0 +1,725 @@
+/* TerraSoft CRUD UI Styles */
+.terrasoft-main-content {
+    min-height: 100vh;
+    background: #f8fafc;
+    transition: margin-left 0.3s ease;
+}
+
+.terrasoft-page-container {
+    padding: 24px;
+    max-width: 100%;
+}
+
+/* Page Header */
+.terrasoft-page-header {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+}
+
+.terrasoft-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.terrasoft-header-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.terrasoft-header-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+}
+
+.terrasoft-page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 4px 0;
+}
+
+.terrasoft-page-subtitle {
+    font-size: 14px;
+    color: #64748b;
+    margin: 0;
+}
+
+.terrasoft-header-stats {
+    display: flex;
+    gap: 24px;
+}
+
+.terrasoft-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #f1f5f9;
+    border-radius: 8px;
+}
+
+.terrasoft-stat-number {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.terrasoft-stat-label {
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* Action Bar */
+.terrasoft-action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    gap: 16px;
+}
+
+.terrasoft-search-container {
+    flex: 1;
+    max-width: 400px;
+}
+
+.terrasoft-search-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.terrasoft-search-input i {
+    position: absolute;
+    left: 12px;
+    color: #64748b;
+    z-index: 1;
+}
+
+.terrasoft-search-input input {
+    width: 100%;
+    padding: 12px 12px 12px 40px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.terrasoft-search-input input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.terrasoft-action-buttons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+/* Filter Dropdown */
+.terrasoft-filter-dropdown {
+    position: relative;
+}
+
+.terrasoft-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.terrasoft-filter-btn:hover {
+    border-color: #9ca3af;
+    background: #f9fafb;
+}
+
+.terrasoft-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    min-width: 160px;
+    z-index: 10;
+    display: none;
+}
+
+.terrasoft-dropdown-menu.show {
+    display: block;
+}
+
+.terrasoft-dropdown-item {
+    display: block;
+    padding: 12px 16px;
+    color: #374151;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.terrasoft-dropdown-item:hover {
+    background: #f3f4f6;
+}
+
+.terrasoft-dropdown-item.active {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+/* Buttons */
+.terrasoft-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.terrasoft-btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+}
+
+.terrasoft-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.terrasoft-btn-secondary {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+.terrasoft-btn-secondary:hover {
+    background: #e2e8f0;
+}
+
+.terrasoft-btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.terrasoft-btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Table */
+.terrasoft-table-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+}
+
+.terrasoft-table-wrapper {
+    overflow-x: auto;
+}
+
+.terrasoft-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.terrasoft-table thead {
+    background: #f8fafc;
+}
+
+.terrasoft-table th {
+    padding: 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.terrasoft-th-sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.terrasoft-th-sortable:hover {
+    background: #f1f5f9;
+}
+
+.terrasoft-th-sortable i {
+    margin-left: 4px;
+    font-size: 12px;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.terrasoft-th-sortable:hover i {
+    opacity: 1;
+}
+
+.terrasoft-table-row {
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.2s ease;
+}
+
+.terrasoft-table-row:hover {
+    background: #f8fafc;
+}
+
+.terrasoft-table td {
+    padding: 16px;
+    vertical-align: top;
+}
+
+/* Table Cell Styles */
+.terrasoft-location-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.terrasoft-location-name {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 15px;
+}
+
+.terrasoft-location-code {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.terrasoft-admin-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.terrasoft-state {
+    font-weight: 500;
+    color: #1e293b;
+    font-size: 14px;
+}
+
+.terrasoft-district {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.terrasoft-lgd {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.terrasoft-technical-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.terrasoft-ip {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 13px;
+    color: #1e293b;
+    background: #f1f5f9;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.terrasoft-gps {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.terrasoft-date {
+    font-size: 14px;
+    color: #64748b;
+}
+
+/* Action Buttons */
+.terrasoft-action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.terrasoft-action-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.terrasoft-btn-view {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.terrasoft-btn-view:hover {
+    background: #dbeafe;
+    transform: scale(1.1);
+}
+
+.terrasoft-btn-edit {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.terrasoft-btn-edit:hover {
+    background: #dcfce7;
+    transform: scale(1.1);
+}
+
+.terrasoft-btn-delete {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.terrasoft-btn-delete:hover {
+    background: #fee2e2;
+    transform: scale(1.1);
+}
+
+/* Pagination */
+.pagination-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.5rem;
+}
+
+.pagination-info {
+    font-size: 0.875rem;
+    color: #718096;
+}
+
+.pagination {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0.25rem;
+}
+
+.page-item {
+    display: block;
+}
+
+.page-link {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    color: #4a5568;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.page-item.active .page-link {
+    background-color: #4299e1;
+    border-color: #4299e1;
+    color: white;
+}
+
+.page-item.disabled .page-link {
+    color: #a0aec0;
+    cursor: not-allowed;
+}
+
+.page-link:hover:not(.disabled) {
+    background-color: #f7fafc;
+    border-color: #cbd5e0;
+}
+
+/* Modal */
+.terrasoft-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+.terrasoft-modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.terrasoft-modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.terrasoft-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.terrasoft-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.terrasoft-modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.terrasoft-modal-close:hover {
+    background: #f3f4f6;
+}
+
+.terrasoft-modal-body {
+    padding: 24px;
+}
+
+.terrasoft-delete-warning {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.terrasoft-delete-warning i {
+    font-size: 24px;
+}
+
+.terrasoft-delete-warning p {
+    margin: 0;
+    color: #374151;
+    line-height: 1.5;
+}
+
+.terrasoft-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* Details View Styles */
+.terrasoft-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.terrasoft-details-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+
+.terrasoft-card-wide {
+    grid-column: 1 / -1;
+}
+
+.terrasoft-card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+}
+
+.terrasoft-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.terrasoft-card-title i {
+    color: #3b82f6;
+}
+
+.terrasoft-card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.terrasoft-card-content {
+    padding: 24px;
+}
+
+/* Detail Items */
+.terrasoft-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.terrasoft-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.terrasoft-detail-full {
+    grid-column: 1 / -1;
+}
+
+.terrasoft-detail-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.terrasoft-detail-value {
+    font-size: 14px;
+    color: #1e293b;
+    font-weight: 500;
+}
+
+.terrasoft-code {
+    font-family: 'Monaco', 'Menlo', monospace;
+    background: #f1f5f9;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.terrasoft-ip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.terrasoft-copy-btn {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.terrasoft-copy-btn:hover {
+    background: #f1f5f9;
+    color: #3b82f6;
+}
+
+.terrasoft-metric {
+    font-weight: 600;
+    color: #059669;
+}
+
+
+
+
+
+
+
+
+
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .terrasoft-main-content {
+        margin-left: 0;
+        padding-top: 60px;
+    }
+    
+    .terrasoft-page-container {
+        padding: 16px;
+    }
+    
+    .terrasoft-header-content {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+    
+    .terrasoft-action-bar {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .terrasoft-search-container {
+        max-width: none;
+    }
+    
+    .terrasoft-action-buttons {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .terrasoft-table-wrapper {
+        overflow-x: scroll;
+    }
+    
+   .pagination-section {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+}

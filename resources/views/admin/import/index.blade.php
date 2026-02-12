@@ -48,7 +48,7 @@
                             <select class="form-control select-box" name="type" id="import_type" required>
                                 <option value="">Please Select Import Type</option>
                                 <option value="1">Tickets</option>
-                                <option value="2">Patroller Tickets</option>
+                                <!--<option value="2">Patroller Tickets</option>--->
                             </select>
                         </div>
 

@@ -20,6 +20,8 @@ use App\ProviderService;
 use App\ServiceType;
 use App\SubmitFile;
 use DB;
+use App\Services\GoogleMapsService;
+
 
 
 class ProviderDispatcherController extends Controller
@@ -720,15 +722,9 @@ public function closerequest(Request $request)
         }
 
         try{
-
-            $details = "https://maps.googleapis.com/maps/api/directions/json?origin=".$request->s_latitude.",".$request->s_longitude."&destination=".$request->d_latitude.",".$request->d_longitude."&mode=driving&key=".Setting::get('map_key');
-
-            $json = curl($details);
-
-            $details = json_decode($json, TRUE);
-
-            $route_key = $details['routes'][0]['overview_polyline']['points'];
-
+            $googleMaps = new GoogleMapsService();
+            $details = $googleMaps->getDirections($request->s_latitude, $request->s_longitude, $request->d_latitude, $request->d_longitude);
+            $route_key = isset($details['routes'][0]['overview_polyline']['points']) ? $details['routes'][0]['overview_polyline']['points'] : '';
             $UserRequest = new UserRequests;
             $UserRequest->booking_id = Helper::generate_booking_id();
             $UserRequest->user_id = $User->id;
