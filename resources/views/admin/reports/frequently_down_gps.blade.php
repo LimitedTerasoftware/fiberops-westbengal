@@ -14,7 +14,14 @@
             <!-- Filters -->
             <div class="filter-card">
                 <form action="{{ route('admin.frequently_down_gps') }}" method="GET">
+
                     <div class="filter-row">
+                       
+                            <div class="badge bg-warning text-dark me-2">
+                                <i class="bi bi-calendar-check-fill"></i> Weekly Persistent
+                            </div>
+                      
+
                         <div class="filter-pill">
                             <i class="bi bi-geo-alt-fill text-danger"></i>
                             <select name="district_id" onchange="this.form.submit()">
@@ -36,6 +43,16 @@
                                 </select>
                             </div>
                         @endif
+
+                        <div class="filter-pill">
+                            <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                            <select name="issue_filter" onchange="this.form.submit()">
+                                <option value="">All Issues</option>
+                                @foreach($allIssues as $issue)
+                                    <option value="{{ $issue }}" {{ (isset($issue_filter) && $issue_filter == $issue) ? 'selected' : '' }}>{{ $issue }}</option>
+                                @endforeach
+                            </select>
+                        </div>
 
                         <div class="filter-pill">
                             <i class="bi bi-calendar-week-fill text-warning"></i>
@@ -62,8 +79,9 @@
                                 <th>District</th>
                                 <th>Block (Mandal)</th>
                                 <th>GP Name (LGD Code)</th>
-                                <th>Total Downtime Tickets</th>
-                                <th>Top Reason</th>
+                                <th>Total Tickets</th>
+                                <th>Issue Breakdown</th>
+                                <th>Issue %</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -76,20 +94,63 @@
                                     <td>
                                         <span class="ticket-badge ticket-danger">{{ $row->ticket_count }}</span>
                                     </td>
-                                    <td>{{ $row->top_reason }}</td>
+                                    <td>
+                                        @if(isset($row->breakdown) && count($row->breakdown) > 0)
+                                            <ul style="list-style: none; padding: 0; margin: 0; font-size: 11px;">
+                                                @foreach($row->breakdown as $bd)
+                                                    <li class="mb-1 d-flex justify-content-between">
+                                                        <span>{{ $bd->downreason }}:</span>
+                                                        <span class="fw-bold">{{ $bd->count }}</span>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if(isset($row->breakdown) && count($row->breakdown) > 0 && $row->ticket_count > 0)
+                                            <ul style="list-style: none; padding: 0; margin: 0; font-size: 11px;">
+                                                @foreach($row->breakdown as $bd)
+                                                    @php
+                                                        $pct = round(($bd->count / $row->ticket_count) * 100, 1);
+                                                    @endphp
+                                                    <li class="mb-1 d-flex justify-content-between">
+                                                        <span>{{ $bd->downreason }}:</span>
+                                                        <span class="fw-bold">{{ $pct }}%</span>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center">No records found.</td>
+                                    <td colspan="7" class="text-center">No records found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
+                   <div class="pagination-section">
+                        <div class="pagination-info">
+                            Showing 
+                            {{ ($results->currentPage() - 1) * $results->perPage() + 1 }} 
+                            to 
+                            {{ ($results->currentPage() * $results->perPage()) > $results->total() 
+                                ? $results->total() 
+                                : $results->currentPage() * $results->perPage() 
+                            }} 
+                            of {{ $results->total() }} entries
+                        </div>
+                        <nav class="pagination-nav">
+                            {{ $results->appends(request()->input())->links() }}
+                        </nav>
+                    </div>
 
-                <div class="mt-3 p-2">
-                    {{ $results->appends(request()->input())->links() }}
-                </div>
+            
             </div>
         </div>
     </div>
@@ -98,6 +159,56 @@
 @section('styles')
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <style>
+        /* Pagination */
+.pagination-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.5rem;
+}
+
+.pagination-info {
+    font-size: 0.875rem;
+    color: #718096;
+}
+
+.pagination {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0.25rem;
+}
+
+.page-item {
+    display: block;
+}
+
+.page-link {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    color: #4a5568;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.page-item.active .page-link {
+    background-color: #4299e1;
+    border-color: #4299e1;
+    color: white;
+}
+
+.page-item.disabled .page-link {
+    color: #a0aec0;
+    cursor: not-allowed;
+}
+
+.page-link:hover:not(.disabled) {
+    background-color: #f7fafc;
+    border-color: #cbd5e0;
+}
         .dashboard-page {
             background-color: #f8fafc;
         }
@@ -177,5 +288,14 @@
             background: #fee2e2;
             color: #dc2626;
         }
+        
+@media (max-width: 768px) {
+.pagination-section {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+}
     </style>
 @endsection

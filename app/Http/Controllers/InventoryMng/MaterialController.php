@@ -257,80 +257,191 @@ class MaterialController extends Controller
         }
     }
 
-    public function getFrequentlyDownGps(Request $request)
-    {
-        try {
-            $user = Session::get('user');
-            $state_id = isset($user->state_id) ? $user->state_id : 1; 
-            $from_date = $request->get('from_date');
-            $to_date = $request->get('to_date');
-            $district_id = $request->get('district_id');
-            $block_id = $request->get('block_id');
+ public function getFrequentlyDownGps(Request $request)
+{
+    try {
 
-            $query = DB::table('master_tickets')
+        $user = Session::get('user');
+        $state_id = $user->state_id ?? 1;
+
+        $from_date   = $request->get('from_date');
+        $to_date     = $request->get('to_date');
+        $district_id = $request->get('district_id');
+        $block_id    = $request->get('block_id');
+        $issue_filter = $request->get('issue_filter');
+
+
+        $expectedWeeks = DB::table('master_tickets')
+            ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
+            ->where('user_requests.state_id', $state_id)
+            ->whereBetween('master_tickets.downdate', [$from_date, $to_date])
+            ->select(DB::raw('COUNT(DISTINCT YEARWEEK(master_tickets.downdate,1)) as weeks'))
+            ->value('weeks');
+
+
+        $query = DB::table('master_tickets')
+            ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
+            ->select(
+                'master_tickets.lgd_code',
+                'master_tickets.gpname',
+                'master_tickets.district',
+                'master_tickets.mandal',
+                DB::raw('COUNT(*) as ticket_count'),
+                DB::raw('COUNT(DISTINCT YEARWEEK(master_tickets.downdate,1)) as week_count')
+            )
+            ->where('user_requests.state_id', $state_id)
+            ->whereNotNull('master_tickets.lgd_code')
+            ->whereBetween('master_tickets.downdate', [$from_date, $to_date]);
+
+  
+
+        if ($district_id) {
+
+            $query->where('user_requests.district_id', $district_id);
+
+        }
+
+
+        if ($block_id) {
+
+            $blockName = DB::table('blocks')
+                ->where('id', $block_id)
+                ->value('name');
+
+            if ($blockName) {
+
+                $query->where('master_tickets.mandal', $blockName);
+
+            }
+        }
+
+   
+
+        if ($issue_filter) {
+
+            $query->whereExists(function ($sub) use (
+                $issue_filter,
+                $state_id,
+                $from_date,
+                $to_date
+            ) {
+
+                $sub->select(DB::raw(1))
+                    ->from('master_tickets as mt2')
+                    ->join('user_requests as ur2', 'mt2.ticketid', '=', 'ur2.booking_id')
+                    ->whereRaw('mt2.lgd_code = master_tickets.lgd_code')
+                    ->where('mt2.downreason', $issue_filter)
+                    ->where('ur2.state_id', $state_id)
+                    ->whereBetween('mt2.downdate', [$from_date, $to_date]);
+
+            });
+        }
+
+   
+
+        $results = $query
+            ->groupBy(
+                'master_tickets.lgd_code',
+                'master_tickets.gpname',
+                'master_tickets.district',
+                'master_tickets.mandal'
+            )
+            ->havingRaw(
+                "COUNT(DISTINCT YEARWEEK(master_tickets.downdate,1)) = ?",
+                [$expectedWeeks]
+            )
+            ->orderBy('ticket_count', 'desc')
+            ->paginate(15);
+
+      
+
+        $lgdCodes = $results->pluck('lgd_code')->toArray();
+
+        $breakdowns = [];
+
+        if (!empty($lgdCodes)) {
+
+            $breakdownRows = DB::table('master_tickets')
                 ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
                 ->select(
                     'master_tickets.lgd_code',
-                    'master_tickets.gpname',
-                    'master_tickets.district',
-                    'master_tickets.mandal',
-                    DB::raw('COUNT(master_tickets.id) as ticket_count')
+                    'master_tickets.downreason',
+                    DB::raw('COUNT(*) as count')
                 )
                 ->where('user_requests.state_id', $state_id)
-                ->whereNotNull('master_tickets.lgd_code');
+                ->whereBetween('master_tickets.downdate', [$from_date, $to_date])
+                ->whereIn('master_tickets.lgd_code', $lgdCodes)
+                ->whereNotNull('master_tickets.downreason')
+                ->groupBy(
+                    'master_tickets.lgd_code',
+                    'master_tickets.downreason'
+                )
+                ->orderBy('count', 'desc')
+                ->get();
 
-            if ($from_date && $to_date) {
-                $query->whereBetween('master_tickets.downdate', [$from_date, $to_date]);
+            foreach ($breakdownRows as $row) {
+
+                $breakdowns[$row->lgd_code][] = $row;
+
             }
-
-            if ($district_id) {
-                $query->where('user_requests.district_id', $district_id);
-            }
-
-            if ($block_id) {
-                $blockName = DB::table('blocks')->where('id', $block_id)->value('name');
-                if ($blockName) {
-                    $query->where('master_tickets.mandal', $blockName);
-                }
-            }
-
-            $results = $query->groupBy('master_tickets.lgd_code', 'master_tickets.gpname', 'master_tickets.district', 'master_tickets.mandal','master_tickets.ticketid')
-                ->orderBy('ticket_count', 'desc')
-                ->paginate(15);
-
-            foreach ($results as $row) {
-
-                $topReasonQuery = DB::table('master_tickets')
-                    ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
-                    ->select('master_tickets.downreason', DB::raw('COUNT(*) as count'))
-                    ->where('master_tickets.lgd_code', $row->lgd_code)
-                    ->whereNotNull('master_tickets.downreason')
-                    ->where('user_requests.state_id', $state_id);
-
-                if ($from_date && $to_date) {
-                    $topReasonQuery->whereBetween('master_tickets.downdate', [$from_date, $to_date]);
-                }
-
-                $reason = $topReasonQuery->groupBy('master_tickets.downreason')
-                    ->orderBy('count', 'desc')
-                    ->first();
-
-                $row->top_reason = $reason ? $reason->downreason : 'N/A';
-            }
-
-            // Filters Data
-            $districts = DB::table('districts')->where('state_id', $state_id)->get();
-            $blocks = [];
-            if ($district_id) {
-                $blocks = DB::table('blocks')->where('district_id', $district_id)->get();
-            }
-
-            return view('admin.reports.frequently_down_gps', compact('results', 'districts', 'blocks', 'from_date', 'to_date', 'district_id', 'block_id'));
-
-        } catch (Exception $e) {
-            return back()->with('flash_error', 'Something went wrong: ' . $e->getMessage());
         }
+
+      
+
+        foreach ($results as $row) {
+
+            $row->breakdown = $breakdowns[$row->lgd_code] ?? [];
+
+            $row->total_breakdown_count =
+                array_sum(array_column($row->breakdown, 'count'));
+
+            $row->top_reason =
+                $row->breakdown[0]->downreason ?? 'N/A';
+        }
+
+
+        $districts = DB::table('districts')
+            ->where('state_id', $state_id)
+            ->get();
+
+        $blocks = $district_id
+            ? DB::table('blocks')->where('district_id', $district_id)->get()
+            : [];
+
+        $allIssues = DB::table('master_tickets')
+            ->whereNotNull('downreason')
+            ->where('ticketid', 'NOT LIKE', 'INC%')
+             ->whereBetween('downdate', [$from_date, $to_date])
+            ->distinct()
+            ->orderBy('downreason')
+            ->pluck('downreason');
+
+        return view(
+            'admin.reports.frequently_down_gps',
+            compact(
+                'results',
+                'districts',
+                'blocks',
+                'from_date',
+                'to_date',
+                'district_id',
+                'block_id',
+                'issue_filter',
+                'allIssues'
+            )
+        );
+
     }
+    catch (Exception $e) {
+
+        return back()->with(
+            'flash_error',
+            'Error: ' . $e->getMessage()
+        );
+    }
+}
+
+
     
     public function getRecurringGpTrends(Request $request)
     {
@@ -357,12 +468,13 @@ class MaterialController extends Controller
                 $recurringGps = $query->select(
                         'master_tickets.lgd_code',
                         'master_tickets.gpname',
+                         DB::raw('COUNT(*) as ticket_count'),
                         DB::raw('COUNT(DISTINCT DATE(master_tickets.downdate)) as down_days'),
                         DB::raw('COUNT(DISTINCT YEARWEEK(master_tickets.downdate, 1)) as distinct_weeks')
                     )
                     ->groupBy('master_tickets.lgd_code', 'master_tickets.gpname')
                     ->having('distinct_weeks', '=', $expectedWeeks)
-                    ->orderBy('down_days', 'desc')
+                    ->orderBy('ticket_count', 'desc')
                      ->get();
 
 
@@ -398,7 +510,7 @@ class MaterialController extends Controller
                 $breakdownQuery->whereBetween('master_tickets.downdate', [$fromDate, $toDate]);
             }
 
-            $breakdownResults = $breakdownQuery->groupBy('master_tickets.lgd_code', 'master_tickets.gpname', 'master_tickets.downreason')->get();
+            $breakdownResults = $breakdownQuery->groupBy('master_tickets.lgd_code', 'master_tickets.gpname', 'master_tickets.downreason')->orderBy('count', 'desc')->get();
 
             // Process results
             foreach ($breakdownResults as $row) {

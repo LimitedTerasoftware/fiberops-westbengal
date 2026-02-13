@@ -285,7 +285,7 @@
        <div class="col-md-12 mb-2">
                     <div class="canvas-card mt-4">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-                            <h6 class="fw-bold mb-0">Recurring GP Issue Trends   <span id="recurringGpCount" style="color:red;font-weight:bold;cursor:pointer"  onclick="redirectToRecurringGps()">0</span></h6>  
+                            <h6 class="fw-bold mb-0">Recurring GP Issue Trends   <span id="recurringGpCount" style="color:red;font-weight:bold;cursor:pointer">0</span></h6>  
 
                             <div class="gap-1" style="display:flex; justify-content:space-between; align-items:center;">
                             
@@ -353,6 +353,14 @@
                 });
                 $('#btn-recurring-filter').click(function () {
                              fetchRecurringGpTrends();
+                });
+                // Link to Frequently Down GPs Report
+                $('#recurringGpCount').css('cursor', 'pointer').click(function () {
+                    const fromDate = $('#recurring_from_date').val();
+                    const toDate = $('#recurring_to_date').val();
+                    let url = "{{ route('admin.frequently_down_gps') }}";
+                    url += `?from_date=${fromDate}&to_date=${toDate}`;
+                    window.open(url, '_blank');
                 });
               
             });
@@ -558,13 +566,7 @@
                             }
                         });
             }
-            function redirectToRecurringGps() {
-                const fromDate = document.getElementById('recurring_from_date').value;
-                const toDate   = document.getElementById('recurring_to_date').value;
-
-                const url = `/admin/gps?type=regularly_down&from=${fromDate}&to=${toDate}`;
-                window.location.href = url;
-            }
+         
 
 
     </script>
