@@ -25,6 +25,10 @@ use App\RequestFilter;
 use App\District;
 use App\Helpers\Helper;
 use Mail;
+use App\Leave;
+use Carbon\Carbon;
+
+
 
 class TokenController extends Controller
 {
@@ -102,7 +106,7 @@ class TokenController extends Controller
      * Show the application dashboard.
      *
      * @return \Illuminate\Http\Response
-     */
+     *///
 
     public function authenticate(Request $request)
     {
@@ -127,6 +131,14 @@ class TokenController extends Controller
         }
 
         $User = Provider::with('service', 'device')->find(Auth::user()->id);
+        if ($this->isOnLeave($User->id)) {
+
+            JWTAuth::invalidate($token);
+
+            return response()->json([
+                'error' => 'You are currently on approved leave. Login is not allowed.'
+            ], 403);
+        }
 
         $User->access_token = $token;
         $User->currency = Setting::get('currency', '$');
@@ -153,6 +165,16 @@ class TokenController extends Controller
         }
 
         return response()->json($User);
+    }
+
+    private function isOnLeave($provider_id)
+    {
+        return Leave::where('provider_id', $provider_id)
+            ->where('start_date', '<=', Carbon::today())
+            ->where('end_date', '>=', Carbon::today())
+            ->where('type','leave')
+            ->where('status', 'approved')
+            ->exists();
     }
 
     /**
