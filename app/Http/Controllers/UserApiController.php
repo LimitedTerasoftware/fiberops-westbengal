@@ -1708,7 +1708,7 @@ class UserApiController extends Controller
               $otdrfile_names=[];
               $joint_beforeimgs = [];
               $joint_afterimgs=[];
-              $video_name = null;
+            //   $video_name = null;
 
              foreach($requestids as $request_id){
                            Log::info("Processing request ID: $request_id");
@@ -1832,23 +1832,23 @@ class UserApiController extends Controller
 
                           }
                 }
-                 if ($request->hasFile('video')) {
-                        $video = $request->video;
-                        $extension = $video->getClientOriginalExtension();
-                        $allowedExtensions = ['mp4', 'avi', 'mov', 'wmv'];
-                        if (in_array(strtolower($extension), $allowedExtensions)) {
-                            $videofilename = $video->getClientOriginalName();
-                            $destinationPath = public_path('uploads/SubmitFiles/videos');
-                            if (!file_exists($destinationPath)) {
-                                mkdir($destinationPath, 0777, true);
-                            }
-                            $video->move($destinationPath, $videofilename);
-                            $video_name = $videofilename;
-                            Log::info("Uploaded video: $videofilename");
-                        } else {
-                            return response()->json(['error' => 'Invalid video format. Allowed: mp4, avi, mov, wmv'], 422);
-                        }
-                    }
+                //  if ($request->hasFile('video')) {
+                //         $video = $request->video;
+                //         $extension = $video->getClientOriginalExtension();
+                //         $allowedExtensions = ['mp4', 'avi', 'mov', 'wmv'];
+                //         if (in_array(strtolower($extension), $allowedExtensions)) {
+                //             $videofilename = $video->getClientOriginalName();
+                //             $destinationPath = public_path('uploads/SubmitFiles/videos');
+                //             if (!file_exists($destinationPath)) {
+                //                 mkdir($destinationPath, 0777, true);
+                //             }
+                //             $video->move($destinationPath, $videofilename);
+                //             $video_name = $videofilename;
+                //             Log::info("Uploaded video: $videofilename");
+                //         } else {
+                //             return response()->json(['error' => 'Invalid video format. Allowed: mp4, avi, mov, wmv'], 422);
+                //         }
+                //     }
 
                  }  
                  $i++;
@@ -1860,7 +1860,7 @@ class UserApiController extends Controller
                 $documents['otdr_img'] =json_encode($otdrfile_names);
                 $documents['joint_enclouser_beforeimg'] =json_encode($joint_beforeimgs);
                 $documents['joint_enclouser_afterimg'] =json_encode($joint_afterimgs);
-                $documents['video'] = $video_name;
+                // $documents['video'] = $video_name;
 
                   //Log::info($documents);
 
@@ -3938,7 +3938,8 @@ public function get_employee_list(Request $request)
             'pop_map_key'          => $payload['HOST_NAME'] ?? null,
 
             // provider mobile must come from Kolkata
-            'number' => $payload['PROVIDER_MOBILE'] ?? null
+            'number' => $payload['PROVIDER_MOBILE'] ?? null,
+            'problem_type' => $payload['PROBLEM_TYPE'] ?? null,
         ]];
     }
 
@@ -4013,7 +4014,9 @@ private function processTicketData(array $jsonData)
                 'ticketid' => $ticketId,
                 'ticketinsertstage' => 0, // default UNASSIGNED
                 'olt_type' => $keyvalue['type'],
-                'pop_map_key' => $keyvalue['pop_map_key']
+                'pop_map_key' => $keyvalue['pop_map_key'],
+                'problem_type' => $keyvalue['problem_type'],
+
             ];
 
             // Insert master ticket (always)
