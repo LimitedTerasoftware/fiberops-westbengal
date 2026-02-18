@@ -77,6 +77,7 @@
                         <th>Absent</th>
                         <th>@lang('admin.leaves')</th>
 						<th>@lang('admin.presentday')</th>
+                        <th>Status</th>
                       
                     </tr>
                 </thead>
@@ -115,13 +116,14 @@
                         <td>{{ $r['absent_days'] }}</td>
                         <td>{{ $r['leave_days'] }}</td>
                         <td>{{ $r['present_days'] }}</td>
+                        <td>{{$r['provider']->status}}</td>
                         
                  
 						
                     </tr>
                 @endforeach
                 @else
-                 <tr><td colspan="10">No Records Found in this District  !..</td></tr>
+                 <tr><td colspan="11">No Records Found in this District  !..</td></tr>
                 @endif
                 </tbody>
                 <!--<tfoot>
