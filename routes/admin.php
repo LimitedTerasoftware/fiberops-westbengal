@@ -6,7 +6,6 @@
 |--------------------------------------------------------------------------
 */
 
-
 Route::get('/', 'AdminController@dashboard')->name('index');
 Route::get('/dashboard', 'AdminController@dashboard')->name('dashboard');
 Route::get('/inventorydashboard', 'AdminController@inventorydashboard')->name('inventorydashboard');
@@ -355,5 +354,6 @@ Route::get('stock-report', 'InventoryMng\StockIssueController@employeeStockRepor
 Route::get('/frequently_down_gps', 'InventoryMng\MaterialController@getFrequentlyDownGps')->name('frequently_down_gps');
 Route::get('/get_recurring_gp_trends', 'InventoryMng\MaterialController@getRecurringGpTrends')->name('get_recurring_gp_trends');
 
+Route::get('/frequently_down_gps_export', 'InventoryMng\MaterialController@exportFrequentlyDownGps')->name('frequently_down_gps_export');
 
 

@@ -5,9 +5,16 @@
 @section('content')
     <div class="content-area dashboard-page py-1">
         <div class="container-fluid">
-            <div class="row header-row mb-3">
+            <div class="row header-row mb-1">
                 <div class="col-md-12">
-                    <h4 class="mb-0">Frequently Down GPs</h4>
+                    
+                    <h4 class="mb-0">
+                        @if(isset($is_uptime_report) && $is_uptime_report)
+                            GP Uptime Report
+                        @else
+                            Frequently Down GPs
+                        @endif
+                    </h4>
                 </div>
             </div>
 
@@ -66,6 +73,11 @@
                         <button type="submit" class="btn btn-primary btn-sm btn-apply">Apply</button>
                         <a href="{{ route('admin.frequently_down_gps') }}"
                             class="btn btn-secondary btn-sm btn-apply">Reset</a>
+                        <a href="{{ route('admin.frequently_down_gps_export', request()->all()) }}"
+                        class="btn btn-success btn-apply">
+                        Export Excel
+                        </a>
+
                     </div>
                 </form>
             </div>
@@ -79,9 +91,15 @@
                                 <th>District</th>
                                 <th>Block (Mandal)</th>
                                 <th>GP Name (LGD Code)</th>
-                                <th>Total Tickets</th>
-                                <th>Issue Breakdown</th>
-                                <th>Issue %</th>
+                                @if(isset($is_uptime_report) && $is_uptime_report)
+                                    <th>Uptime %</th>
+                                    <th>Record Date</th>
+                                @endif
+                                    <th>Total Tickets</th>
+                                    <th>Issue Breakdown</th>
+                                    <th>Issue %</th>
+                              
+                                
                             </tr>
                         </thead>
                         <tbody>
@@ -91,6 +109,23 @@
                                     <td>{{ $row->district }}</td>
                                     <td>{{ $row->mandal }}</td>
                                     <td>{{ $row->gpname }} ({{ $row->lgd_code }})</td>
+                                    @if(isset($is_uptime_report) && $is_uptime_report)
+                                        <td>
+                                            @php
+                                                $uptimeClass = 'text-danger';
+                                                if ($row->uptime_percent >= 98)
+                                                    $uptimeClass = 'text-success';
+                                                elseif ($row->uptime_percent >= 90)
+                                                    $uptimeClass = 'text-info';
+                                                elseif ($row->uptime_percent >= 75)
+                                                    $uptimeClass = 'text-primary';
+                                                elseif ($row->uptime_percent >= 50)
+                                                    $uptimeClass = 'text-warning';
+                                            @endphp
+                                            <span class="fw-bold {{ $uptimeClass }}">{{ $row->uptime_percent }}%</span>
+                                        </td>
+                                        <td>{{ \Carbon\Carbon::parse($row->record_date)->format('d-m-Y') }}</td>
+                                    @endif
                                     <td>
                                         <span class="ticket-badge ticket-danger">{{ $row->ticket_count }}</span>
                                     </td>
@@ -125,10 +160,12 @@
                                             <span class="text-muted">-</span>
                                         @endif
                                     </td>
+                                  
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center">No records found.</td>
+                                    <td colspan="{{ (isset($is_uptime_report) && $is_uptime_report) ? 6 : 7 }}"
+                                        class="text-center">No records found.</td>  
                                 </tr>
                             @endforelse
                         </tbody>

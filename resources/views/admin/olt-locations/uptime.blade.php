@@ -1618,7 +1618,7 @@ function generatePagination(data, mainTab, dataTab) {
         // Generate rows
         if (data.data && data.data.length > 0) {
             
-            html += generateTableRow(data.data);
+            html += generateTableRow(data.data,mainTab);
 
         }
         
@@ -1653,7 +1653,7 @@ function generatePagination(data, mainTab, dataTab) {
         return headers[mainTab][dataTab] || 'METRICS';
     }
 
-    function generateTableRow(data) {
+    function generateTableRow(data,mainTab) {
     const categories = [
         { key: 'gte98', label: 'GPs with (>=98) to 100%', color: 'text-green-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
         { key: 'gte90', label: 'GPs with (>=90) to <98%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
@@ -1676,9 +1676,21 @@ function generatePagination(data, mainTab, dataTab) {
         html += `<td class="${cat.colClass || ''}">${cat.label}</td>`;
 
         // date-wise values
+        // data.forEach(row => {
+        //     let value = row[cat.key] ?? 0;
+        //     if (cat.isPercent) value = `${value}%`;
+        //     html += `<td class="${cat.valClass || ''}">${value}</td>`;
+        // });
         data.forEach(row => {
             let value = row[cat.key] ?? 0;
-            if (cat.isPercent) value = `${value}%`;
+            if (cat.isPercent) {
+                value = `${value}%`;
+            } else if (mainTab === 'Ontdashboard' && cat.key !== 'total') {
+                // Add redirection for Ontdashboard counts
+                // Use row.day as from_date and to_date
+                const url = `{{ route('admin.frequently_down_gps') }}?from_date=${row.day}&to_date=${row.day}&uptime_category=${cat.key}`;
+                value = `<a href="${url}" target="_blank" style="text-decoration: underline; color: inherit;">${value}</a>`;
+            }
             html += `<td class="${cat.valClass || ''}">${value}</td>`;
         });
 
