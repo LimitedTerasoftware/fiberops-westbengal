@@ -1708,7 +1708,7 @@ class UserApiController extends Controller
               $otdrfile_names=[];
               $joint_beforeimgs = [];
               $joint_afterimgs=[];
-            //   $video_name = null;
+              $video_name = null;
 
              foreach($requestids as $request_id){
                            Log::info("Processing request ID: $request_id");
@@ -1860,7 +1860,7 @@ class UserApiController extends Controller
                 $documents['otdr_img'] =json_encode($otdrfile_names);
                 $documents['joint_enclouser_beforeimg'] =json_encode($joint_beforeimgs);
                 $documents['joint_enclouser_afterimg'] =json_encode($joint_afterimgs);
-                // $documents['video'] = $video_name;
+                $documents['video'] = $video_name;
 
                   //Log::info($documents);
 
@@ -3966,7 +3966,13 @@ private function processTicketData(array $jsonData)
         foreach ($jsonData as $index => $keyvalue) {
 
             $ticketId = $keyvalue['ticketid'] ?? null;
+            $problemType = $keyvalue['problem_type'] ?? '';
 
+          if (stripos($problemType, 'Host alert') === false) {
+                continue;
+            }
+
+        
             if (!$ticketId) {
                 $failed_count++;
                 $hasError = true;
@@ -4018,6 +4024,7 @@ private function processTicketData(array $jsonData)
                 'problem_type' => $keyvalue['problem_type'],
 
             ];
+
 
             // Insert master ticket (always)
             if (!DB::table('master_tickets')->insert($data)) {
