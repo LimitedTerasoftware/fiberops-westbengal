@@ -369,14 +369,10 @@
                         <th>Down Details</th>
                         <th>Ticket Time</th>
                         <th>During Hours</th>
-                       <?php
-                        if (isset($_GET['status']) && $_GET['status'] == 'Completed') { ?>                        
-                        <th>Type</th>
-                        <?php } else { ?>
-                        <th>Type</th>
+                       <th>Type</th>
+                       
                         <th>Created By</th>
-                        <?php } 
-                         ?>
+                      
                         <th>Status</th>
 
                         <th>Action</th>
@@ -493,7 +489,10 @@ $formattedTime = sprintf("%02d:%02d", $hours, $minutes);
                             }
                         @endphp
 
+
                         <td>{{ $name }}</td>
+                       
+                        
 
 
 
