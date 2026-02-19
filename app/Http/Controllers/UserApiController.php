@@ -3968,9 +3968,12 @@ private function processTicketData(array $jsonData)
             $ticketId = $keyvalue['ticketid'] ?? null;
             $problemType = $keyvalue['problem_type'] ?? '';
 
-          if (stripos($problemType, 'Host alert') === false) {
-                continue;
-            }
+        if (
+            stripos($problemType, '[DOWN]') === false ||
+            stripos($problemType, 'Host alert') === false
+        ) {
+            continue;
+        }
 
         
             if (!$ticketId) {
