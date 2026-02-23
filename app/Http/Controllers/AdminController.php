@@ -6907,13 +6907,7 @@ return view('admin.reports.dashboard');
         $blockQuery->where('district_id', $district_id);
     }
     $blocks = $blockQuery->get();
-
-
-    // $districts= DB::table('districts')->get();
-    // $blocks= DB::table('blocks')->get();
-    // $zonals = DB::table('zonal_managers')->get();
-
-
+   
     $providersQuery = DB::table('providers')
         ->select(
             'providers.id',
@@ -6930,10 +6924,19 @@ return view('admin.reports.dashboard');
             'attendance.status as attendance_status',
             'attendance.address',
             'attendance.offaddress',
-            'attendance.start_time as check_in',
-            'attendance.end_time as check_out',
-            DB::raw('TIMESTAMPDIFF(HOUR, attendance.start_time, attendance.end_time) as duration')
+            'attendance.created_at as check_in',
+            'attendance.updated_at as check_out',
+            DB::raw('TIMESTAMPDIFF(HOUR, attendance.created_at, attendance.updated_at) as duration')
         )
+       
+        ->leftJoin(DB::raw('(
+                SELECT provider_id, id AS leave_id, type AS leave_type, reason AS leave_reason, start_date
+                FROM leaves
+                WHERE status = "approved"
+                AND CURDATE() BETWEEN start_date AND end_date
+            ) AS leaves_today'), function ($join) {
+                $join->on('leaves_today.provider_id', '=', 'providers.id');
+            })
         ->leftJoin('attendance','providers.id','=','attendance.provider_id')
         ->join('districts','providers.district_id','=','districts.id')
         ->leftJoin('zonal_managers','providers.zone_id','=','zonal_managers.id')
@@ -6963,30 +6966,14 @@ return view('admin.reports.dashboard');
    
 
     if ($request->has('from_date') && $request->has('to_date') && !empty($request->from_date) && !empty($request->to_date)) {
-            $providersQuery->whereBetween(DB::raw('DATE(attendance.start_time)'), [$request->from_date, $request->to_date]);
+            $providersQuery->whereBetween(DB::raw('DATE(attendance.created_at)'), [$request->from_date, $request->to_date]);
     }
 
    if ($request->has('role') && !empty($request->role)) {
         $providersQuery->where('providers.type', $request->role);
     }
 
-    if ($request->has('date_range') && !empty($request->date_range)) {
-
-            switch ($request->date_range) {
-            case 'today':
-                $providersQuery->whereDate('attendance.start_time', Carbon::today());
-                break;
-            case 'yesterday':
-                $providersQuery->whereDate('attendance.start_time', Carbon::yesterday());
-                break;
-            case 'week':
-                $providersQuery->whereBetween('attendance.start_time', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
-                break;
-            case 'month':
-                $providersQuery->whereBetween('attendance.start_time', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()]);
-                break;
-        }
-    }
+  
     if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $providersQuery->where(function ($q) use ($search) {
@@ -7008,29 +6995,30 @@ return view('admin.reports.dashboard');
     $presentQuery = clone $providersQuery;
 
     if ($request->has('from_date') && $request->has('to_date') && !empty($request->from_date) && !empty($request->to_date)) {
-        $presentQuery->whereBetween(DB::raw('DATE(attendance.start_time)'), [$request->from_date, $request->to_date]);
+        $presentQuery->whereBetween(DB::raw('DATE(attendance.created_at)'), [$request->from_date, $request->to_date]);
     } elseif ($request->has('date_range') && !empty($request->date_range)) {
         switch ($request->date_range) {
             case 'today':
-                $presentQuery->whereDate('attendance.start_time', Carbon::today());
+                $presentQuery->whereDate('attendance.created_at', Carbon::today());
                 break;
             case 'yesterday':
-                $presentQuery->whereDate('attendance.start_time', Carbon::yesterday());
+                $presentQuery->whereDate('attendance.created_at', Carbon::yesterday());
                 break;
             case 'week':
-                $presentQuery->whereBetween('attendance.start_time', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+                $presentQuery->whereBetween('attendance.created_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
                 break;
             case 'month':
-                $presentQuery->whereBetween('attendance.start_time', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()]);
+                $presentQuery->whereBetween('attendance.created_at', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()]);
                 break;
         }
     }else{
       
-    $presentQuery->whereDate('attendance.start_time', Carbon::today());
+    $presentQuery->whereDate('attendance.created_at', Carbon::today());
        
     }
 
-    $present = $presentQuery->distinct('providers.id')->count('providers.id');
+    //  $present = $presentQuery->distinct('providers.id')->count('providers.id');
+     $present = $presentQuery->whereNull('leaves_today.leave_id')->distinct('providers.id')->count('providers.id');
 
    
     $absent = $totalStaff - $present;
