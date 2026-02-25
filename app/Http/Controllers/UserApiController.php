@@ -2593,16 +2593,19 @@ public function userhistory(Request $request){
             try{
            
             $user_id = $request->input('user_id');
-            $total_tickets = UserRequests::where('provider_id',$user_id)->count();
-            $total_tickets_data = UserRequests::where('provider_id',$user_id)->get();
-            $income_tickets = UserRequests::where('status','INCOMING')->where('provider_id',$user_id)->count();
-            $income_tickets_data = UserRequests::where('status','INCOMING')->where('provider_id',$user_id)->get();
-            $ongoing_tickets = UserRequests::where('status','PICKEDUP')->where('provider_id',$user_id)->count();
-            $ongoing_tickets_data = UserRequests::where('status','PICKEDUP')->where('provider_id',$user_id)->get();
-            $completed_tickets = UserRequests::where('status','COMPLETED')->where('provider_id',$user_id)->count();
-            $completed_tickets_data = UserRequests::where('status','COMPLETED')->where('provider_id',$user_id)->get();
-            $hold_tickets = UserRequests::where('status','HOLD')->where('provider_id',$user_id)->count();
-            $hold_tickets_data = UserRequests::where('status','HOLD')->where('provider_id',$user_id)->get();
+            $baseQuery = UserRequests::join('master_tickets', 
+                    'user_requests.booking_id', '=', 'master_tickets.ticketid')
+                ->where('user_requests.provider_id', $user_id);
+            $total_tickets = (clone $baseQuery)->count();
+            $total_tickets_data = (clone $baseQuery)->select('user_requests.*')->get();
+            $income_tickets =  (clone $baseQuery)->where('user_requests.status','INCOMING')->count();
+            $income_tickets_data =  (clone $baseQuery)->where('user_requests.status','INCOMING')->get();
+            $ongoing_tickets =  (clone $baseQuery)->where('user_requests.status','PICKEDUP')->count();
+            $ongoing_tickets_data =  (clone $baseQuery)->where('user_requests.status','PICKEDUP')->get();
+            $completed_tickets =  (clone $baseQuery)->where('user_requests.status','COMPLETED')->count();
+            $completed_tickets_data =  (clone $baseQuery)->where('user_requests.status','COMPLETED')->get();
+            $hold_tickets =  (clone $baseQuery)->where('user_requests.status','HOLD')->count();
+            $hold_tickets_data =  (clone $baseQuery)->where('user_requests.status','HOLD')->get();
             
              $data = array(
              "total" =>  $total_tickets,

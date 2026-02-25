@@ -574,6 +574,15 @@ class TripController extends Controller
             {
                 $UserRequest->status = $request->status; 
                 $UserRequest->downreasonindetailed= $request->reason;
+                $UserRequest->downreason = $request->issue_type;
+                $UserRequest->subcategory = $request->issue_sub_type;
+                MasterTicket::where('ticketid', $UserRequest->booking_id)
+                    ->update([
+                        'downreasonindetailed' => $request->reason,
+                        'downreason' => $request->issue_type,
+                        'subsategory' => $request->issue_sub_type
+                       
+                    ]);
                 RequestFilter::where('request_id', $id)->delete();
             }
 

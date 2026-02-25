@@ -53,7 +53,8 @@ class UserRequests extends Model
         'reached_at',
         'reached_location',
         'downreason',
-        'downreasonindetailed',        
+        'downreasonindetailed',  
+        'booking_id',               
     ];
 
     /**
