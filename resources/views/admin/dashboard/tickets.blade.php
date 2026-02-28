@@ -16,6 +16,7 @@
         $DistId = $user->district_id;
     }
 @endphp
+@php use Illuminate\Support\Str; @endphp
 <style>
 /* Header row styling */
 .dashboard-page {background-color: #f8fafc;}
@@ -215,6 +216,60 @@
 .d-size i{font-size: 9px;}
 .d-size span {font-size: 11px;}
 .d-size .bld{font-weight:500;}
+inc {
+    background: #fff3cd;
+    color: #92610a;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-weight: 700;
+    font-size: 12px;
+    display: inline-block;
+}
+.ticket-inc{
+    background: #ffc107;
+    color: #4a3000;
+}
+.ticket-inc:hover {
+    background: #efd585;
+    color: #4a3000;
+}
+/* host_group_name tooltip */
+.hg-tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+.hg-tooltip .hg-tip {
+    visibility: hidden;
+    background: #1e293b;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+    position: absolute;
+    z-index: 999;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+}
+.hg-tooltip .hg-tip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1e293b;
+}
+.hg-tooltip:hover .hg-tip {
+    visibility: visible;
+    opacity: 1;
+}
 
 </style>
 
@@ -311,6 +366,18 @@
                                 @endforeach
                             </select>
                         </div>
+                          <div class="filter-pill">
+                            <i class="bi bi-people-fill text-secondary"></i>
+                            <select name="host_group_name">
+                                <option value="">Host Group</option>
+                                @foreach($hostGroups as $hg)
+                                    <option value="{{$hg}}" {{ Request::get('host_group_name') == $hg ? 'selected' : '' }}>
+                                        {{$hg}}
+                                    </option>
+                                @endforeach
+                                <option value="others" {{ strtolower(Request::get('host_group_name')) == 'others' ? 'selected' : '' }}>Others</option>
+                            </select>
+                        </div>
                         <div class="filter-pill">
                                 <i class="bi bi-calendar-week-fill text-warning"></i>
 
@@ -365,11 +432,12 @@
                     <tr>
                         <th>Ticket Id</th>
                         <th>GP Details   </th>
+                        <th>Host Name</th>
                         <th>Assigned To</th>
                         <th>Down Details</th>
                         <th>Ticket Time</th>
                         <th>During Hours</th>
-                       <th>Type</th>
+                        <th>Type</th>
                        
                         <th>Created By</th>
                       
@@ -384,8 +452,17 @@
                  @foreach($tickets as $index => $request)
              
                     <tr>
-                        <td class="font-weight-bold @if($request->status == 'INCOMING') bleft-notstarted @elseif($request->status == 'PICKEDUP') bleft-ongoing @elseif($request->status == 'ONHOLD') bleft-onhold @elseif($request->status == 'COMPLETED') bleft-completed @endif">
-                          {{ $request->ticketid }}
+                     <td class="font-weight-bold @if($request->status == 'INCOMING') bleft-notstarted @elseif($request->status == 'PICKEDUP') bleft-ongoing @elseif($request->status == 'ONHOLD') bleft-onhold @elseif($request->status == 'COMPLETED') bleft-completed @endif">
+                          @if(Str::startsWith($request->ticketid, 'INC'))
+                            <span class="hg-tooltip">
+                              <span class="ticket-inc">{{ $request->ticketid }}</span>
+                              @if(!empty($request->host_group_name))
+                              <span class="hg-tip"><i class="bi bi-people-fill"></i> {{ $request->host_group_name }}</span>
+                              @endif
+                            </span>
+                          @else
+                            {{ $request->ticketid }}
+                          @endif
                         </td>
                         <td>
                         <div>
@@ -395,6 +472,18 @@
                              <i class="bi bi-dice-4-fill text-primary"></i> {{ $request->mandal }}</small> 
                         </div> 
                        </td>
+                      <td>
+                          <div class="d-size">
+                            @if(!empty($request->host_name))
+                              <span class="bld">{{ $request->host_name }}</span><br>
+                            @else
+                              <span class="text-muted">-</span>
+                            @endif
+                            @if(!empty($request->host_group_name))
+                              <small class="text-secondary"><i class="bi bi-people-fill"></i> {{ $request->host_group_name }}</small>
+                            @endif
+                          </div>
+                        </td>
                         <td>
                         <div>
                         {{ $request->first_name}} {{ $request->last_name}} <br>
@@ -592,7 +681,7 @@ $formattedTime = sprintf("%02d:%02d", $hours, $minutes);
         </div>
          Showing {{$tickets->currentPage() != 1 ? $tickets->currentPage() * 10 - 9 : $tickets->currentPage()}} to {{$tickets->currentPage() * $tickets->perPage()}} of {{$tickets->total()}} entries
     </div>
-      {{ $tickets->appends(['status' => @$status_get,'district_id'=>@$district_id_get,'interval'=>@$interval_get,'searchinfo'=>@$serch_term_get,'zone_id'=>@$zone_id_get,'team_id'=>@$team_id_get,'block_id'=>@$block_id_get,'from_date'=>@$from_date_get,'to_date'=>@$to_date_get,'autoclose'=>@$autoclose_get,'default_autoclose'=>@$default_autoclose_get,'provider_id'=>@$provider_id_get,'category'=>@$category_get,'newfrom_date'=>@$newfrom_date_get,'newto_date'=>@$newto_date_get,'range'=>@$range_get])->links()  }}
+      {{ $tickets->appends(['status' => @$status_get,'district_id'=>@$district_id_get,'interval'=>@$interval_get,'searchinfo'=>@$serch_term_get,'zone_id'=>@$zone_id_get,'team_id'=>@$team_id_get,'block_id'=>@$block_id_get,'from_date'=>@$from_date_get,'to_date'=>@$to_date_get,'autoclose'=>@$autoclose_get,'default_autoclose'=>@$default_autoclose_get,'provider_id'=>@$provider_id_get,'category'=>@$category_get,'newfrom_date'=>@$newfrom_date_get,'newto_date'=>@$newto_date_get,'range'=>@$range_get,'host_group_name'=>@$host_group_name_get])->links()  }}
    </div>
 </div>
           

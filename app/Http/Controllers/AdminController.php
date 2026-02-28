@@ -4683,6 +4683,9 @@ public function tickets1(Request $request){
         $interval =$request->get('interval');
         $c_from_date=$request->get('c_from_date');
         $c_to_date=$request->get('c_to_date');
+        $host_group_name = $request->get('host_group_name');
+
+
 
     
 
@@ -4705,14 +4708,21 @@ public function tickets1(Request $request){
         $interval_get =$interval;
         $c_from_date_get=$c_from_date;
         $c_to_date_get=$c_to_date;
+        $host_group_name_get = $host_group_name;
+
 
         
 
 
         $query_params = array();
+        $hostGroups = DB::table('master_tickets')
+                ->whereNotNull('host_group_name')
+                ->where('host_group_name', '!=', '')
+                ->distinct()
+                ->pluck('host_group_name');
         $tickets = DB::table('master_tickets')
          //->select('master_tickets.id as master_id','master_tickets.ticketid','master_tickets.district','master_tickets.mandal','master_tickets.gpname','master_tickets.subsategory','master_tickets.downreason','master_tickets.downreasonindetailed','user_requests.id as request_id','user_requests.status','master_tickets.downdate','master_tickets.downtime','providers.first_name','providers.last_name','providers.mobile','user_requests.started_at','user_requests.finished_at')
-          ->select('user_requests.created_by','user_requests.description','user_requests.issue_type','master_tickets.id as master_id','master_tickets.ticketid','master_tickets.district','master_tickets.mandal','master_tickets.gpname','master_tickets.lgd_code','user_requests.subcategory','user_requests.downreason','user_requests.downreasonindetailed','user_requests.id as request_id','user_requests.status','master_tickets.downdate','user_requests.purpose','master_tickets.downtime','zonal_managers.Name as zone_name','providers.first_name','providers.last_name','providers.last_name','providers.mobile','providers.zone_id','user_requests.s_address','user_requests.d_address','user_requests.s_latitude','user_requests.s_longitude','user_requests.d_latitude','user_requests.d_longitude','user_requests.assigned_at','user_requests.started_at','user_requests.started_location','user_requests.reached_at','user_requests.reached_location','user_requests.finished_at','user_requests.autoclose','user_requests.default_autoclose',DB::Raw('TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now().'") as duringhours'))
+          ->select('master_tickets.host_name','master_tickets.host_group_name','user_requests.created_by','user_requests.description','user_requests.issue_type','master_tickets.id as master_id','master_tickets.ticketid','master_tickets.district','master_tickets.mandal','master_tickets.gpname','master_tickets.lgd_code','user_requests.subcategory','user_requests.downreason','user_requests.downreasonindetailed','user_requests.id as request_id','user_requests.status','master_tickets.downdate','user_requests.purpose','master_tickets.downtime','zonal_managers.Name as zone_name','providers.first_name','providers.last_name','providers.last_name','providers.mobile','providers.zone_id','user_requests.s_address','user_requests.d_address','user_requests.s_latitude','user_requests.s_longitude','user_requests.d_latitude','user_requests.d_longitude','user_requests.assigned_at','user_requests.started_at','user_requests.started_location','user_requests.reached_at','user_requests.reached_location','user_requests.finished_at','user_requests.autoclose','user_requests.default_autoclose',DB::Raw('TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now().'") as duringhours'))
          ->leftjoin('user_requests', 'user_requests.booking_id', '=', 'master_tickets.ticketid')
          ->leftjoin('providers', 'providers.id', '=', 'user_requests.provider_id')
          ->leftjoin('gp_list', 'master_tickets.lgd_code', '=', 'gp_list.lgd_code')
@@ -4936,6 +4946,23 @@ public function tickets1(Request $request){
        }
 
 
+          // Host Group Name filter
+            if (isset($request->host_group_name) && !empty($request->host_group_name)) {
+                $query_params['host_group_name'] = $request->host_group_name;
+                if (strtolower($request->host_group_name) === 'others') {
+                    $tickets->where(function($q) use ($hostGroups) {
+                        $knownGroups = $hostGroups->filter(function($v) {
+                            return strtolower($v) !== 'others' && !empty($v);
+                        })->values()->toArray();
+                        $q->whereNotIn('master_tickets.host_group_name', $knownGroups)
+                          ->orWhereNull('master_tickets.host_group_name')
+                          ->orWhere('master_tickets.host_group_name', '');
+                    });
+                } else {
+                    $tickets->where('master_tickets.host_group_name', $request->host_group_name);
+                }
+            }
+
              // Search functionality
          if(isset($request->searchinfo) && !empty($request->searchinfo))
          {
@@ -5089,7 +5116,7 @@ public function tickets1(Request $request){
 
         $ticket_status = array('Open', 'OnGoing','Completed', 'Onhold');
 
-        return view('admin.dashboard.tickets', compact('services','tickets','statusCounts','permanentDownCount','districts','blocks', 'zonals','ticket_status', 'query_params','pagination','status_get','district_id_get','zone_id_get','team_id_get','provider_id_get','block_id_get','from_date_get','to_date_get','autoclose_get','default_autoclose_get','interval_get','category_get','newfrom_date_get','newto_date_get','serch_term_get','range_get'));
+        return view('admin.dashboard.tickets', compact('services','tickets','statusCounts','permanentDownCount','districts','blocks', 'zonals','ticket_status', 'query_params','pagination','status_get','district_id_get','zone_id_get','team_id_get','provider_id_get','block_id_get','from_date_get','to_date_get','autoclose_get','default_autoclose_get','interval_get','category_get','newfrom_date_get','newto_date_get','serch_term_get','range_get','hostGroups', 'host_group_name_get'));
 
     } catch (Exception $e) { 
         dd($e);
