@@ -1082,6 +1082,20 @@ public function getFrtReport(Request $request)
         ->get()
         ->keyBy('provider_id');
 
+    // ================= LEAVES =================
+        $leaves = DB::table('leaves')
+            ->where('status', 'approved')
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('start_date', [$startDate, $endDate])
+                    ->orWhereBetween('end_date', [$startDate, $endDate])
+                    ->orWhere(function ($q2) use ($startDate, $endDate) {
+                        $q2->where('start_date', '<=', $startDate)
+                            ->where('end_date', '>=', $endDate);
+                    });
+            })
+            ->get()
+            ->groupBy('provider_id');
+
     // ================= TRACKING (SAFE MODE) =================
     $calculateDistance = $startDate->diffInDays($endDate) <= 31;
     $trackingByProvider = collect();
@@ -1102,9 +1116,18 @@ public function getFrtReport(Request $request)
         $att   = isset($attendance[$p->id]) ? $attendance[$p->id] : null;
         $stat  = isset($requests[$p->id]) ? $requests[$p->id] : null;
 
-        $attendancePercent = $totalDays > 0
-            ? round((($att ? $att->present_days : 0) / $totalDays) * 100) . '%'
-            : '0%';
+        $isOnLeave = isset($leaves[$p->id]);
+        if ($isOnLeave) {
+                $attendancePercent = '0%';
+        } else {
+            $presentDays = ($att ? $att->present_days : 0);
+
+            $attendancePercent = $totalDays > 0
+                ? round(($presentDays / $totalDays) * 100) . '%'
+                : '0%';
+        }
+
+       
 
         $distance = 0;
         if ($calculateDistance && isset($trackingByProvider[$p->id])) {
