@@ -1397,29 +1397,33 @@ public function patrollertickets(Request $request)
        if (!empty($district_id)) {
             $ticketsQuery->where('gp.district_id', $district_id);
         }
-        if ($request->has('district_id')) {
+        if ($request->has('district_id') && !empty($request->district_id)) {
+
             $ticketsQuery->where('gp.district_id', $request->district_id);
         }
 
-        if ($request->has('block_id')) {
+        if ($request->has('block_id') && !empty($request->block_id)) {
+
             $ticketsQuery->where('gp.block_id', $request->block_id);
         }
 
-        if ($request->has('zone_id')) {
+        if ($request->has('zone_id') && !empty($request->zone_id)) {
+
             $ticketsQuery->where('gp.zonal_id', $request->zone_id);
         }
 
-        if ($request->has('from_date') && $request->has('to_date')) {
+        if ($request->has('from_date') && !empty($request->from_date) && $request->has('to_date') && !empty($request->to_date)) {
             $ticketsQuery->whereBetween(
                 DB::raw('DATE(rt.created_at)'),
                 [$request->from_date, $request->to_date]
             );
         }
-        if($request->has('issue_type')){
+        if ($request->has('issue_type') && !empty($request->issue_type)) {
+
             $ticketsQuery->where('rt.issue_type',$request->issue_type);
         }
         $tickets = $ticketsQuery
-        ->orderBy('rt.created_at', 'desc')->distinct('rt.id')
+        ->orderBy('rt.created_at', 'desc')->groupBy('rt.id')
         ->paginate($this->perpage)
          ->appends(request()->query());
        
@@ -1427,10 +1431,126 @@ public function patrollertickets(Request $request)
 
         $serviceType = ServiceType::select('name')->get();
 
+        // ── Widget 1: scope-aware count base (no date range restriction) ──
 
-        return view('admin.tickets.patrollertickets', compact('tickets', 'pagination','blocks','districts','zonals','serviceType'));
+        $baseCountQuery = DB::table('raise_tickets as rt')
+                ->leftJoin('gp_list as gp', 'gp.gp_name', '=', 'rt.gp_name')
+                ->where('gp.state_id', $state_id);
+
+            if (!empty($district_id)) {
+                $baseCountQuery->where('gp.district_id', $district_id);
+            }
+            if ($request->has('district_id') && !empty($request->district_id)) {
+                $baseCountQuery->where('gp.district_id', $request->district_id);
+            }
+            if ($request->has('block_id') && !empty($request->block_id)) {
+                $baseCountQuery->where('gp.block_id', $request->block_id);
+            }
+            if ($request->has('zone_id') && !empty($request->zone_id)) {
+                $baseCountQuery->where('gp.zonal_id', $request->zone_id);
+            }
+            if ($request->has('issue_type') && !empty($request->issue_type)) {
+                $baseCountQuery->where('rt.issue_type', $request->issue_type);
+            }
+            if ($request->has('from_date') && !empty($request->from_date) && $request->has('to_date') && !empty($request->to_date)) {
+                $baseCountQuery->whereBetween(DB::raw('DATE(rt.created_at)'), [$request->from_date, $request->to_date]);
+            }
+
+            $totalCount = (clone $baseCountQuery)->distinct('rt.id')->count('rt.id');
+            $todayCount = (clone $baseCountQuery)->whereDate('rt.created_at', \Carbon\Carbon::today())->distinct('rt.id')->count('rt.id');
+            $yesterdayCount = (clone $baseCountQuery)->whereDate('rt.created_at', \Carbon\Carbon::yesterday())->distinct('rt.id')->count('rt.id');
+
+            // ── Widget 2: issue breakdown for a specific date ────────────
+            $statDate = $request->input('stat_date', \Carbon\Carbon::today()->toDateString());
+            $endDate = $request->input('end_date', \Carbon\Carbon::today()->toDateString());
+            $issueCountsRaw = (clone $baseCountQuery)
+                ->whereBetween(DB::raw('DATE(rt.created_at)'), [$statDate, $endDate])
+                ->select('rt.issue_type', DB::raw('COUNT(DISTINCT rt.id) as cnt'))
+                ->groupBy('rt.issue_type')
+                ->get();
+            $issueCounts = $issueCountsRaw->pluck('cnt', 'issue_type')->toArray();
+
+
+
+        return view('admin.tickets.patrollertickets', compact('tickets', 'pagination','blocks','districts','zonals','serviceType',
+        'totalCount','todayCount','yesterdayCount','issueCounts','statDate','endDate'));
     }
 }
+
+  public function exportPatrollerTickets(Request $request)
+    {
+        $user        = Session::get('user');
+        $state_id    = $user->state_id;
+        $district_id = $user->district_id;
+        $query = DB::table('raise_tickets as rt')
+            ->leftJoin('gp_list as gp', 'gp.gp_name', '=', 'rt.gp_name')
+            ->leftJoin('providers as p', 'p.id', '=', 'rt.patroller_id')
+            ->select(
+                'rt.id',
+                DB::raw("CONCAT(p.first_name, ' ', p.last_name) as patroller_name"),
+                'p.mobile as patroller_mobile',
+                'rt.gp_name',
+                'rt.date',
+                'rt.time',
+                'rt.issue_type',
+                'rt.issue_sub_type',
+                'rt.priority',
+                'rt.details',
+                'rt.created_at'
+            )
+            ->where('gp.state_id', $state_id);
+        if (!empty($district_id)) {
+            $query->where('gp.district_id', $district_id);
+        }
+        if ($request->has('district_id') && !empty($request->district_id)) {
+            $query->where('gp.district_id', $request->district_id);
+        }
+        if ($request->has('block_id') && !empty($request->block_id)) {
+            $query->where('gp.block_id', $request->block_id);
+        }
+        if ($request->has('zone_id') && !empty($request->zone_id)) {
+            $query->where('gp.zonal_id', $request->zone_id);
+        }
+        if ($request->has('issue_type') && !empty($request->issue_type)) {
+            $query->where('rt.issue_type', $request->issue_type);
+        }
+        if ($request->has('from_date') && !empty($request->from_date) && $request->has('to_date') && !empty($request->to_date)) {
+            $query->whereBetween(DB::raw('DATE(rt.created_at)'), [$request->from_date, $request->to_date]);
+        }
+        $rows = $query->orderBy('rt.created_at', 'desc')->groupBy('rt.id')->get();
+        $filename = 'patroller_tickets_' . date('Ymd_His') . '.csv';
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Pragma'              => 'no-cache',
+            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires'             => '0',
+        ];
+        $callback = function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, [
+                'ID', 'Patroller Name', 'Mobile', 'GP Name',
+                'Date', 'Time', 'Issue Type', 'Sub Issue', 'Priority', 'Details', 'Created At'
+            ]);
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row->id,
+                    $row->patroller_name ?? 'N/A',
+                    $row->patroller_mobile ?? 'N/A',
+                    $row->gp_name,
+                    $row->date,
+                    $row->time,
+                    $row->issue_type,
+                    $row->issue_sub_type,
+                    $row->priority,
+                    $row->details,
+                    $row->created_at,
+                ]);
+            }
+            fclose($handle);
+        };
+        return response()->stream($callback, 200, $headers);
+    }
 
 
 	/**
@@ -1439,82 +1559,7 @@ public function patrollertickets(Request $request)
      * @param  \App\Provider  $provider
      * @return \Illuminate\Http\Response
      */
-    // public function attendancereport(Request $request)
-    // {
-	// 	$user = Session::get('user');
-	//     $company_id = $user->company_id;
-	//     $state_id = $user->state_id;
-    //     $district_id = $user->district_id;
-    //      try{
-    //     if(!empty($request->district_id) && !empty($request->from_date) && !empty($request->to_date)){
-    //          $providerQuery =DB::table('providers')
-    //         ->select('providers.first_name','providers.last_name','providers.mobile','providers.latitude','providers.longitude','providers.district_id','providers.company_id','providers.state_id','providers.type','districts.name as district_name','attendance.status','attendance.address',
-    //         'providers.joiningdate','attendance.offaddress','attendance.created_at','attendance.updated_at',DB::raw('count(attendance.created_at) as present '),DB::raw('group_concat(attendance.created_at) as presentdates'),DB::raw('group_concat(date_format(attendance.created_at,"%Y-%m-%d")) as origindate'))
-    //         ->join('attendance','providers.id','=','attendance.provider_id')
-	// 		->join('districts','providers.district_id','=','districts.id')
-	// 		->where('providers.district_id', $request->district_id )->where('providers.state_id', $state_id )->where('providers.company_id', $company_id )->whereDate('attendance.created_at','>=',$request->from_date)->whereDate('attendance.created_at','<=',$request->to_date);
-    //           if (!empty($district_id)) {
-    //             $providerQuery->where('providers.district_id', $district_id);
-    //         }
-    //         $providers =$providerQuery->groupBy('providers.id')->orderBy('attendance.created_at','desc')->get();
-    //         //dd($providers);
-    //           } else if(!empty($request->district_id)){
-    //             $providerQuery =DB::table('providers')
-    //         ->select('providers.joiningdate','providers.first_name','providers.last_name','providers.mobile','providers.latitude','providers.longitude','providers.district_id','providers.company_id','providers.state_id','providers.type','districts.name as district_name','attendance.status','attendance.address','attendance.offaddress','attendance.created_at','attendance.updated_at',DB::raw('count(attendance.created_at) as present '),DB::raw('group_concat(attendance.created_at) as presentdates'),DB::raw('group_concat(date_format(attendance.created_at,"%Y-%m-%d")) as origindate'))
-    //         ->join('attendance','providers.id','=','attendance.provider_id')
-    //         ->join('districts','providers.district_id','=','districts.id')
-    //         ->where('providers.district_id', $request->district_id )
-    //         ->where('providers.state_id', $state_id )->where('providers.company_id', $company_id);
-    //           if (!empty($district_id)) {
-    //             $providerQuery->where('providers.district_id', $district_id);
-    //         }
-    //         $providers =$providerQuery->groupBy('providers.id')->orderBy('attendance.created_at','desc')->get();
-    //         // echo $providers;
-    //           } else if(!empty($request->from_date) && !empty($request->to_date)){
-    //             $providerQuery =DB::table('providers')
-    //         ->select('providers.joiningdate','providers.first_name','providers.last_name','providers.mobile','providers.latitude','providers.longitude','providers.district_id','providers.company_id','providers.state_id','providers.type','districts.name as district_name','attendance.status','attendance.address','attendance.offaddress','attendance.created_at','attendance.updated_at',DB::raw('count(attendance.created_at) as present '),DB::raw('group_concat(attendance.created_at) as presentdates'),DB::raw('group_concat(date_format(attendance.created_at,"%Y-%m-%d")) as origindate'))
-    //         ->join('attendance','providers.id','=','attendance.provider_id')
-    //         ->join('districts','providers.district_id','=','districts.id')->whereDate('attendance.created_at','>=',$request->from_date)->where('providers.state_id', $state_id )->where('providers.company_id', $company_id )->whereDate('attendance.created_at','<=',$request->to_date);
-    //           if (!empty($district_id)) {
-    //             $providerQuery->where('providers.district_id', $district_id);
-    //         }
-    //         $providers =$providerQuery->groupBy('providers.id')->orderBy('attendance.created_at','desc')->get();
-    //           }
-    //           else{
-				  
-	// 		$providerQuery =DB::table('providers')
-    //         ->select('providers.joiningdate','providers.first_name','providers.last_name','providers.mobile','providers.latitude','providers.longitude','providers.district_id','providers.company_id','providers.state_id','providers.type','districts.name as district_name','attendance.status','attendance.address','attendance.offaddress','attendance.created_at','attendance.updated_at',DB::raw('count(attendance.created_at) as present '),DB::raw('group_concat(attendance.created_at) as presentdates'),DB::raw('group_concat(date_format(attendance.created_at,"%Y-%m-%d")) as origindate'))
-    //         ->join('attendance','providers.id','=','attendance.provider_id')
-	// 		->join('districts','providers.district_id','=','districts.id')
-    //         ->where('providers.state_id', $state_id )->where('providers.company_id', $company_id);
-	// 		// ->whereDate('attendance.created_at','>=', DB::raw('DATE_FORMAT(NOW(),"%Y/%m/01")'))
-	// 		// ->whereDate('attendance.created_at','<=', DB::raw('DATE_FORMAT(last_day(NOW()), "%Y/%m/%d")'));
-            
-
-    //         if (!empty($district_id)) {
-    //             $providerQuery->where('providers.district_id', $district_id);
-    //         }
-    //         $providers = $providerQuery->groupBy('providers.id')->orderBy('attendance.created_at','desc')->get();
-
- 
-			
-    //          //dd($providers);
-    //           }
-			  
-
-    //        $districtQuery = District::query();
-    //         if (!empty($district_id)) {
-    //             $districtQuery->where('id', $district_id);
-    //         }
-    //         $districts = $districtQuery->get();
-           
-    //         return view('admin.attendancereport1',compact('providers','districts'));
-    //     }
-    //     catch(Exception $e){
-    //         return redirect()->route('admin.reportattendance')->with('flash_error','Something Went Wrong with Dashboard!');
-    //     }
-    // }
-
+  
     public function attendancereport(Request $request)
 {
     $user = Session::get('user');

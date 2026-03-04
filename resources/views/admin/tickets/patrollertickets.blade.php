@@ -17,6 +17,144 @@
         $DistId = $user->district_id;
     }
 @endphp
+
+<style>
+/* ── Stat cards ──────────────────────────────────────────────────── */
+.pt-stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.pt-stat-card {
+    flex: 1;
+    min-width: 150px;
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    text-align: center;
+}
+.pt-stat-card h3 {
+    font-size: 26px;
+    margin: 0 0 4px;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+.pt-stat-card p {
+    margin: 0;
+    font-size: 13px;
+    color: #6c757d;
+}
+.pt-stat-card .sub-counts {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 6px;
+}
+.pt-stat-card .sub-item {
+    font-size: 12px;
+    color: #555;
+}
+.pt-stat-card .sub-item span {
+    font-weight: 700;
+}
+.pt-card-total   { border-top: 3px solid #4361ee; }
+.pt-card-today   { border-top: 3px solid #2ec4b6; }
+.pt-card-yest    { border-top: 3px solid #ff9f1c; }
+
+/* ── Issue breakdown card ────────────────────────────────────────── */
+.pt-issue-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 18px;
+}
+.pt-issue-card .card-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.pt-issue-card h6 {
+    margin: 0;
+    font-weight: 700;
+    font-size: 14px;
+    color: #333;
+}
+.pt-issue-date-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.pt-issue-date-form input[type="date"] {
+    border: 1px solid #dde1e7;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+.pt-issue-date-form button {
+    padding: 4px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: none;
+    background: #4361ee;
+    color: #fff;
+    cursor: pointer;
+}
+.pt-issue-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.pt-issue-pill {
+    background: #f0f2ff;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12px;
+    color: #4361ee;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.pt-issue-pill .pill-count {
+    background: #4361ee;
+    color: #fff;
+    border-radius: 12px;
+    padding: 1px 7px;
+    font-size: 11px;
+}
+.pt-issue-pill.empty {
+    background: #f5f5f5;
+    color: #aaa;
+}
+.pt-issue-pill.empty .pill-count {
+    background: #ccc;
+}
+
+/* ── Export button ───────────────────────────────────────────────── */
+.btn-export-excel {
+    background: #1d6f42;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.btn-export-excel:hover {
+    background: #155434;
+    color: #fff;
+}
+</style>
 <div class="content-area py-1">
     <div class="container-fluid">
         <div class="box box-block bg-white">
@@ -86,10 +224,70 @@
             <div class="filter-group" style="display: flex; gap: 0.5rem;">
                         <button type="submit" class="action-btn action-btn-primary">Apply</button>
                         <a href="{{ route('admin.patrollertickets') }}" class="action-btn action-btn-secondary">Clear</a>
+                       
+
+            </div>
+             <div class="filter-group">
+             <a href="{{ route('admin.patrollertickets.export', request()->query()) }}" 
+                               class="btn-export-excel" title="Export to Excel / CSV">
+                                <i class="fa fa-file-excel-o"></i> Export
+                            </a>
             </div>
         </div>
     </form>
 </div>
+        {{-- ─────────────── WIDGET 1: Totals ─────────────── --}}
+            <div class="pt-stats-row">
+                <div class="pt-stat-card pt-card-total">
+                    <h3>{{ $totalCount }}</h3>
+                    <p>Total Tickets</p>
+                    <div class="sub-counts">
+                        <div class="sub-item">Today <span style="color:#2ec4b6">{{ $todayCount }}</span></div>
+                        <div class="sub-item">Yesterday <span style="color:#ff9f1c">{{ $yesterdayCount }}</span></div>
+                    </div>
+                </div>
+                <div class="pt-stat-card pt-card-today">
+                    <h3>{{ $todayCount }}</h3>
+                    <p>Today's Tickets</p>
+                </div>
+                <div class="pt-stat-card pt-card-yest">
+                    <h3>{{ $yesterdayCount }}</h3>
+                    <p>Yesterday's Tickets</p>
+                </div>
+            </div>
+
+            {{-- ─────────────── WIDGET 2: Issue Breakdown ─────────────── --}}
+            <div class="pt-issue-card">
+                <div class="card-header-row">
+                    <h6><i class="fa fa-bar-chart text-primary"></i>&nbsp; Issues Breakdown</h6>
+                    <form method="GET" action="{{ route('admin.patrollertickets') }}" id="stat-date-form">
+                        {{-- carry over all current filters --}}
+                        @foreach(request()->except('stat_date') as $k => $v)
+                            <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+                        @endforeach
+                        <div class="pt-issue-date-form">
+                            <label style="font-size:12px;margin:0;">From Date:</label>
+                            <input type="date" name="stat_date" value="{{ $statDate }}">
+                            <label style="font-size:12px;margin:0;">To Date:</label>
+                            <input type="date" name="end_date" value="{{ $endDate }}">
+                            <button type="submit">Go</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="pt-issue-pills">
+                    @if(count($issueCounts) > 0)
+                        @foreach($issueCounts as $issue => $cnt)
+                            <div class="pt-issue-pill{{ $cnt == 0 ? ' empty' : '' }}">
+                                {{ $issue ?: 'Unspecified' }}
+                                <span class="pill-count">{{ $cnt }}</span>
+                            </div>
+                        @endforeach
+                    @else
+                        <span style="font-size:13px;color:#aaa;">No tickets found for {{ \Carbon\Carbon::parse($statDate)->format('d M Y') }}.</span>
+                    @endif
+                </div>
+            </div>
             <div class="table-responsive">
 
                 <table class="table table-striped table-bordered dataTable" id="tickets-table">
@@ -292,41 +490,7 @@ function selectImage(src)
     $('#modalImage').attr('src', src);
 }
 
-jQuery.fn.DataTable.Api.register('buttons.exportData()', function () {
-    var data = [];
-    $.ajax({
-        url: "{{ url('admin/tickets') }}?page=all",
-        async: false,
-        success: function (result) {
-            $.each(result.data, function (i, d) {
-                data.push([
-                    d.id,
-                    d.patroller_name,
-                    d.patroller_mobile,
-                    d.gp_name,
-                    d.issue_type,
-                    d.issue_sub_type,
-                    d.priority,
-                    d.date + ' ' + d.time
-                ]);
-            });
-        }
-    });
 
-    return {
-        header: [
-            "ID",
-            "Patroller Name",
-            "Mobile",
-            "GP Name",
-            "Issue Type",
-            "Sub Issue",
-            "Priority",
-            "Date & Time"
-        ],
-        body: data
-    };
-});
 
 $('#tickets-table').DataTable({
     responsive: false,

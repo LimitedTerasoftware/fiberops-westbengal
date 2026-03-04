@@ -46,6 +46,7 @@ Route::get('/get_completion_trend', 'Resource\GPResource@getCompletionTrend')->n
 Route::get('/reportattendance', 'AdminController@attendancereport')->name('reportattendance');
 Route::get('/todayattendancereport','AdminController@todayattendancereport')->name('todayattendancereport');
 Route::get('/patrollertickets','AdminController@patrollertickets')->name('patrollertickets');
+Route::get('/patrollertickets/export','AdminController@exportPatrollerTickets')->name('patrollertickets.export');
 
 
 Route::get('/occ', 'AdminController@occ')->name('occ');
