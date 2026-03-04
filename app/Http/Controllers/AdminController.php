@@ -1314,7 +1314,7 @@ private function calculateRequestStats($providerId, $fromDate, $toDate)
     }
 
           /**
- * Raise tickets � Patroller tickets list
+ * Raise tickets  Patroller tickets list
  */
 public function patrollertickets(Request $request)
 {
@@ -1485,6 +1485,9 @@ public function patrollertickets(Request $request)
         $query = DB::table('raise_tickets as rt')
             ->leftJoin('gp_list as gp', 'gp.gp_name', '=', 'rt.gp_name')
             ->leftJoin('providers as p', 'p.id', '=', 'rt.patroller_id')
+            ->leftJoin('districts as d', 'd.id', '=', 'gp.district_id')
+            ->leftJoin('blocks as b', 'b.id', '=', 'gp.block_id')
+            ->leftJoin('zonal_managers as z', 'z.id', '=', 'gp.zonal_id')
             ->select(
                 'rt.id',
                 DB::raw("CONCAT(p.first_name, ' ', p.last_name) as patroller_name"),
@@ -1496,6 +1499,9 @@ public function patrollertickets(Request $request)
                 'rt.issue_sub_type',
                 'rt.priority',
                 'rt.details',
+                'd.name as district_name',
+                'b.name as block_name',
+                'z.name as zonal_name',
                 'rt.created_at'
             )
             ->where('gp.state_id', $state_id);
@@ -1529,7 +1535,7 @@ public function patrollertickets(Request $request)
         $callback = function () use ($rows) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, [
-                'ID', 'Patroller Name', 'Mobile', 'GP Name',
+                'ID', 'Patroller Name', 'Mobile', 'Zonal Name', 'District Name', 'Block Name', 'GP Name',
                 'Date', 'Time', 'Issue Type', 'Sub Issue', 'Priority', 'Details', 'Created At'
             ]);
             foreach ($rows as $row) {
@@ -1537,6 +1543,9 @@ public function patrollertickets(Request $request)
                     $row->id,
                     $row->patroller_name ?? 'N/A',
                     $row->patroller_mobile ?? 'N/A',
+                    $row->zonal_name ?? 'N/A',
+                    $row->district_name ?? 'N/A',
+                    $row->block_name ?? 'N/A',
                     $row->gp_name,
                     $row->date,
                     $row->time,
