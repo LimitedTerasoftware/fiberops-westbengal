@@ -1708,6 +1708,8 @@ class UserApiController extends Controller
               $otdrfile_names=[];
               $joint_beforeimgs = [];
               $joint_afterimgs=[];
+              $used_img_names = [];
+              $used_img_locations = [];
               $video_name = null;
 
              foreach($requestids as $request_id){
@@ -1832,6 +1834,31 @@ class UserApiController extends Controller
 
                           }
                 }
+                if($request->hasFile('used_images')) {
+                    $used_images = $request->used_images;
+                    $locations = $request->input('used_image_locations');
+
+
+                    foreach ($used_images as $index => $image) {
+
+                          $lat = '0_0';
+                          $long = '0_0';
+
+                            if(isset($locations[$index])) {
+                                $val = trim($locations[$index], "\"' ");
+                                if(str_contains($val, ',')) {
+                                    [$lat, $long] = explode(',', $val);
+                                }
+                            }
+                                                
+                        $extension = $image->getClientOriginalExtension();
+                        $used_img_filename = time() . uniqid() . '_' . $lat . '_' . $long . '.' . $extension;
+                        $image->move(public_path('uploads/SubmitFiles'), $used_img_filename);
+                        array_push($used_img_names, $used_img_filename);
+                        array_push($used_img_locations, ['lat' => $lat, 'long' => $long]);
+                        Log::info("Uploaded used_image: $used_img_filename");
+                    }
+                }
                 //  if ($request->hasFile('video')) {
                 //         $video = $request->video;
                 //         $extension = $video->getClientOriginalExtension();
@@ -1860,6 +1887,8 @@ class UserApiController extends Controller
                 $documents['otdr_img'] =json_encode($otdrfile_names);
                 $documents['joint_enclouser_beforeimg'] =json_encode($joint_beforeimgs);
                 $documents['joint_enclouser_afterimg'] =json_encode($joint_afterimgs);
+                $documents['material_used_images'] =json_encode($used_img_names);
+                $documents['used_image_locations'] =json_encode($used_img_locations);
                 $documents['video'] = $video_name;
 
                   //Log::info($documents);
@@ -3680,7 +3709,7 @@ private function parseLatLong($val, $fallbackLat = null, $fallbackLong = null)
 
 
 
-public function patroller_checklist(Request $request)
+public function patroller_checklist132026(Request $request)
 {
     try {
 
@@ -3783,6 +3812,96 @@ public function patroller_checklist(Request $request)
         return response()->json([
             'status' => 0,
             'message' => 'Error: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function patroller_checklist(Request $request)
+{
+
+    try {
+
+        $data = $request->only([
+            'provider_id',
+            'patroller_name',
+            'patrol_start_time',
+            'patrol_end_time',
+            'auto_location',
+            'gp_name',
+            'block_name',
+
+            'trench_exposure_condition',
+            'manhole_or_chamber_condition',
+            'router_maker_condition',
+            'digging_activity',
+            'excavation_source',
+
+            'forced_entry_signs',
+            'env_temperature',
+            'env_moisture',
+
+            'ups_backup',
+            'power_cable_condition',
+
+            'ont_olt_router_working',
+            'rack_condition',
+            'los_lof_alarm',
+            'ont_dbm_reading',
+        ]);
+
+        $photoFields = [
+            'trench_exposure_photo',
+            'manhole_or_chamber_photo',
+            'router_maker_photo',
+            'digging_activity_photo',
+            'forced_entry_signs_photo',
+            'env_moisture_photo',
+            'ups_backup_photo',
+            'power_cable_photo',
+            'ont_olt_router_working_photo',
+            'rack_condition_photo',
+            'los_lof_alarm_photo',
+            'ont_dbm_reading_photo'
+        ];
+
+        $destinationPath = public_path('uploads/patroller_checklist');
+
+        if (!file_exists($destinationPath)) {
+            mkdir($destinationPath, 0755, true);
+        }
+
+        foreach ($photoFields as $field) {
+
+            if ($request->hasFile($field)) {
+
+                $file = $request->file($field);
+
+                if ($file->isValid()) {
+
+                    $imageName = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
+                    $file->move($destinationPath, $imageName);
+
+                    $data[$field] = 'uploads/patroller_checklist/'.$imageName;
+                }
+            }
+        }
+
+        $data['created_at'] = date('Y-m-d H:i:s');
+        $data['updated_at'] = date('Y-m-d H:i:s');
+
+
+        DB::table('patroller_checklists')->insert($data);
+
+        return response()->json([
+            'status' => 1,
+            'message' => 'Patroller checklist submitted successfully'
+        ], 201);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'status' => 0,
+            'message' => $e->getMessage()
         ], 500);
     }
 }
@@ -3921,6 +4040,16 @@ public function get_employee_list(Request $request)
 
  private function mapKolkataRequest(array $payload)
     {
+
+        $timestamp = $payload['ADDITIONAL_DATA']['alert_timestamp'] ?? null;
+
+        if ($timestamp) {
+            $carbon = Carbon::createFromTimestampUTC((float) $timestamp)
+                        ->setTimezone('Asia/Kolkata');
+        } else {
+            $carbon = Carbon::now('Asia/Kolkata');
+        }
+
         return [[
             'district' => $payload['CI_DISTRICT'] ?? null,
             'mandal'   => $payload['CI_BLOCK'] ?? null,
@@ -3928,8 +4057,8 @@ public function get_employee_list(Request $request)
             'lat'      => $payload['CI_LATITUDE'] ?? null,
             'log'      => $payload['CI_LONGITUDE'] ?? null,
 
-            'downtime' => $payload['ADDITIONAL_DATA']['alert_timestamp'] ?? Carbon::now(),
-            'downdate' => $payload['ADDITIONAL_DATA']['alert_timestamp'] ?? Carbon::now(),
+            'downtime' => $carbon->format('h:i:s a'),
+            'downdate' => $carbon->format('Y-m-d'),
             'update'   => date('Y-m-d H:i:s'),
             'uptime'   => date('Y-m-d H:i:s'),
 
@@ -3943,6 +4072,8 @@ public function get_employee_list(Request $request)
             // provider mobile must come from Kolkata
             'number' => $payload['PROVIDER_MOBILE'] ?? null,
             'problem_type' => $payload['PROBLEM_TYPE'] ?? null,
+            'priority' => $payload['PRIORITY_ID'] ?? null,
+            'host_group_name' =>   $payload['HOST_GROUP_NAME'] ?? null,
         ]];
     }
 
@@ -4016,8 +4147,8 @@ private function processTicketData(array $jsonData)
                 'gpname' => $keyvalue['gname'],
                 'lat' => $keyvalue['lat'],
                 'log' => $keyvalue['log'],
-                'downtime' => date('h:i:s a', strtotime($keyvalue['downtime'])),
-                'downdate' => date('Y-m-d', strtotime($keyvalue['downdate'])),
+                'downtime' => $keyvalue['downtime'],
+                'downdate' => $keyvalue['downdate'],
                 'up_date' => date('Y-m-d', strtotime($keyvalue['update'])),
                 'up_time' => date('h:i:s a', strtotime($keyvalue['uptime'])),
                 'downreason' => $keyvalue['downreason'],
@@ -4027,7 +4158,10 @@ private function processTicketData(array $jsonData)
                 'ticketinsertstage' => 0, // default UNASSIGNED
                 'olt_type' => $keyvalue['type'],
                 'pop_map_key' => $keyvalue['pop_map_key'],
+                'host_name' => $keyvalue['pop_map_key'],
                 'problem_type' => $keyvalue['problem_type'],
+                'priority' => $keyvalue['priority'],
+                'host_group_name'  => $keyvalue['host_group_name'],
 
             ];
 
@@ -4195,7 +4329,7 @@ private function updateSnocTicketStatus($incidentId, $teamId, $projectId, $statu
 
     try {
         $client = new Client([
-            'base_uri' => 'http://61.246.80.58:8084',
+            'base_uri' => 'http://117.242.191.185:3080',
             'timeout'  => 30,
         ]);
 

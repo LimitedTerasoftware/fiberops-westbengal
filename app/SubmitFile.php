@@ -25,7 +25,7 @@ class SubmitFile extends Model
         'joint_enclosurebefore_latlong',
         'joint_enclosureafter_latlong',
         'issues',
-        'before_img_latlong','after_img_latlong','otdr_img_latlong','video',
+        'before_img_latlong','after_img_latlong','otdr_img_latlong','video','material_used_images','used_image_locations'
 
     ];
 
