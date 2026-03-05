@@ -51,6 +51,7 @@
                                                                 <option value="5">Patroller</option>
                                                                 <option value="3">Zonal incharge</option>
                                                                 <option value="4">District incharge</option>
+                                                                <option value="6">MIS</option>
                                                                
 							</select>
 						</div>

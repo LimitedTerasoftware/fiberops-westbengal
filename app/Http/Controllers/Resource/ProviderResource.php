@@ -95,7 +95,7 @@ public function index(Request $request)
 
 
     $query = Provider::join('zonal_managers', 'providers.zone_id', '=', 'zonal_managers.id')
-        ->join('districts', 'providers.district_id', '=', 'districts.id')
+        ->leftJoin('districts', 'providers.district_id', '=', 'districts.id')
         ->leftJoin('leaves', function($join) {
                 $join->on('providers.id', '=', 'leaves.provider_id')
                     ->whereDate('leaves.start_date', '<=', Carbon::today())
@@ -264,8 +264,8 @@ public function exportProviders(Request $request)
             'email' => 'required|unique:providers,email|email|max:255',
             'mobile' => 'digits_between:6,13',
             'avatar' => 'mimes:jpeg,jpg,bmp,png|max:5242880',
-            'district_id' => 'required',
-            'block_id' => 'required',
+            // 'district_id' => 'required',
+            // 'block_id' => 'required',
             'password' => 'required|min:6|confirmed',
             
         ]);

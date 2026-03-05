@@ -9,7 +9,8 @@
         2 => 'FRT',
         5 => 'Patroller',
         3 => 'Zonal incharge',
-        4 => 'District incharge'
+        4 => 'District incharge',
+        6 => 'MIS'
     ];
     $user = Session::get('user');
     $DistId = null; 
