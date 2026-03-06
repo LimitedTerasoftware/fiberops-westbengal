@@ -3660,19 +3660,195 @@ Log::info('raised request: ' . json_encode($request->all()));
 
         $inserted = DB::table('raise_tickets')->insert($data);
 
-        if ($inserted) {
+        $gp = DB::table('gp_list')
+            ->where('gp_name', $request->gp_name)
+            ->first();
+        if (!$gp) {
+            Log::error("GP not found for: " . $request->gp_name);
             return response()->json([
                 'status' => 1,
-                'message' => 'Request inserted successfully with images'
-            ], 201);
+                'message' => 'Patroller ticket saved (GP not found)'
+            ]);
+        }
+         
+        $district = District::find($gp->district_id);
+       if (!$district) {
+            Log::warning("District not found for LGD: {$gp->lgd_code}");
+            return response()->json([
+                'status' => 0,
+                'message' => 'District not found'
+            ]);
+        }
+       $block = Block::find($gp->block_id);
+        if (!$block) {
+            \Log::warning("Block not found for LGD: {$gp->lgd_code}, Block ID: {$gp->block_id}");
+            return response()->json([
+                'status' => 0,
+                'message' => 'Block not found'
+            ]);
+        }
+        $issueType = strtolower(trim($request->issue_type));
+        $subType   = strtolower(trim($request->issue_sub_type));
+        
+        /* -------------------------
+        IGNORE CONDITIONS
+        ------------------------- */
+        
+        if (
+            ($issueType == 'others' && $subType == 'route patrolling') ||
+            ($issueType == 'fiber' && $subType == 'jointchamber')
+        ) {
+            return response()->json([
+                'status' => 1,
+                'message' => 'Patroller ticket saved'
+            ]);
         }
 
+        
+        if ($issueType == 'fiber') {
+            $providerType = 5; // FRT
+            $mobile = $gp->contact_no;
+            $provider = DB::table('providers')
+                ->leftJoin('provider_devices', 'providers.id', '=', 'provider_devices.provider_id')
+                ->where('mobile', $mobile)
+                ->select('providers.id as provider_id', 'providers.*', 'provider_devices.*')
+                ->first();
+            if (!$provider) {
+                Log::error("FRT provider not found for mobile: " . $mobile);
+                return response()->json([
+                    'status' => 1,
+                    'message' => 'Ticket saved but FRT not found'
+                ]);
+            }
+
+        } else {
+            $providerType = 6; // MIS
+       
+        $provider = DB::table('providers')
+               ->where('providers.type', $providerType)
+                ->where('providers.zone_id', $gp->zonal_id)
+                ->select('providers.id as provider_id', 'providers.*')
+                ->first();
+        
+
+
+        if (!$provider) {
+            Log::error("Provider not found for zone: " . $gp->zonal_id);
+            return response()->json([
+                'status' => 1,
+                'message' => 'Ticket saved but provider not found'
+            ]);
+        }
+        }
+
+        do {
+            $ticket_id = 'TK26' . mt_rand(100000, 9999999);
+        } while (DB::table('master_tickets')->where('ticketid', $ticket_id)->exists());
+    
+
+        
+        $masterTicket = [
+
+            'ticketid' => $ticket_id,
+            'district' => $district->name ? $district->name : '-' ,
+            'mandal' => $block->name ? $block->name : '-',
+            'gpname' => $gp->gp_name,
+            'lgd_code' => $gp->lgd_code,
+
+            'downdate' => date('Y-m-d'),
+            'downtime' => date('H:i:s'),
+
+            'downreason' => $request->issue_type,
+            'downreasonindetailed' => $request->details,
+            'subsategory' => $request->issue_sub_type,
+            'lat' => $gp->latitude,
+            'log' => $gp->longitude,
+
+            'ticketinsertstage' => 1,
+
+            'created_at' =>Carbon::now(),
+            'updated_at' =>Carbon::now()
+
+        ];
+
+        DB::table('master_tickets')->insert($masterTicket);
+
+        $googleMaps = new GoogleMapsService();
+        $daddress = $googleMaps->getReverseGeocode($gp->latitude, $gp->longitude);
+
+        $saddress = $googleMaps->getReverseGeocode($provider->latitude, $provider->longitude);
+
+        $direction_json = $googleMaps->getDirections($provider->latitude, $provider->longitude, $gp->latitude, $gp->longitude);
+        $route_key = isset($direction_json['routes'][0]['overview_polyline']['points']) ? $direction_json['routes'][0]['overview_polyline']['points'] : null;
+
+
+        $UserRequest = new UserRequests();
+
+        $UserRequest->booking_id = $ticket_id;
+
+        $UserRequest->gpname = $gp->gp_name;
+
+        $UserRequest->downreason = $request->issue_type;
+        $UserRequest->downreasonindetailed = $request->details;
+        $UserRequest->subcategory = $request->issue_sub_type;
+
+        $UserRequest->user_id = 45;
+
+        $UserRequest->current_provider_id = $provider->provider_id;
+        $UserRequest->provider_id = $provider->provider_id;
+
+
+        $UserRequest->service_type_id = 2;
+        $UserRequest->rental_hours = 10;
+        $UserRequest->payment_mode = 'CASH';
+        $UserRequest->promocode_id = 0;
+        $UserRequest->default_autoclose = 'Manual';
+        $UserRequest->autoclose ='Manual';
+
+        $UserRequest->status = 'INCOMING';
+
+        $UserRequest->s_address =$saddress;
+        $UserRequest->d_address =$daddress;
+
+        $UserRequest->s_latitude = $provider->latitude;
+        $UserRequest->s_longitude = $provider->longitude;
+        $UserRequest->d_latitude = $gp->latitude;
+        $UserRequest->d_longitude = $gp->longitude;
+
+
+        $UserRequest->distance = 1;
+        $UserRequest->unit = Setting::get('distance', 'Kms');
+        $UserRequest->use_wallet = 0;
+        if(Setting::get('track_distance', 0) == 1){
+            $UserRequest->is_track = "YES";
+        }
+        $UserRequest->otp = mt_rand(1000, 9999);
+
+        $UserRequest->company_id = $gp->company_id;
+        $UserRequest->state_id = $gp->state_id;
+        $UserRequest->district_id = $gp->district_id;
+
+        $UserRequest->assigned_at = Carbon::now();
+        $UserRequest->route_key = $route_key;
+        $UserRequest->created_by = $request->patroller_id;
+
+        $UserRequest->save();
+
+
+        DB::table('gp_list')
+            ->where('lgd_code', $gp->lgd_code)
+            ->update(['status' => 1]);
+
         return response()->json([
-            'status' => 0,
-            'message' => 'Failed to insert request'
-        ], 500);
+            'status' => 1,
+            'message' => "${ticket_id} Ticket created successfully"
+        ], 201);
+
+     
 
     } catch (\Exception $e) {
+                Log::error($e);
+
         return response()->json([
             'status' => 0,
             'message' => 'Error: ' . $e->getMessage()
