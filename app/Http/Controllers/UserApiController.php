@@ -3658,8 +3658,7 @@ Log::info('raised request: ' . json_encode($request->all()));
         $data['created_at'] = date('Y-m-d H:i:s');
         $data['updated_at'] = date('Y-m-d H:i:s');
 
-        $inserted = DB::table('raise_tickets')->insert($data);
-
+       $raiseTicketId = DB::table('raise_tickets')->insertGetId($data);
         $gp = DB::table('gp_list')
             ->where('gp_name', $request->gp_name)
             ->first();
@@ -3696,7 +3695,8 @@ Log::info('raised request: ' . json_encode($request->all()));
         
         if (
             ($issueType == 'others' && $subType == 'route patrolling') ||
-            ($issueType == 'fiber' && $subType == 'jointchamber')
+            ($issueType == 'fiber' && $subType == 'jointchamber') ||  
+            ($issueType == 'power')
         ) {
             return response()->json([
                 'status' => 1,
@@ -3745,7 +3745,11 @@ Log::info('raised request: ' . json_encode($request->all()));
             $ticket_id = 'TK26' . mt_rand(100000, 9999999);
         } while (DB::table('master_tickets')->where('ticketid', $ticket_id)->exists());
     
-
+        DB::table('raise_tickets')
+            ->where('id', $raiseTicketId)
+            ->update([
+                'ticket_id' => $ticket_id
+            ]);
         
         $masterTicket = [
 
