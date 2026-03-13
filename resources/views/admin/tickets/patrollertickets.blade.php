@@ -304,6 +304,8 @@
                             <th>Coordinates</th>
                             <th>Image</th>
                             <th>Details</th>
+                            <th>Ticket Id</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
 
@@ -399,6 +401,8 @@
                                 <td title="{{ $ticket->details }}">
                                 {{ str_limit($ticket->details, 40) }}
                                 </td>
+                                <td>{{$ticket->ticket_id}}</td>
+                                <td>{{$ticket->status}}</td>
                             </tr>
                         @endforeach
                     </tbody>

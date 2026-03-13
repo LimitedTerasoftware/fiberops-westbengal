@@ -3694,7 +3694,7 @@ Log::info('raised request: ' . json_encode($request->all()));
         ------------------------- */
         
         if (
-            ($issueType == 'others' && $subType == 'route patrolling') ||
+            ($issueType == 'others') ||
             ($issueType == 'fiber' && $subType == 'jointchamber') ||  
             ($issueType == 'power')
         ) {

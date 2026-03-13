@@ -309,6 +309,8 @@ class MaterialController extends Controller
                 }
 
                 switch ($uptime_category) {
+                     case 'total':
+                     break;
                     case 'gte98':
                         $query->where('ont_uptime.uptime_percent', '>=', 98);
                         break;

@@ -1891,36 +1891,42 @@ function renderBacklogChart(labels, notStarted) {
             ]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+    responsive: true,
+    maintainAspectRatio: false,
 
-            animation: {
-                duration: 1000,
-                easing: 'easeOutCubic'
-            },
+    interaction: {
+        mode: 'index',
+        intersect: false
+    },
 
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    backgroundColor: '#1f2937',
-                    titleColor: '#fff',
-                    bodyColor: '#fff'
-                }
-            },
+    animation: {
+        duration: 1000,
+        easing: 'easeOutCubic'
+    },
 
-            scales: {
-                x: { grid: { display: false } },
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(0,0,0,0.05)' }
-                }
+    plugins: {
+        legend: {
+            position: 'top',
+            labels: {
+                usePointStyle: true
             }
+        },
+        tooltip: {
+            enabled: true,
+            backgroundColor: '#1f2937',
+            titleColor: '#fff',
+            bodyColor: '#fff'
         }
+    },
+
+    scales: {
+        x: { grid: { display: false } },
+        y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(0,0,0,0.05)' }
+        }
+    }
+}
     });
 }
 

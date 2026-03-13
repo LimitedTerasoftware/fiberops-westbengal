@@ -1385,10 +1385,12 @@ public function patrollertickets(Request $request)
         $ticketsQuery = DB::table('raise_tickets as rt')
             ->leftJoin('gp_list as gp', 'gp.gp_name', '=', 'rt.gp_name')
             ->leftJoin('providers as p', 'p.id', '=', 'rt.patroller_id')
+            ->leftJoin('user_requests','user_requests.booking_id','=','rt.ticket_id')
             ->select(
                 'rt.*',
                 DB::raw("CONCAT(p.first_name, ' ', p.last_name) as patroller_name"),
-                'p.mobile as patroller_mobile'
+                'p.mobile as patroller_mobile',
+                'user_requests.status'
             );
            
 
@@ -1488,6 +1490,7 @@ public function patrollertickets(Request $request)
             ->leftJoin('districts as d', 'd.id', '=', 'gp.district_id')
             ->leftJoin('blocks as b', 'b.id', '=', 'gp.block_id')
             ->leftJoin('zonal_managers as z', 'z.id', '=', 'gp.zonal_id')
+            ->leftJoin('user_requests','user_requests.booking_id','=','rt.ticket_id')
             ->select(
                 'rt.id',
                 DB::raw("CONCAT(p.first_name, ' ', p.last_name) as patroller_name"),
@@ -1502,7 +1505,9 @@ public function patrollertickets(Request $request)
                 'd.name as district_name',
                 'b.name as block_name',
                 'z.name as zonal_name',
-                'rt.created_at'
+                'rt.created_at',
+                'user_requests.status',
+                'rt.ticket_id'
             )
             ->where('gp.state_id', $state_id);
         if (!empty($district_id)) {
@@ -1536,7 +1541,7 @@ public function patrollertickets(Request $request)
             $handle = fopen('php://output', 'w');
             fputcsv($handle, [
                 'ID', 'Patroller Name', 'Mobile', 'Zonal Name', 'District Name', 'Block Name', 'GP Name',
-                'Date', 'Time', 'Issue Type', 'Sub Issue', 'Priority', 'Details', 'Created At'
+                'Date', 'Time', 'Issue Type', 'Sub Issue', 'Priority', 'Details','Ticket Id','Status', 'Created At'
             ]);
             foreach ($rows as $row) {
                 fputcsv($handle, [
@@ -1553,6 +1558,8 @@ public function patrollertickets(Request $request)
                     $row->issue_sub_type,
                     $row->priority,
                     $row->details,
+                    $row->ticket_id,
+                    $row->status,
                     $row->created_at,
                 ]);
             }
@@ -4364,9 +4371,20 @@ public function process(Request $request)
                         \Log::warning("Block not found for LGD: {$check_lgd_code->lgd_code}, Block ID: {$check_lgd_code->block_id}");
                         continue; 
                     }
-                    do {
-                        $tkt_id = 'TK26' . mt_rand(100000, 9999999);
-                    } while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
+                    //do {
+                      //  $tkt_id = 'TK26' . mt_rand(100000, 9999999);
+                    //} while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
+
+                    if ($import_type == 3) { 
+   		 do {
+        	$date = date('Ymd');
+        	$tkt_id = 'INC/' . $date . '/' . mt_rand(10000, 99999);
+    		} while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
+		} else {
+    		do {
+        	$tkt_id = 'TK26' . mt_rand(100000, 9999999);
+    		} while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
+		}
 
                     // $tkt_id = 'TK26'.mt_rand(100000, 9999999);
                     $data['ticketid'] = $tkt_id;
@@ -4738,12 +4756,7 @@ public function tickets1(Request $request){
         $c_from_date=$request->get('c_from_date');
         $c_to_date=$request->get('c_to_date');
         $host_group_name = $request->get('host_group_name');
-
-
-
-    
-
-
+        
         $status_get = $status;
         $district_id_get = $district_id;
         $zone_id_get = $zone_id;
@@ -4763,21 +4776,17 @@ public function tickets1(Request $request){
         $c_from_date_get=$c_from_date;
         $c_to_date_get=$c_to_date;
         $host_group_name_get = $host_group_name;
-
-
         
-
-
         $query_params = array();
         $hostGroups = DB::table('master_tickets')
                 ->whereNotNull('host_group_name')
                 ->where('host_group_name', '!=', '')
                 ->distinct()
                 ->pluck('host_group_name');
-        $tickets = DB::table('master_tickets')
+        $tickets = DB::table('user_requests')
          //->select('master_tickets.id as master_id','master_tickets.ticketid','master_tickets.district','master_tickets.mandal','master_tickets.gpname','master_tickets.subsategory','master_tickets.downreason','master_tickets.downreasonindetailed','user_requests.id as request_id','user_requests.status','master_tickets.downdate','master_tickets.downtime','providers.first_name','providers.last_name','providers.mobile','user_requests.started_at','user_requests.finished_at')
           ->select('master_tickets.host_name','master_tickets.host_group_name','user_requests.created_by','user_requests.description','user_requests.issue_type','master_tickets.id as master_id','master_tickets.ticketid','master_tickets.district','master_tickets.mandal','master_tickets.gpname','master_tickets.lgd_code','user_requests.subcategory','user_requests.downreason','user_requests.downreasonindetailed','user_requests.id as request_id','user_requests.status','master_tickets.downdate','user_requests.purpose','master_tickets.downtime','zonal_managers.Name as zone_name','providers.first_name','providers.last_name','providers.last_name','providers.mobile','providers.zone_id','user_requests.s_address','user_requests.d_address','user_requests.s_latitude','user_requests.s_longitude','user_requests.d_latitude','user_requests.d_longitude','user_requests.assigned_at','user_requests.started_at','user_requests.started_location','user_requests.reached_at','user_requests.reached_location','user_requests.finished_at','user_requests.autoclose','user_requests.default_autoclose',DB::Raw('TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now().'") as duringhours'))
-         ->leftjoin('user_requests', 'user_requests.booking_id', '=', 'master_tickets.ticketid')
+          ->leftjoin('master_tickets', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
          ->leftjoin('providers', 'providers.id', '=', 'user_requests.provider_id')
          ->leftjoin('gp_list', 'master_tickets.lgd_code', '=', 'gp_list.lgd_code')
          ->leftjoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
@@ -5042,8 +5051,8 @@ public function tickets1(Request $request){
 
       
 
-        $tickets = $tickets->orderBy('downdate','desc')
-                         ->orderBy('downtime','asc');
+        $tickets = $tickets->orderBy('user_requests.created_at','desc');
+                        //  ->orderBy('downtime','asc');
                          // With joins (your current logic)
 
 
@@ -5056,7 +5065,11 @@ public function tickets1(Request $request){
          
          $countstatus1 = clone $tickets;
           
-         $permanentDownCount = $countstatus1->where('user_requests.status', 'onhold')->where('user_requests.downreason', 'Permanent Down')->count();
+         $permanentDownCount =  $countstatus1->where('user_requests.downreason', 'like', '%Permanent Down%')->where('user_requests.status', 'ONHOLD')
+                ->where(function($query) {
+                    $query->where('subcategory', 'not like', '%ETR Fiber Cut%')
+                          ->where('subcategory', 'not like', '%OLT Down%');
+                })->count();
 
     
         

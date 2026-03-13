@@ -1685,7 +1685,7 @@ function generatePagination(data, mainTab, dataTab) {
             let value = row[cat.key] ?? 0;
             if (cat.isPercent) {
                 value = `${value}%`;
-            } else if (mainTab === 'Ontdashboard' && cat.key !== 'total') {
+            } else if (mainTab === 'Ontdashboard') {
                 // Add redirection for Ontdashboard counts
                 // Use row.day as from_date and to_date
                 const url = `{{ route('admin.frequently_down_gps') }}?from_date=${row.day}&to_date=${row.day}&uptime_category=${cat.key}`;
