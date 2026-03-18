@@ -157,7 +157,7 @@
               @endif
 
           
-            @if(auth()->user()->role == 'admin')
+            <!-- @if(auth()->user()->role == 'admin')
             {{-- 5. Tracking & Movement --}}
             <li class="terrasoft-nav-group">
                 <div class="terrasoft-nav-header" data-submenu="tracking">
@@ -169,7 +169,7 @@
                     <li><a href="{{ route('admin.map.index') }}" ><i class="ti-map-alt"></i> Live Tracking</a></li>
                 </ul>
             </li>
-              @endif
+              @endif -->
           
 
             {{-- 6. Places --}}

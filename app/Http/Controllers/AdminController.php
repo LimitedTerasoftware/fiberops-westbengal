@@ -5061,15 +5061,34 @@ public function tickets1(Request $request){
          
          $countstatus = clone $tickets;
 
-         $statusCounts = $countstatus->select('user_requests.status', \DB::raw('COUNT(*) as total'))->groupBy('user_requests.status')->pluck('total','user_requests.status','user_requests.downreason');
+         $statusCounts = $countstatus->where('user_requests.booking_id', 'not like', 'INC%')->select('user_requests.status', \DB::raw('COUNT(*) as total'))->groupBy('user_requests.status')->pluck('total','user_requests.status','user_requests.downreason');
+         $ontTotalCount = clone $tickets;
+        $ontTotal = $ontTotalCount->where('user_requests.booking_id', 'not like', 'INC%')->count();
+
          
          $countstatus1 = clone $tickets;
           
-         $permanentDownCount =  $countstatus1->where('user_requests.downreason', 'like', '%Permanent Down%')->where('user_requests.status', 'ONHOLD')
+         $permanentDownCount =  $countstatus1->where('user_requests.booking_id', 'not like', 'INC%')->where('user_requests.downreason', 'like', '%Permanent Down%')->where('user_requests.status', 'ONHOLD')
                 ->where(function($query) {
                     $query->where('subcategory', 'not like', '%ETR Fiber Cut%')
                           ->where('subcategory', 'not like', '%OLT Down%');
                 })->count();
+
+          // INC ticket counts (tickets whose ticketid starts with 'INC')
+            $incBase = DB::table('master_tickets')
+                ->leftJoin('user_requests', 'user_requests.booking_id', '=', 'master_tickets.ticketid')
+                ->where('user_requests.company_id', $company_id)
+                ->where('user_requests.state_id', $state_id)
+                ->where('master_tickets.ticketid', 'like', 'INC%');
+            if (!empty($Roledistrict_id)) {
+                $incBase->where('user_requests.district_id', $Roledistrict_id);
+            }
+            $incTotal = (clone $incBase)->count();
+            $incOpen = (clone $incBase)->where('user_requests.status', 'INCOMING')->count();
+            $incOngoing = (clone $incBase)->where('user_requests.status', 'PICKEDUP')->count();
+            $incHold = (clone $incBase)->where('user_requests.status', 'ONHOLD')->count();
+            $incCompleted = (clone $incBase)->where('user_requests.status', 'COMPLETED')->count();
+        
 
     
         
@@ -5183,7 +5202,8 @@ public function tickets1(Request $request){
 
         $ticket_status = array('Open', 'OnGoing','Completed', 'Onhold');
 
-        return view('admin.dashboard.tickets', compact('services','tickets','statusCounts','permanentDownCount','districts','blocks', 'zonals','ticket_status', 'query_params','pagination','status_get','district_id_get','zone_id_get','team_id_get','provider_id_get','block_id_get','from_date_get','to_date_get','autoclose_get','default_autoclose_get','interval_get','category_get','newfrom_date_get','newto_date_get','serch_term_get','range_get','hostGroups', 'host_group_name_get'));
+        return view('admin.dashboard.tickets', compact('services','tickets','statusCounts','permanentDownCount','districts','blocks', 'zonals','ticket_status', 'query_params','pagination','status_get','district_id_get','zone_id_get','team_id_get','provider_id_get','block_id_get','from_date_get','to_date_get','autoclose_get','default_autoclose_get','interval_get','category_get','newfrom_date_get','newto_date_get','serch_term_get','range_get','hostGroups', 'host_group_name_get',
+          'incTotal', 'incOpen', 'incOngoing', 'incHold', 'incCompleted','ontTotal'));
 
     } catch (Exception $e) { 
         dd($e);

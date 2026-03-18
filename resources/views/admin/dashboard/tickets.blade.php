@@ -399,27 +399,67 @@ inc {
                     <!-- Summary Cards -->
             <div class="stats-row">
                 <div class="stat-card stat-total">
-                    <h3>{{$tickets->total()}}</h3>
+                    <small style="font-size:10px;font-weight:700;color:#007bff;letter-spacing:.5px;">ONT TICKETS</small>
+                    <h3>{{ $ontTotal }}</h3>
+
+                    <!-- <h3>{{$tickets->total()}}</h3> -->
                     <p>Total Tickets</p>
                 </div>
                 <div class="stat-card stat-permanent-down">
-                     <h3>{{ $permanentDownCount }}</h3>
+                    <small style="font-size:10px;font-weight:700;color:#dc7935;letter-spacing:.5px;">ONT TICKETS</small>
+                    <h3>{{ $permanentDownCount }}</h3>
                     <p>Permanent Down</p>
                 </div>
                 <div class="stat-card stat-notstarted">
+                    <small style="font-size:10px;font-weight:700;color:#b59500;letter-spacing:.5px;">ONT TICKETS</small>
+
                      <h3>{{ isset($statusCounts['INCOMING']) ? $statusCounts['INCOMING'] : 0 }}</h3>
                     <p>Open</p>
                 </div>
                 <div class="stat-card stat-ongoing">
+                    <small style="font-size:10px;font-weight:700;color:#b59500;letter-spacing:.5px;">ONT TICKETS</small>
+
                     <h3>{{ isset($statusCounts['PICKEDUP']) ? $statusCounts['PICKEDUP'] : 0 }}</h3>
                     <p>Ongoing</p>
                 </div>
                 <div class="stat-card stat-onhold">
+                    <small style="font-size:10px;font-weight:700;color:#b59500;letter-spacing:.5px;">ONT TICKETS</small>
+
                     <h3>{{ (isset($statusCounts['ONHOLD']) ? $statusCounts['ONHOLD'] : 0) - $permanentDownCount }}</h3>
                     <p>On Hold</p>
                 </div>
                 <div class="stat-card stat-completed">
+                    <small style="font-size:10px;font-weight:700;color:#b59500;letter-spacing:.5px;">ONT TICKETS</small>
+
                     <h3>{{ isset($statusCounts['COMPLETED']) ? $statusCounts['COMPLETED'] : 0 }}</h3>
+                    <p>Completed</p>
+                </div>
+            </div>
+             <!-- INC Ticket Summary Cards -->
+            <div class="stats-row">
+                <div class="stat-card" style="border-top:3px solid #f59e0b;">
+                    <small style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.5px;">ROUTER TICKETS</small>
+                    <h3 style="color:#f59e0b;">{{ $incTotal }}</h3>
+                    <p>Total</p>
+                </div>
+                <div class="stat-card stat-notstarted">
+                    <small style="font-size:10px;font-weight:700;color:#b59500;letter-spacing:.5px;">ROUTER TICKETS</small>
+                    <h3>{{ $incOpen }}</h3>
+                    <p>Open</p>
+                </div>
+                <div class="stat-card stat-ongoing">
+                    <small style="font-size:10px;font-weight:700;color:#0298a8;letter-spacing:.5px;">ROUTER TICKETS</small>
+                    <h3>{{ $incOngoing }}</h3>
+                    <p>Ongoing</p>
+                </div>
+                <div class="stat-card stat-onhold">
+                    <small style="font-size:10px;font-weight:700;color:#a01c01;letter-spacing:.5px;">ROUTER TICKETS</small>
+                    <h3>{{ $incHold }}</h3>
+                    <p>On Hold</p>
+                </div>
+                <div class="stat-card stat-completed">
+                    <small style="font-size:10px;font-weight:700;color:#01a01e;letter-spacing:.5px;">ROUTER TICKETS</small>
+                    <h3>{{ $incCompleted }}</h3>
                     <p>Completed</p>
                 </div>
             </div>
