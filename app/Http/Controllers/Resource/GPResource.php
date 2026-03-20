@@ -63,6 +63,7 @@ class GPResource extends Controller
         $type = $request->get('type'); 
         $fromDate = $request->get('from');
         $toDate = $request->get('to');
+        $Gpstatus = $request->get('Gpstatus');
 
         $regularlyDownLgdCodes = [];
 
@@ -122,6 +123,24 @@ class GPResource extends Controller
         }
         if ($type === 'regularly_down') {
             $gpsQuery->whereIn('gp_list.lgd_code', $regularlyDownLgdCodes);
+        }
+        if(isset($Gpstatus) && !empty($Gpstatus)){
+            $activeLgdCodes = DB::table('user_requests as ur')
+                ->join('master_tickets as mt', 'mt.ticketid', '=', 'ur.booking_id')
+                ->whereIn('ur.status', ['INCOMING', 'ONHOLD', 'SCHEDULED', 'PICKEDUP'])
+                ->whereNotNull('mt.lgd_code')
+                ->where('ur.autoclose', 'Auto')
+                ->where('ur.company_id', $company_id)
+                ->where('ur.state_id', $state_id)
+                ->distinct()
+                ->pluck('mt.lgd_code')
+                ->toArray();
+
+            if($Gpstatus === 'DownGP'){
+                $gpsQuery->whereIn('gp_list.lgd_code', $activeLgdCodes);
+            } elseif($Gpstatus === 'UpGP'){
+                $gpsQuery->whereNotIn('gp_list.lgd_code', $activeLgdCodes);
+            }
         }
 
         $gps = $gpsQuery->get();

@@ -36,17 +36,44 @@ $yesterday= $yesterdaydate->toDateString();
 						  </tr>
 						<tr>
 						  <th scope="row">Today</th>
-						  <td><a href="/public/westbengal/public/admin/tickets?from_date={{$today}}&status=OnGoing">{{$todayongoing_tickets}}</a></td>
-						  <td><a href="/public/westbengal/public/admin/tickets?from_date={{$today}}&status=OnGoing&autoclose=Manual}}">{{$todaymanual_tickets}}</a></td>
-                                                  <td><a href="/public/westbengal/public/admin/tickets?from_date={{$today}}&status=OnGoing&autoclose=Auto">{{$todayregular_tickets}}</a></td>						
- 
-                                                 </tr>
+							<td>
+								<a href="{{ url('/admin/tickets?status=OnGoing&from_date=' . $today . '&to_date=' . $today) }}">
+									{{ $todayongoing_tickets }}
+								</a>
+							</td>
+
+							<td>
+								<a href="{{ url('/admin/tickets?status=OnGoing&autoclose=Manual&from_date=' . $today . '&to_date=' . $today) }}">
+									{{ $todaymanual_tickets }}
+								</a>
+							</td>
+
+							<td>
+								<a href="{{ url('/admin/tickets?status=OnGoing&autoclose=Auto&from_date=' . $today . '&to_date=' . $today) }}">
+									{{ $todayregular_tickets }}
+								</a>
+							</td> 
+                        </tr>
 						<tr>
 						  <th scope="row">Yesterday</th>
-						  <td><a href="/public/westbengal/public/admin/tickets?from_date={{$yesterday}}&status=OnGoing">{{$yesterdayongoing_tickets}}</a></td>
-						  <td><a href="/public/westbengal/public/admin/tickets?from_date={{$yesterday}}&status=OnGoing&autoclose=Manual">{{$yesterdaymanual_tickets}}</a></td>
-                                                  <td><a href="/public/westbengal/public/admin/tickets?from_date={{$yesterday}}&status=OnGoing&autoclose=Auto">{{$yesterdayregular_tickets}}</a></td>
-                                                 </tr>
+							<td>
+								<a href="{{ url('/admin/tickets') . '?status=OnGoing&from_date=' . $yesterday . '&to_date=' . $yesterday }}">
+									{{ $yesterdayongoing_tickets }}
+								</a>
+							</td>
+
+							<td>
+								<a href="{{ url('/admin/tickets') . '?status=OnGoing&autoclose=Manual&from_date=' . $yesterday . '&to_date=' . $yesterday }}">
+									{{ $yesterdaymanual_tickets }}
+								</a>
+							</td>
+
+							<td>
+								<a href="{{ url('/admin/tickets') . '?status=OnGoing&autoclose=Auto&from_date=' . $yesterday . '&to_date=' . $yesterday }}">
+									{{ $yesterdayregular_tickets }}
+								</a>
+							</td>                                                
+						</tr>
 				  </tbody>
               </table>                
 			  </div>

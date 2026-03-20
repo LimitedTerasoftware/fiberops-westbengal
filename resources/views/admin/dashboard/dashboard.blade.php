@@ -414,8 +414,9 @@ $yesterday= $yesterdaydate->toDateString();
         <div class="stat-value text-primary" id="gp-total">0</div>
         <div>GP Summary</div>
         <div class="badge-sub">
-            <a href="{{ url('/admin/tickets?Gpstatus=DownGP') }}"> <i class="bi bi-caret-down-fill text-danger"></i> <span class="text-danger" id="unique-lgd">0</span>(<span class="text-danger" id="unique-lgd-percent">0</span>)</a>
-            | <i class="bi bi-caret-up-fill text-success"></i> <span class="text-success" id="down-gps">0</span>(<span class="text-success" id="down-gps-percent">0</span>)
+              <a href="{{ route('admin.gps.index', ['Gpstatus' => 'DownGP']) }}"> <i class="bi bi-caret-down-fill text-danger"></i> <span class="text-danger" id="unique-lgd">0</span>(<span class="text-danger" id="unique-lgd-percent">0</span>)</a>
+            | <a href="{{ route('admin.gps.index', ['Gpstatus' => 'UpGP']) }}"><i class="bi bi-caret-up-fill text-success"></i> <span class="text-success" id="down-gps">0</span>(<span class="text-success" id="down-gps-percent">0</span>)</a>
+
            </div>
       </div>
     </div>

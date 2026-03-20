@@ -392,6 +392,12 @@ inc {
 
                     </div>
                     <input type="hidden" value="{{ @Request::get('status') }}" name="status">
+                    <input type="hidden" value="{{ @Request::get('Gpstatus') }}" name="Gpstatus">
+                    <input type="hidden" value="{{ @Request::get('interval') }}" name="interval">
+                    <input type="hidden" value="{{@Request::get('autoclose')}}" name="autoclose">
+                    
+
+
                 </form>
 
             </div>
@@ -721,7 +727,7 @@ $formattedTime = sprintf("%02d:%02d", $hours, $minutes);
         </div>
          Showing {{$tickets->currentPage() != 1 ? $tickets->currentPage() * 10 - 9 : $tickets->currentPage()}} to {{$tickets->currentPage() * $tickets->perPage()}} of {{$tickets->total()}} entries
     </div>
-      {{ $tickets->appends(['status' => @$status_get,'district_id'=>@$district_id_get,'interval'=>@$interval_get,'searchinfo'=>@$serch_term_get,'zone_id'=>@$zone_id_get,'team_id'=>@$team_id_get,'block_id'=>@$block_id_get,'from_date'=>@$from_date_get,'to_date'=>@$to_date_get,'autoclose'=>@$autoclose_get,'default_autoclose'=>@$default_autoclose_get,'provider_id'=>@$provider_id_get,'category'=>@$category_get,'newfrom_date'=>@$newfrom_date_get,'newto_date'=>@$newto_date_get,'range'=>@$range_get,'host_group_name'=>@$host_group_name_get])->links()  }}
+      {{ $tickets->appends(['status' => @$status_get,'district_id'=>@$district_id_get,'interval'=>@$interval_get,'searchinfo'=>@$serch_term_get,'zone_id'=>@$zone_id_get,'team_id'=>@$team_id_get,'block_id'=>@$block_id_get,'from_date'=>@$from_date_get,'to_date'=>@$to_date_get,'autoclose'=>@$autoclose_get,'default_autoclose'=>@$default_autoclose_get,'provider_id'=>@$provider_id_get,'category'=>@$category_get,'newfrom_date'=>@$newfrom_date_get,'newto_date'=>@$newto_date_get,'range'=>@$range_get,'host_group_name'=>@$host_group_name_get,'Gpstatus'=>@$Gpstatus_get])->links()  }}
    </div>
 </div>
           

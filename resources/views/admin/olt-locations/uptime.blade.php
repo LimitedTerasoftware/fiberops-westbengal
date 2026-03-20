@@ -240,8 +240,34 @@
                 </div>
             </div>
         </div>
+        <div class="canvas-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                <h6 class="fw-bold mb-0">Recurring GP Issue Trends   <span id="recurringGpCount" style="color:red;font-weight:bold;cursor:pointer">0</span></h6>  
+
+                <div class="gap-1" style="display:flex; justify-content:space-between; align-items:center;">
+                
+                    <label class="small fw-bold me-1">From:</label>
+                    <input type="date" id="recurring_from_date" class="form-control form-control-sm px-1"
+                        style="width: 105px; font-size: 12px; border-radius: 4px;">
+                    <label class="small fw-bold me-1">To:</label>
+                    <input type="date" id="recurring_to_date" class="form-control form-control-sm px-1"
+                        style="width: 105px; font-size: 12px; border-radius: 4px;">
+                    <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-recurring-filter"
+                        style="font-size: 12px; border-radius: 4px;">Go</button>
+                </div>
+            </div>
+            
+            <div id="recurringChartWrapper" style="overflow-x:auto; width:100%;">
+                <div id="recurringChartInner" style="position: relative; height: 420px;">
+                    <canvas id="recurringGpTrendsChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+       
     </div>
 </div>
+    
 
 {{-- CSV Upload Modal --}}
 <div id="csvUploadModal" class="terrasoft-modal">
@@ -283,6 +309,13 @@
 
 <style>
 /* Main Tab Navigation */
+.canvas-card { 
+  background-color: #fff !important;
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  padding: 16px;
+  margin-top:10px;
+}
 .terrasoft-tab-container {
     background: white;
     border-radius: 12px;
@@ -1175,10 +1208,13 @@
     margin: 20px;
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
      let currentMainTab = 'Ontdashboard';
     let currentDataTab = 'ont-data';
+    let recurringGpsChartInstance = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Global variables
    
@@ -1281,7 +1317,36 @@ document.addEventListener('DOMContentLoaded', function() {
             loadDataTabData(currentMainTab, tabId);
         });
     });
-    
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    const lastWeek = new Date(today);
+    lastWeek.setDate(today.getDate() - 6);
+    const lwYear = lastWeek.getFullYear();
+    const lwMonth = String(lastWeek.getMonth() + 1).padStart(2, '0');
+    const lwDay = String(lastWeek.getDate()).padStart(2, '0');
+    const lastWeekStr = `${lwYear}-${lwMonth}-${lwDay}`;
+    // Recurring Chart Defaults
+    $('#recurring_from_date').val(lastWeekStr);
+    $('#recurring_to_date').val(todayStr);
+
+    fetchRecurringGpTrends();
+
+    $('#btn-recurring-filter').click(function () {
+                    fetchRecurringGpTrends();
+    });
+    // Link to Frequently Down GPs Report
+    $('#recurringGpCount').css('cursor', 'pointer').click(function () {
+        const fromDate = $('#recurring_from_date').val();
+        const toDate = $('#recurring_to_date').val();
+        let url = "{{ route('admin.frequently_down_gps') }}";
+        url += `?from_date=${fromDate}&to_date=${toDate}`;
+        window.open(url, '_blank');
+    });
+              
     // Filter Apply Buttons
     document.getElementById('applyFilters').addEventListener('click', function() {
         loadDataTabData('Ontdashboard', currentDataTab);
@@ -1880,5 +1945,114 @@ function closeCsvModal() {
 }
 
 
+</script>
+<script>
+    function fetchRecurringGpTrends() 
+    {
+            const fromDate = $('#recurring_from_date').val();
+            const toDate = $('#recurring_to_date').val();
+
+            $.ajax({
+                url: "{{ route('admin.get_recurring_gp_trends') }}",
+                method: "GET",
+                data: {
+                    from_date: fromDate,
+                    to_date: toDate,
+                },
+                success: function (response) {
+                    console.log("Recurring GP API Response:", response);
+                    if (!response || !response.labels || response.labels.length === 0) {
+                        console.warn("No recurring GP data found for selected date range");
+                        $('#recurringGpCount').text('0');
+                        const ctx = document.getElementById('recurringGpTrendsChart').getContext('2d');
+                        if (recurringGpsChartInstance) {
+                            recurringGpsChartInstance.destroy();
+                        }
+                        recurringGpsChartInstance = new Chart(ctx, {
+                            type: 'bar',
+                            data: { labels: ['No Data'], datasets: [{ label: 'No recurring GP data', data: [0], backgroundColor: '#ccc' }] },
+                            options: { responsive: false, maintainAspectRatio: false }
+                        });
+                        return;
+                    }
+                    renderRecurringGpsChart(response);
+                },
+                error: function (err) {
+                    console.error("Error fetching recurring GP data:", err);
+                }
+            });
+    }
+    function renderRecurringGpsChart(data) 
+       {
+                const gpCount = data.labels.length;
+
+                const barWidth = 60; 
+                const minWidth = 1200;
+                const chartWidth = Math.max(gpCount * barWidth, minWidth);
+
+                const chartInner = document.getElementById('recurringChartInner');
+                const canvas = document.getElementById('recurringGpTrendsChart');
+
+                chartInner.style.width = chartWidth + 'px';
+                canvas.width = chartWidth;
+                canvas.height = 400;
+
+                document.getElementById('recurringGpCount').innerText = gpCount;
+
+                const ctx = canvas.getContext('2d');
+
+                if (recurringGpsChartInstance) {
+                    recurringGpsChartInstance.destroy();
+                }
+
+                recurringGpsChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    },
+                    options: {
+                        responsive: false,            
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                filter: item => item.raw > 0
+                            },
+                            legend: {
+                                position: 'top',
+                                 align: 'start',    
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 10
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                stacked: true,
+                                ticks: {
+                                    autoSkip: false,
+                                    maxRotation: 60,
+                                    minRotation: 45
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Regularly Down GPs'
+                                }
+                            },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Down Count'
+                                }
+                            }
+                        }
+                    }
+                });
+        }
 </script>
 @endsection

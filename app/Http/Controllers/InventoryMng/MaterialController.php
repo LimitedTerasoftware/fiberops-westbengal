@@ -549,8 +549,11 @@ class MaterialController extends Controller
             }
                
                 $expectedWeeks = DB::table('master_tickets')
-                ->whereBetween('downdate', [$fromDate, $toDate])
-                ->select(DB::raw('COUNT(DISTINCT YEARWEEK(downdate, 1)) as weeks'))
+                ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
+                ->where('user_requests.state_id', $state_id)
+                ->whereNotNull('master_tickets.lgd_code')
+                ->whereBetween('master_tickets.downdate', [$fromDate, $toDate])
+                ->select(DB::raw('COUNT(DISTINCT YEARWEEK(master_tickets.downdate, 1)) as weeks'))
                 ->value('weeks');
 
                 $recurringGps = $query->select(

@@ -380,43 +380,167 @@ class AdminController extends Controller
      * @param  \App\Provider  $provider
      * @return \Illuminate\Http\Response
      */
-    public function ticketongoinghistory()
-    {
-        try{
-            $totalongoing_tickets = UserRequests::with('masterticket')->where('status','=','PICKEDUP')->where('autoclose','!=','')->count();
-            $todayongoing_tickets = UserRequests::with('masterticket')->where('status','=','PICKEDUP')->where('autoclose','!=','')->whereDate('user_requests.started_at','=',Carbon::today())->count();
-            $yesterdayongoing_tickets = UserRequests::with('masterticket')->where('status','=','PICKEDUP')->where('autoclose','!=','')->whereDate('user_requests.started_at','=',Carbon::Yesterday())->count();
-            $manual_tickets =  UserRequests::with('masterticket')->where('status','=','PICKEDUP')->where('autoclose','=','Manual')->count();
-            $regular_tickets =  UserRequests::with('masterticket')->where('status','=','PICKEDUP')->where('autoclose','=','Auto')->count();
-            $todaymanual_tickets = UserRequests::with('masterticket')->where('status','=','PICKEDUP')->where('autoclose','=','Manual')->whereDate('user_requests.started_at','=',Carbon::today())->count();
-            $yesterdaymanual_tickets = UserRequests::with('masterticket')->where('status','=','PICKEDUP')->where('autoclose','=','Manual')->whereDate('user_requests.started_at','=',Carbon::Yesterday())->count();
-            $todayregular_tickets = UserRequests::with('masterticket')->where('status','=','PICKEDUP')->where('autoclose','=','Auto')->whereDate('user_requests.started_at','=',Carbon::today())->count();
-            $yesterdayregular_tickets = UserRequests::with('masterticket')->where('status','=','PICKEDUP')->where('autoclose','=','Auto')->whereDate('user_requests.started_at','=',Carbon::Yesterday())->count();
-            
-            $manual_manual_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Manual')->where('autoclose','=','Manual')->count();
-            $manual_auto_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Manual')->where('autoclose','=','Auto')->count();
-            $auto_manual_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Auto')->where('autoclose','=','Manual')->count();
-            $auto_auto_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Auto')->where('autoclose','=','Auto')->count();
-                
-             
-            $today_manual_manual_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Manual')->where('autoclose','=','Manual')->whereDate('user_requests.started_at','=',Carbon::today())->count();
-            $today_manual_auto_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Manual')->where('autoclose','=','Auto')->whereDate('user_requests.started_at','=',Carbon::today())->count();
-            $today_auto_manual_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Auto')->where('autoclose','=','Manual')->whereDate('user_requests.started_at','=',Carbon::today())->count();
-            $today_auto_auto_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Auto')->where('autoclose','=','Auto')->whereDate('user_requests.started_at','=',Carbon::today())->count();
-           
-            $yesterday_manual_manual_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Manual')->where('autoclose','=','Manual')->whereDate('user_requests.started_at','=',Carbon::yesterday())->count();
-            $yesterday_manual_auto_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Manual')->where('autoclose','=','Auto')->whereDate('user_requests.started_at','=',Carbon::yesterday())->count();
-            $yesterday_auto_manual_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Auto')->where('autoclose','=','Manual')->whereDate('user_requests.started_at','=',Carbon::yesterday())->count();
-            $yesterday_auto_auto_tickets = UserRequests::with('masterticket')->where('status','PICKEDUP')->where('default_autoclose','=','Auto')->where('autoclose','=','Auto')->whereDate('user_requests.started_at','=',Carbon::yesterday())->count();
-           
+    public function ticketongoinghistory(Request $request)
+{
+    try {
+        $user = Session::get('user');
 
-      
-           return view('admin.ticketongoinghistory',compact('yesterday_auto_auto_tickets','yesterday_auto_manual_tickets','yesterday_manual_auto_tickets','yesterday_manual_manual_tickets','today_auto_auto_tickets','today_auto_manual_tickets','today_manual_auto_tickets','today_manual_manual_tickets','auto_auto_tickets','auto_manual_tickets','manual_auto_tickets','manual_manual_tickets','totalongoing_tickets','todayongoing_tickets','yesterdayongoing_tickets','manual_tickets','regular_tickets','todaymanual_tickets','yesterdaymanual_tickets','todayregular_tickets','yesterdayregular_tickets'));
+        $company_id  = $user->company_id;
+        $state_id    = $user->state_id;
+        $district_id = $user->district_id;
+
+        $baseQuery = UserRequests::with('masterticket')
+            ->where('status', 'PICKEDUP')
+            ->where('company_id', $company_id)
+            ->where('state_id', $state_id);
+
+        if (!empty($district_id)) {
+            $baseQuery->where('district_id', $district_id);
         }
-        catch(Exception $e){
-            return redirect()->route('admin.user.index')->with('flash_error','Something Went Wrong with Dashboard!');
-        }
+
+        // ================== BASIC COUNTS ==================
+        $totalongoing_tickets = (clone $baseQuery)->count();
+
+        $todayongoing_tickets = (clone $baseQuery)
+            ->whereDate('started_at', Carbon::today())
+            ->count();
+
+        $yesterdayongoing_tickets = (clone $baseQuery)
+            ->whereDate('started_at', Carbon::yesterday())
+            ->count();
+
+        // ================== AUTO / MANUAL ==================
+        $manual_tickets = (clone $baseQuery)
+            ->where('autoclose', 'Manual')
+            ->count();
+
+        $regular_tickets = (clone $baseQuery)
+            ->where('autoclose', 'Auto')
+            ->count();
+
+        $todaymanual_tickets = (clone $baseQuery)
+            ->where('autoclose', 'Manual')
+            ->whereDate('started_at', Carbon::today())
+            ->count();
+
+        $yesterdaymanual_tickets = (clone $baseQuery)
+            ->where('autoclose', 'Manual')
+            ->whereDate('started_at', Carbon::yesterday())
+            ->count();
+
+        $todayregular_tickets = (clone $baseQuery)
+            ->where('autoclose', 'Auto')
+            ->whereDate('started_at', Carbon::today())
+            ->count();
+
+        $yesterdayregular_tickets = (clone $baseQuery)
+            ->where('autoclose', 'Auto')
+            ->whereDate('started_at', Carbon::yesterday())
+            ->count();
+
+        // ================== DEFAULT AUTO CLOSE COMBINATIONS ==================
+        $manual_manual_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Manual')
+            ->count();
+
+        $manual_auto_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Auto')
+            ->count();
+
+        $auto_manual_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Manual')
+            ->count();
+
+        $auto_auto_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Auto')
+            ->count();
+
+        // ================== TODAY ==================
+        $today_manual_manual_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Manual')
+            ->whereDate('started_at', Carbon::today())
+            ->count();
+
+        $today_manual_auto_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Auto')
+            ->whereDate('started_at', Carbon::today())
+            ->count();
+
+        $today_auto_manual_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Manual')
+            ->whereDate('started_at', Carbon::today())
+            ->count();
+
+        $today_auto_auto_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Auto')
+            ->whereDate('started_at', Carbon::today())
+            ->count();
+
+        // ================== YESTERDAY ==================
+        $yesterday_manual_manual_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Manual')
+            ->whereDate('started_at', Carbon::yesterday())
+            ->count();
+
+        $yesterday_manual_auto_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Auto')
+            ->whereDate('started_at', Carbon::yesterday())
+            ->count();
+
+        $yesterday_auto_manual_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Manual')
+            ->whereDate('started_at', Carbon::yesterday())
+            ->count();
+
+        $yesterday_auto_auto_tickets = (clone $baseQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Auto')
+            ->whereDate('started_at', Carbon::yesterday())
+            ->count();
+
+        return view('admin.ticketongoinghistory', compact(
+            'totalongoing_tickets',
+            'todayongoing_tickets',
+            'yesterdayongoing_tickets',
+
+            'manual_tickets',
+            'regular_tickets',
+            'todaymanual_tickets',
+            'yesterdaymanual_tickets',
+            'todayregular_tickets',
+            'yesterdayregular_tickets',
+
+            'manual_manual_tickets',
+            'manual_auto_tickets',
+            'auto_manual_tickets',
+            'auto_auto_tickets',
+
+            'today_manual_manual_tickets',
+            'today_manual_auto_tickets',
+            'today_auto_manual_tickets',
+            'today_auto_auto_tickets',
+
+            'yesterday_manual_manual_tickets',
+            'yesterday_manual_auto_tickets',
+            'yesterday_auto_manual_tickets',
+            'yesterday_auto_auto_tickets'
+        ));
+    } catch (Exception $e) {
+        return redirect()->route('admin.user.index')
+            ->with('flash_error', 'Something Went Wrong with Dashboard!');
     }
+}
 
 
    
@@ -426,41 +550,174 @@ class AdminController extends Controller
      * @param  \App\Provider  $provider
      * @return \Illuminate\Http\Response
      */
-    public function ticketcompletedhistory()
-    {
-        try{
-            $completed_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->count();
-            $manual_manual_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Manual')->where('autoclose','=','Manual')->count();
-            $manual_auto_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Manual')->where('autoclose','=','Auto')->count();
-            $auto_manual_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Auto')->where('autoclose','=','Manual')->count();
-            $auto_auto_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Auto')->where('autoclose','=','Auto')->count();
-            $yesterdayclosed_tickets = UserRequests::with('masterticket')->where('status','=','COMPLETED')->whereDate('user_requests.finished_at','=',Carbon::yesterday())->count();
-            $todayclosed_tickets = UserRequests::with('masterticket')->where('status','=','COMPLETED')->whereDate('user_requests.finished_at','=',Carbon::today())->count();
-            
-            $today_manual_manual_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Manual')->where('autoclose','=','Manual')->whereDate('user_requests.finished_at','=',Carbon::today())->count();
-            $today_manual_auto_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Manual')->where('autoclose','=','Auto')->whereDate('user_requests.finished_at','=',Carbon::today())->count();
-            $today_auto_manual_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Auto')->where('autoclose','=','Manual')->whereDate('user_requests.finished_at','=',Carbon::today())->count();
-            $today_auto_auto_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Auto')->where('autoclose','=','Auto')->whereDate('user_requests.finished_at','=',Carbon::today())->count();
-           
-            $yesterday_manual_manual_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Manual')->where('autoclose','=','Manual')->whereDate('user_requests.finished_at','=',Carbon::yesterday())->count();
-            $yesterday_manual_auto_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Manual')->where('autoclose','=','Auto')->whereDate('user_requests.finished_at','=',Carbon::yesterday())->count();
-            $yesterday_auto_manual_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Auto')->where('autoclose','=','Manual')->whereDate('user_requests.finished_at','=',Carbon::yesterday())->count();
-            $yesterday_auto_auto_tickets = UserRequests::with('masterticket')->where('status','COMPLETED')->where('default_autoclose','=','Auto')->where('autoclose','=','Auto')->whereDate('user_requests.finished_at','=',Carbon::yesterday())->count();
-           
+   public function ticketcompletedhistory(Request $request)
+{
+    try {
+        $user = Session::get('user');
 
-            $todayongoing_tickets = UserRequests::with('masterticket')->where('status','=','PICKEDUP')->where('autoclose','!=','')->whereDate('user_requests.started_at','=',Carbon::today())->count();
-            $todaymanualclosed_tickets = UserRequests::with('masterticket')->where('status','=','COMPLETED')->where('autoclose','=','Manual')->whereDate('user_requests.finished_at','=',Carbon::today())->count();
-            $todayregularclosed_tickets = UserRequests::with('masterticket')->where('status','=','COMPLETED')->where('autoclose','=','Auto')->whereDate('user_requests.finished_at','=',Carbon::today())->count();
-            $yesterdaymanualclosed_tickets = UserRequests::with('masterticket')->where('status','=','COMPLETED')->where('autoclose','=','Manual')->whereDate('user_requests.finished_at','=',Carbon::yesterday())->count();
-            $yesterdayregularclosed_tickets = UserRequests::with('masterticket')->where('status','=','COMPLETED')->where('autoclose','=','Auto')->whereDate('user_requests.finished_at','=',Carbon::yesterday())->count();
-            
-           return view('admin.ticketcompletedhistory',compact('yesterday_auto_auto_tickets','yesterday_auto_manual_tickets','yesterday_manual_auto_tickets','yesterday_manual_manual_tickets','today_auto_auto_tickets','today_auto_manual_tickets','today_manual_auto_tickets','today_manual_manual_tickets','auto_auto_tickets','auto_manual_tickets','manual_auto_tickets','manual_manual_tickets','yesterdaymanualclosed_tickets','yesterdayregularclosed_tickets','todaymanualclosed_tickets','todayregularclosed_tickets','completed_tickets','yesterdayclosed_tickets','todayclosed_tickets','manual_tickets'));
+        $company_id  = $user->company_id;
+        $state_id    = $user->state_id;
+        $district_id = $user->district_id;
+
+        $baseCompletedQuery = UserRequests::with('masterticket')
+            ->where('status', 'COMPLETED')
+            ->where('company_id', $company_id)
+            ->where('state_id', $state_id);
+
+        if (!empty($district_id)) {
+            $baseCompletedQuery->where('district_id', $district_id);
         }
-        catch(Exception $e){
-            return redirect()->route('admin.user.index')->with('flash_error','Something Went Wrong with Dashboard!');
+
+        // ================= BASIC =================
+        $completed_tickets = (clone $baseCompletedQuery)->count();
+
+        $todayclosed_tickets = (clone $baseCompletedQuery)
+            ->whereDate('finished_at', Carbon::today())
+            ->count();
+
+        $yesterdayclosed_tickets = (clone $baseCompletedQuery)
+            ->whereDate('finished_at', Carbon::yesterday())
+            ->count();
+
+        // ================= AUTO / MANUAL =================
+        $todaymanualclosed_tickets = (clone $baseCompletedQuery)
+            ->where('autoclose', 'Manual')
+            ->whereDate('finished_at', Carbon::today())
+            ->count();
+
+        $todayregularclosed_tickets = (clone $baseCompletedQuery)
+            ->where('autoclose', 'Auto')
+            ->whereDate('finished_at', Carbon::today())
+            ->count();
+
+        $yesterdaymanualclosed_tickets = (clone $baseCompletedQuery)
+            ->where('autoclose', 'Manual')
+            ->whereDate('finished_at', Carbon::yesterday())
+            ->count();
+
+        $yesterdayregularclosed_tickets = (clone $baseCompletedQuery)
+            ->where('autoclose', 'Auto')
+            ->whereDate('finished_at', Carbon::yesterday())
+            ->count();
+
+        // ================= DEFAULT AUTO CLOSE COMBINATIONS =================
+        $manual_manual_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Manual')
+            ->count();
+
+        $manual_auto_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Auto')
+            ->count();
+
+        $auto_manual_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Manual')
+            ->count();
+
+        $auto_auto_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Auto')
+            ->count();
+
+        // ================= TODAY =================
+        $today_manual_manual_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Manual')
+            ->whereDate('finished_at', Carbon::today())
+            ->count();
+
+        $today_manual_auto_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Auto')
+            ->whereDate('finished_at', Carbon::today())
+            ->count();
+
+        $today_auto_manual_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Manual')
+            ->whereDate('finished_at', Carbon::today())
+            ->count();
+
+        $today_auto_auto_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Auto')
+            ->whereDate('finished_at', Carbon::today())
+            ->count();
+
+        // ================= YESTERDAY =================
+        $yesterday_manual_manual_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Manual')
+            ->whereDate('finished_at', Carbon::yesterday())
+            ->count();
+
+        $yesterday_manual_auto_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Manual')
+            ->where('autoclose', 'Auto')
+            ->whereDate('finished_at', Carbon::yesterday())
+            ->count();
+
+        $yesterday_auto_manual_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Manual')
+            ->whereDate('finished_at', Carbon::yesterday())
+            ->count();
+
+        $yesterday_auto_auto_tickets = (clone $baseCompletedQuery)
+            ->where('default_autoclose', 'Auto')
+            ->where('autoclose', 'Auto')
+            ->whereDate('finished_at', Carbon::yesterday())
+            ->count();
+
+        // ================= ONGOING TODAY =================
+        $baseOngoingQuery = UserRequests::with('masterticket')
+            ->where('status', 'PICKEDUP')
+            ->where('company_id', $company_id)
+            ->where('state_id', $state_id);
+
+        if (!empty($district_id)) {
+            $baseOngoingQuery->where('district_id', $district_id);
         }
+
+        $todayongoing_tickets = (clone $baseOngoingQuery)
+            ->whereNotNull('autoclose')
+            ->whereDate('started_at', Carbon::today())
+            ->count();
+
+        return view('admin.ticketcompletedhistory', compact(
+            'completed_tickets',
+            'todayclosed_tickets',
+            'yesterdayclosed_tickets',
+
+            'todaymanualclosed_tickets',
+            'todayregularclosed_tickets',
+            'yesterdaymanualclosed_tickets',
+            'yesterdayregularclosed_tickets',
+
+            'manual_manual_tickets',
+            'manual_auto_tickets',
+            'auto_manual_tickets',
+            'auto_auto_tickets',
+
+            'today_manual_manual_tickets',
+            'today_manual_auto_tickets',
+            'today_auto_manual_tickets',
+            'today_auto_auto_tickets',
+
+            'yesterday_manual_manual_tickets',
+            'yesterday_manual_auto_tickets',
+            'yesterday_auto_manual_tickets',
+            'yesterday_auto_auto_tickets',
+
+            'todayongoing_tickets'
+        ));
+    } catch (Exception $e) {
+        return redirect()->route('admin.user.index')
+            ->with('flash_error', 'Something Went Wrong with Dashboard!');
     }
-
+}
 
 
 
@@ -4735,6 +4992,7 @@ public function tickets1(Request $request){
         $company_id = $user->company_id;
         $state_id = $user->state_id;
         $Roledistrict_id = $user->district_id;
+        
 
         $serch_term = $request->searchinfo;
         $status=$request->get('status');
@@ -4776,7 +5034,8 @@ public function tickets1(Request $request){
         $c_from_date_get=$c_from_date;
         $c_to_date_get=$c_to_date;
         $host_group_name_get = $host_group_name;
-        
+        $Gpstatus_get = $Gpstatus;
+
         $query_params = array();
         $hostGroups = DB::table('master_tickets')
                 ->whereNotNull('host_group_name')
@@ -5062,8 +5321,9 @@ public function tickets1(Request $request){
          $countstatus = clone $tickets;
 
          $statusCounts = $countstatus->where('user_requests.booking_id', 'not like', 'INC%')->select('user_requests.status', \DB::raw('COUNT(*) as total'))->groupBy('user_requests.status')->pluck('total','user_requests.status','user_requests.downreason');
+
          $ontTotalCount = clone $tickets;
-        $ontTotal = $ontTotalCount->where('user_requests.booking_id', 'not like', 'INC%')->count();
+         $ontTotal = $ontTotalCount->where('user_requests.booking_id', 'not like', 'INC%')->count();
 
          
          $countstatus1 = clone $tickets;
@@ -5075,24 +5335,14 @@ public function tickets1(Request $request){
                 })->count();
 
           // INC ticket counts (tickets whose ticketid starts with 'INC')
-            $incBase = DB::table('master_tickets')
-                ->leftJoin('user_requests', 'user_requests.booking_id', '=', 'master_tickets.ticketid')
-                ->where('user_requests.company_id', $company_id)
-                ->where('user_requests.state_id', $state_id)
-                ->where('master_tickets.ticketid', 'like', 'INC%');
-            if (!empty($Roledistrict_id)) {
-                $incBase->where('user_requests.district_id', $Roledistrict_id);
-            }
-            $incTotal = (clone $incBase)->count();
-            $incOpen = (clone $incBase)->where('user_requests.status', 'INCOMING')->count();
-            $incOngoing = (clone $incBase)->where('user_requests.status', 'PICKEDUP')->count();
-            $incHold = (clone $incBase)->where('user_requests.status', 'ONHOLD')->count();
+            $incBase = clone $tickets;
+            $incBase->where('user_requests.booking_id', 'like', 'INC%');
+            $incTotal     = (clone $incBase)->count();
+            $incOpen      = (clone $incBase)->where('user_requests.status', 'INCOMING')->count();
+            $incOngoing   = (clone $incBase)->where('user_requests.status', 'PICKEDUP')->count();
+            $incHold      = (clone $incBase)->where('user_requests.status', 'ONHOLD')->count();
             $incCompleted = (clone $incBase)->where('user_requests.status', 'COMPLETED')->count();
-        
-
-    
-        
-        if ($request->ajax()) {
+           if ($request->ajax()) {
 
                     $tickets = $tickets->get();
 
@@ -5203,7 +5453,7 @@ public function tickets1(Request $request){
         $ticket_status = array('Open', 'OnGoing','Completed', 'Onhold');
 
         return view('admin.dashboard.tickets', compact('services','tickets','statusCounts','permanentDownCount','districts','blocks', 'zonals','ticket_status', 'query_params','pagination','status_get','district_id_get','zone_id_get','team_id_get','provider_id_get','block_id_get','from_date_get','to_date_get','autoclose_get','default_autoclose_get','interval_get','category_get','newfrom_date_get','newto_date_get','serch_term_get','range_get','hostGroups', 'host_group_name_get',
-          'incTotal', 'incOpen', 'incOngoing', 'incHold', 'incCompleted','ontTotal'));
+          'incTotal', 'incOpen', 'incOngoing', 'incHold', 'incCompleted','ontTotal','Gpstatus_get'));
 
     } catch (Exception $e) { 
         dd($e);

@@ -213,7 +213,7 @@
         <div class="canvas-card mt-4">
             <div class="heatmap-header"
                 style="display:flex; justify-content:space-between; align-items:center;">
-                <h6 class="fw-bold mb-0">Completion Time Heatmap - FRT</h6>
+                <h6 class="fw-bold mb-0">Completion Time Heatmap - FRT(Tickets)</h6>
                 <!-- FILTER MENU -->
                 <div  style="display:flex; justify-content:space-between; align-items:center;">
                     <label class="small fw-bold me-1">From:</label>
@@ -234,7 +234,7 @@
         <div class="canvas-card mt-4">
             <div class="heatmap-header"
                 style="display:flex; justify-content:space-between; align-items:center;">
-                <h6 class="fw-bold mb-0">Completion Time Heatmap - Patrollers</h6>
+                <h6 class="fw-bold mb-0">Completion Time Heatmap - Patrollers(Tickets)</h6>
                 <!-- FILTER MENU -->
                 <div  style="display:flex; justify-content:space-between; align-items:center;">
 
@@ -282,33 +282,7 @@
          <canvas id="statusComparisonChart"></canvas>
      </div>
   </div>
-       <div class="col-md-12 mb-2">
-                    <div class="canvas-card mt-4">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-                            <h6 class="fw-bold mb-0">Recurring GP Issue Trends   <span id="recurringGpCount" style="color:red;font-weight:bold;cursor:pointer">0</span></h6>  
-
-                            <div class="gap-1" style="display:flex; justify-content:space-between; align-items:center;">
-                            
-                                <label class="small fw-bold me-1">From:</label>
-                                <input type="date" id="recurring_from_date" class="form-control form-control-sm px-1"
-                                    style="width: 105px; font-size: 12px; border-radius: 4px;">
-                                <label class="small fw-bold me-1">To:</label>
-                                <input type="date" id="recurring_to_date" class="form-control form-control-sm px-1"
-                                    style="width: 105px; font-size: 12px; border-radius: 4px;">
-                                <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-recurring-filter"
-                                    style="font-size: 12px; border-radius: 4px;">Go</button>
-                            </div>
-                        </div>
-                       
-                       <div id="recurringChartWrapper" style="overflow-x:auto; width:100%;">
-                            <div id="recurringChartInner" style="position: relative; height: 420px;">
-                                <canvas id="recurringGpTrendsChart"></canvas>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-    </div>
+      
 </div>
 
 
@@ -319,7 +293,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
    <script>
             let completionTrendChartInstance = null;
-            let recurringGpsChartInstance = null;
 
 
             $(document).ready(function () {
@@ -341,27 +314,16 @@
                 $('#trend_from_date').val(lastWeekStr);
                 $('#trend_to_date').val(todayStr);
 
-                 // Recurring Chart Defaults
-                $('#recurring_from_date').val(lastWeekStr);
-                $('#recurring_to_date').val(todayStr);
+              
 
                 fetchCompletionTrend();
-                fetchRecurringGpTrends();
+              
 
                 $('#btn-trend-filter').click(function () {
                     fetchCompletionTrend();
                 });
-                $('#btn-recurring-filter').click(function () {
-                             fetchRecurringGpTrends();
-                });
-                // Link to Frequently Down GPs Report
-                $('#recurringGpCount').css('cursor', 'pointer').click(function () {
-                    const fromDate = $('#recurring_from_date').val();
-                    const toDate = $('#recurring_to_date').val();
-                    let url = "{{ route('admin.frequently_down_gps') }}";
-                    url += `?from_date=${fromDate}&to_date=${toDate}`;
-                    window.open(url, '_blank');
-                });
+             
+             
               
             });
 
@@ -386,100 +348,6 @@
                     }
                 });
             }
-            
-            function fetchRecurringGpTrends() {
-                    const fromDate = $('#recurring_from_date').val();
-                    const toDate = $('#recurring_to_date').val();
-
-                    $.ajax({
-                        url: "{{ route('admin.get_recurring_gp_trends') }}",
-                        method: "GET",
-                        data: {
-                            from_date: fromDate,
-                            to_date: toDate,
-                        },
-                        success: function (response) {
-                            renderRecurringGpsChart(response);
-                        },
-                        error: function (err) {
-                            console.error("Error fetching recurring GP data:", err);
-                        }
-                    });
-                }
-      function renderRecurringGpsChart(data) {
-                const gpCount = data.labels.length;
-
-                const barWidth = 60; 
-                const minWidth = 1200;
-                const chartWidth = Math.max(gpCount * barWidth, minWidth);
-
-                const chartInner = document.getElementById('recurringChartInner');
-                const canvas = document.getElementById('recurringGpTrendsChart');
-
-                chartInner.style.width = chartWidth + 'px';
-                canvas.width = chartWidth;
-                canvas.height = 400;
-
-                document.getElementById('recurringGpCount').innerText = gpCount;
-
-                const ctx = canvas.getContext('2d');
-
-                if (recurringGpsChartInstance) {
-                    recurringGpsChartInstance.destroy();
-                }
-
-                recurringGpsChartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.labels,
-                        datasets: data.datasets
-                    },
-                    options: {
-                        responsive: false,            
-                        maintainAspectRatio: false,
-                        plugins: {
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                                filter: item => item.raw > 0
-                            },
-                            legend: {
-                                position: 'top',
-                                 align: 'start',    
-                                labels: {
-                                    boxWidth: 12,
-                                    padding: 10
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                stacked: true,
-                                ticks: {
-                                    autoSkip: false,
-                                    maxRotation: 60,
-                                    minRotation: 45
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Regularly Down GPs'
-                                }
-                            },
-                            y: {
-                                stacked: true,
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Down Count'
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-
-
-
             function renderCompletionTrendChart(data) {
                 const ctx = document.getElementById('completionTrendChart').getContext('2d');
 
