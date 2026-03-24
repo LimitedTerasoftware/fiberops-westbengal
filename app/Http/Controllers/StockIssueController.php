@@ -7,6 +7,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Http;
+
 use Exception;
 use Session;
 use Auth;
@@ -20,6 +24,9 @@ use App\MaterialSerial;
 use App\EmpStockBalance;
 use App\Material_serial_Allocations;
 use App\Services\StockIssueService;
+use App\EmpStockTransaction;
+use App\EmployeeMaterialLedger;
+
 
 
 class StockIssueController extends Controller
@@ -52,12 +59,12 @@ class StockIssueController extends Controller
                 });
 
             $serialsquery = DB::table('material_serials')
-                ->where('status', 'IN_STOCK')
+                ->where('qtystatus', '!=','FULLY_ISSUED')
                 ->where('state_id', $state_id);
                   if (!empty($district_id)) {
                         $serialsquery->where('district_id', $district_id);
                     }
-            $serials=$serialsquery->select('id', 'material_id', 'serial_number', 'quantity', 'status')->get();
+            $serials=$serialsquery->select('id', 'material_id', 'serial_number', 'quantity', 'status','district_id')->get();
 
                
             return view('admin.stock-issue.create', compact('district', 'materials', 'serials'));
@@ -69,7 +76,7 @@ class StockIssueController extends Controller
     /**
      * Store stock issue - Main transaction handler
      */
-    public function store(Request $request)
+    public function store(Request $request,StockIssueService $service)
     { 
       
         try {
@@ -122,6 +129,8 @@ class StockIssueController extends Controller
                 }
 
                 $quantity = (float) $item['quantity'];
+
+         
                
                 $serialsData = [];
                 if ($material->has_serial) {
@@ -172,7 +181,7 @@ class StockIssueController extends Controller
                 }
 
                 //  Create main stock transaction
-                $stockTransaction = DB::table('stock_transactions')->insertGetId([
+                $stockTransaction = StockTransaction::insertGetId([
                     'state_id' => $stateId,
                     'district_id' => $districtId,
                     'material_id' => $material->id,
@@ -186,6 +195,38 @@ class StockIssueController extends Controller
                     'updated_at' => Carbon::now()
                 ]);
 
+                $inTransactions = StockTransaction::where([
+                    'state_id' => $stateId,
+                    'district_id' => $districtId,
+                    'material_id' => $material->id,
+                ])
+                ->whereIn('transaction_type', ['IN', 'OPENING'])
+                ->orderBy('created_at') // FIFO
+                ->get();
+
+                $remainingQty = $quantity;
+                
+                foreach ($inTransactions as $inTxn) {
+
+                if ($remainingQty <= 0) {
+                    break;
+                }
+
+                // how much already issued from this IN txn
+                $alreadyIssued = EmpStockTransaction::where('in_transaction_id', $inTxn->id)
+                    ->sum('quantity');
+
+                $availableFromThis = $inTxn->quantity - $alreadyIssued;
+
+                if ($availableFromThis <= 0) {
+                    continue;
+                }
+
+               $consumeQty = min($availableFromThis, $remainingQty);
+            
+
+
+
                 // Create employee stock transaction
                 DB::table('employee_stock_transactions')->insert([
                     'state_id' => $stateId,
@@ -193,21 +234,31 @@ class StockIssueController extends Controller
                     'material_id' => $material->id,
                     'employee_id' => $employeeId,
                     'transaction_type' => 'ISSUE',
-                    'stock_transaction_id'=>$stockTransaction->id,
+                    'stock_transaction_id'=>$stockTransaction,
+                    'in_transaction_id'=>$inTxn->id, 
                     // 'ticket_id' => $request->ticket_id,
                     'remarks' => $request->remarks,
-                    'quantity' => $quantity,
+                    // 'quantity' => $quantity,
+                    'quantity' => $consumeQty, 
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now()
                 ]);
+                $remainingQty -= $consumeQty;
+            }
+            if ($remainingQty > 0) {
+                throw new Exception(
+                    "FIFO mismatch: Not enough IN stock for material {$material->name}"
+                );
+            }
+
                     
                 // decrease stockblance 
                 
-                DB::table('stock_balance')
-                    ->where('state_id', $stateId)
-                    ->where('district_id', $districtId)
-                    ->where('material_id', $material->id)
-                    ->decrement('quantity', $quantity);
+               StockBalance::where([
+                    'state_id' => $stateId,
+                    'district_id' => $districtId,
+                    'material_id' => $material->id
+                ])->decrement('quantity', $quantity);
 
                 //  Increase employee stock balance
                 $empBalance = DB::table('employee_stock_balance')
@@ -234,7 +285,7 @@ class StockIssueController extends Controller
                 }
 
                 if ($material->has_serial && !empty($serialsData)) {
-                    $this->allocateSerials($stateId, $districtId, $material->id, $employeeId, $serialsData, $stockTransaction);
+                    $service->allocateSerials( $material->id, $employeeId, $serialsData, $stockTransaction);
                 }
 
                 $processedTransactions[] = [
@@ -257,51 +308,6 @@ class StockIssueController extends Controller
                 ->withInput();
         }
     }
-
-   
-    private function allocateSerials($stateId, $districtId, $materialId, $employeeId, $serialsData, $transactionId)
-    {
-        $serialIds = array_keys($serialsData);
-        $serialRecords = DB::table('material_serials')
-            ->whereIn('id', $serialIds)
-            ->where('material_id', $materialId)
-            ->get()
-            ->keyBy('id');
-
-        foreach ($serialsData as $serialId => $qty) {
-            $serial = $serialRecords->get($serialId);
-            if (!$serial) {
-                throw new Exception("Serial #$serialId not found for material #$materialId");
-            }
-
-            if ($qty > $serial->quantity) {
-                throw new Exception("Requested quantity $qty exceeds available quantity {$serial->quantity} for serial #$serialId");
-            }
-
-            $newQty = $serial->quantity - $qty;
-            $status = $newQty > 0 ? 'PARTIALLY_ISSUED' : 'FULLY_ISSUED';
-
-            DB::table('material_serials')
-                ->where('id', $serialId)
-                ->update([
-                    'quantity' => $newQty,
-                    'qtystatus' => $status,
-                    'status' => 'ISSUED',
-                    'updated_at' => Carbon::now()
-                ]);
-
-            DB::table('material_serial_allocations')->insert([
-                'stock_transaction_id'=>$transactionId,
-                'material_serial_id' => $serialId,
-                'employee_id' => $employeeId,
-                'quantity' => $qty,
-                'remarks' => 'Issued via transaction #' . $transactionId,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now()
-            ]);
-        }
-    }
-
 
     /**
      * Get employee stock balance
@@ -493,7 +499,7 @@ class StockIssueController extends Controller
                 'material',
                 'district',
                 'employee',
-                'serialAllocations.serial.stockInTransaction'
+                'serialAllocations.serial'
 
             ])->findOrFail($id);
 
@@ -508,41 +514,228 @@ class StockIssueController extends Controller
             return response()->json(['error' => 'Error loading transaction'], 500);
         }
     }
-    public function update(Request $request, $id)
-    {
-        try {
-            $transaction = StockTransaction::findOrFail($id);
+  
 
-            // Check authorization
-            $this->authorizeTransaction($transaction);
 
-            $validated = $request->validate([
-                'quantity' => 'required|numeric|min:0.001',
-                'remarks' => 'nullable|string'
-            ]);
 
-            DB::beginTransaction();
+public function update(Request $request, $id)
+{
+    try {
+        DB::beginTransaction();
 
-            $transaction->update([
-                'quantity' => $validated['quantity'],
-                'remarks' => $validated['remarks'] ?? null,
-                'updated_at' => now()
-            ]);
+        $transaction = StockTransaction::with([
+            'material',
+            'serialAllocations.serial'
+        ])->findOrFail($id);
 
-            DB::commit();
-
-            return redirect()->route('admin.stock-issue.index')
-                ->with('success', 'Transaction updated successfully!');
-
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return back()->with('error', 'Transaction not found');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return back()->withErrors($e->errors())->withInput();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Error updating transaction: ' . $e->getMessage());
+        if ($transaction->transaction_type !== 'ISSUE') {
+            throw new Exception('Invalid transaction type');
         }
+
+        // -------------------
+        // Validation
+        // -------------------
+        $rules = [
+            'quantity' => 'required|numeric|min:0.001',
+            'remarks'  => 'nullable|string|max:500',
+        ];
+
+        if ($transaction->serialAllocations->count()) {
+            $rules['serials'] = 'required|array';
+            $rules['serials.*.quantity'] = 'required|numeric|min:0.001';
+        }
+
+        Validator::make($request->all(), $rules)->validate();
+
+        $oldQty = (float) $transaction->quantity;
+        $newQty = (float) $request->quantity;
+
+        // =====================================================
+        // ROLLBACK OLD ISSUE (balances + FIFO)
+        // =====================================================
+        $oldEmpTxns = EmpStockTransaction::where(
+            'stock_transaction_id',
+            $transaction->id
+        )->get();
+
+        foreach ($oldEmpTxns as $txn) {
+
+            // restore district stock
+            StockBalance::where([
+                'state_id'    => $transaction->state_id,
+                'district_id' => $transaction->district_id,
+                'material_id' => $transaction->material_id
+            ])->increment('quantity', $txn->quantity);
+
+            // restore employee stock
+            DB::table('employee_stock_balance')
+                ->where([
+                    'state_id'    => $transaction->state_id,
+                    'district_id' => $transaction->district_id,
+                    'material_id' => $transaction->material_id,
+                    'employee_id' => $transaction->employee_id
+                ])
+                ->decrement('quantity', $txn->quantity);
+        }
+
+        // remove old FIFO links
+        EmpStockTransaction::where(
+            'stock_transaction_id',
+            $transaction->id
+        )->delete();
+
+        // =====================================================
+        // CHECK STOCK AFTER ROLLBACK
+        // =====================================================
+        $available = StockBalance::where([
+            'state_id'    => $transaction->state_id,
+            'district_id' => $transaction->district_id,
+            'material_id' => $transaction->material_id
+        ])->value('quantity');
+
+        if ($available < $newQty) {
+            throw new Exception(
+                "Insufficient district stock. Available: {$available}"
+            );
+        }
+
+        // =====================================================
+        //  RE-ISSUE USING FIFO (IN / OPENING)
+        // =====================================================
+        $remainingQty = $newQty;
+
+        $inTransactions = StockTransaction::where([
+            'state_id'    => $transaction->state_id,
+            'district_id' => $transaction->district_id,
+            'material_id' => $transaction->material_id,
+        ])
+        ->whereIn('transaction_type', ['IN', 'OPENING'])
+        ->orderBy('created_at') // FIFO
+        ->get();
+
+        foreach ($inTransactions as $inTxn) {
+
+            if ($remainingQty <= 0) break;
+
+            $alreadyIssued = EmpStockTransaction::where(
+                'in_transaction_id',
+                $inTxn->id
+            )->sum('quantity');
+
+            $availableFromThis = $inTxn->quantity - $alreadyIssued;
+
+            if ($availableFromThis <= 0) continue;
+
+            $consume = min($availableFromThis, $remainingQty);
+
+            EmpStockTransaction::create([
+                'state_id'             => $transaction->state_id,
+                'district_id'          => $transaction->district_id,
+                'material_id'          => $transaction->material_id,
+                'employee_id'          => $transaction->employee_id,
+                'transaction_type'     => 'ISSUE',
+                'stock_transaction_id' => $transaction->id,
+                'in_transaction_id'    => $inTxn->id,
+                'quantity'             => $consume,
+            ]);
+
+            $remainingQty -= $consume;
+        }
+
+        // =====================================================
+        //  APPLY FINAL BALANCES
+        // =====================================================
+        StockBalance::where([
+            'state_id'    => $transaction->state_id,
+            'district_id' => $transaction->district_id,
+            'material_id' => $transaction->material_id
+        ])->decrement('quantity', $newQty);
+
+        DB::table('employee_stock_balance')
+            ->where([
+                'state_id'    => $transaction->state_id,
+                'district_id' => $transaction->district_id,
+                'material_id' => $transaction->material_id,
+                'employee_id' => $transaction->employee_id
+            ])
+            ->increment('quantity', $newQty);
+
+        // =====================================================
+        //  SERIAL RECALC (NO NEGATIVE EVER)
+        // =====================================================
+        if ($transaction->serialAllocations->count()) {
+
+            // $totalSerialQty = collect($request->serials)
+            //     ->sum(fn ($s) => (float)$s['quantity']);
+               $totalSerialQty = 0;
+            foreach ($request->serials as $data) {
+                $totalSerialQty += (float) $data['quantity'];
+            }
+
+            if ($totalSerialQty != $newQty) {
+                throw new Exception(
+                    'Serial quantities must match total quantity'
+                );
+            }
+
+            foreach ($transaction->serialAllocations as $alloc) {
+
+                $alloc->quantity =
+                    (float) $request->serials[$alloc->material_serial_id]['quantity'];
+                $alloc->save();
+
+                $serial = $alloc->serial;
+
+                $issuedQty = $serial->allocations()->sum('quantity');
+
+                if ($issuedQty > $serial->received_quantity) {
+                    throw new Exception(
+                        "Insufficient stock for serial {$serial->serial_number}"
+                    );
+                }
+
+                $serial->quantity =
+                    $serial->received_quantity - $issuedQty;
+
+                if ($issuedQty == 0) {
+                    $serial->qtystatus = 'AVAILABLE';
+                    $serial->status    = 'IN_STOCK';
+                } elseif ($issuedQty < $serial->received_quantity) {
+                    $serial->qtystatus = 'PARTIALLY_ISSUED';
+                    $serial->status    = 'ISSUED';
+                } else {
+                    $serial->qtystatus = 'FULLY_ISSUED';
+                    $serial->status    = 'ISSUED';
+                }
+
+                $serial->save();
+            }
+        }
+
+        // =====================================================
+        // UPDATE MAIN TRANSACTION
+        // =====================================================
+        $transaction->update([
+            'quantity' => $newQty,
+            'remarks'  => $request->remarks
+        ]);
+
+        DB::commit();
+
+        return redirect()
+            ->route('admin.stock-issue.index')
+            ->with('success', 'Stock issue updated successfully');
+
+    } catch (Exception $e) {
+        DB::rollBack();
+        return back()->withInput()->with('error', $e->getMessage());
     }
+}
+
+
+
+
+
 
 
     /**
@@ -694,80 +887,230 @@ public function destroy($id, StockIssueService $service)
     }
 }
 
-public function destroy($id)
+
+
+public function employeeStockReport(Request $request)
 {
-    try {
-        DB::beginTransaction();
+    $perPage = $request->get('per_page', 15);
+    $page    = Paginator::resolveCurrentPage() ?: 1;
 
-        $transaction = StockTransaction::with([
-            'serialAllocations.serial'
-        ])->findOrFail($id);
+    $user = Auth::user();
 
-        $stateId    = $transaction->state_id;
-        $districtId = $transaction->district_id;
-        $materialId = $transaction->material_id;
-        $employeeId = $transaction->employee_id;
-        $quantity   = $transaction->quantity;
+        $ledgerQuery = EmployeeMaterialLedger::with(['material', 'employee'])
+        ->where('state_id', $user->state_id);
 
-        /** Restore district stock */
-        StockBalance::where([
-            'state_id'    => $stateId,
-            'district_id' => $districtId,
-            'material_id' => $materialId
-        ])->increment('quantity', $quantity);
+    if (!empty($user->district_id)) {
+        $ledgerQuery->where('district_id', $user->district_id);
+    }
 
-        /**  Reduce employee stock */
-        EmpStockBalance::where([
-            'state_id'    => $stateId,
-            'district_id' => $districtId,
-            'material_id' => $materialId,
-            'employee_id' => $employeeId
-        ])->decrement('quantity', $quantity);
+    if ($request->district) {
+        $ledgerQuery->where('district_id', $request->district);
+    }
 
-        /**  Restore serial quantities */
-        foreach ($transaction->serialAllocations as $alloc) {
+    if ($request->employee_id) {
+        $ledgerQuery->where('employee_id', $request->employee_id);
+    }
 
-            $serial = $alloc->serial;
+    if ($request->material_id) {
+        $ledgerQuery->where('material_id', $request->material_id);
+    }
 
-            $serial->quantity += $alloc->quantity;
+    // if ($request->from_date && $request->to_date) {
+    //     $ledgerQuery->whereBetween('issue_date', [
+    //         $request->from_date . ' 00:00:00',
+    //         $request->to_date . ' 23:59:59'
+    //     ]);
+    // }
 
-            $remainingIssued = $serial->allocations()
-                ->where('stock_transaction_id', '!=', $transaction->id)
-                ->sum('quantity');
+    if ($request->search) {
+        $search = $request->search;
+        $ledgerQuery->whereHas('material', function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%");
+        });
+    }
 
-            if ($remainingIssued > 0) {
-                $serial->qtystatus = 'PARTIALLY_ISSUED';
-                $serial->status    = 'IN_STOCK';
-            } else {
-                $serial->qtystatus = 'AVAILABLE';
-                $serial->status    = 'IN_STOCK';
-            }
+    $ledgerRows = $ledgerQuery->get();
 
-            $serial->save();
+    $report = [];
+
+    /* ====BUILD REPORT=============================== */
+    foreach ($ledgerRows as $row) {
+
+        $key = $row->employee_id . '_' . $row->material_id;
+
+        if (!isset($report[$key])) {
+            $report[$key] = [
+                'employee_id' => $row->employee_id,
+                'material_id' => $row->material_id,
+                'employee'    => $row->employee->first_name . ' ' . $row->employee->last_name,
+                'material'    => $row->material->name,
+                'baseunit'    =>$row->material->base_unit,
+                'is_serial'   => (bool) $row->has_serial,
+                'issued'      => 0,
+                'used'        => 0,
+                'balance'     => 0,
+                'issued_indents' => [],  
+                'serials'     => [],
+                'tickets'     => []
+            ];
         }
 
-        /**  Delete serial allocations */
-        Material_serial_Allocations::where('stock_transaction_id', $transaction->id)
-            ->delete();
+        /* =====NON-SERIAL MATERIAL=============================== */
+        if (!$row->has_serial) {
 
-        /**  Delete employee stock transactions (SAFE NOW) */
-        EmpStockTransaction::where('stock_transaction_id', $transaction->id)
-            ->delete();
+            if ($row->transaction_type === 'ISSUE') {
+                $report[$key]['issued'] += $row->quantity;
+                $indent = $row->indent_no ? : '-';
+                $report[$key]['issued_indents'][$indent]=
+                 ($report[$key]['issued_indents'][$indent] ?? 0)  + $row->quantity;
+            }
 
-        /** Delete main stock transaction */
-        $transaction->delete();
+            if ($row->transaction_type === 'USED') {
+                $report[$key]['used'] += $row->quantity;
 
-        DB::commit();
+                if ($row->ticket_id) {
+                    $report[$key]['tickets'][$row->ticket_id] =
+                        ($report[$key]['tickets'][$row->ticket_id] ?? 0) + $row->quantity;
+                }
+            }
+        }
 
-        return redirect()
-            ->route('admin.stock-issue.index')
-            ->with('success', 'Stock issue deleted successfully');
+        /* ===========SERIAL MATERIAL=============================== */
+        if ($row->has_serial && $row->serial_number) {
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->with('error', $e->getMessage());
+            $serialKey = $row->serial_number;
+
+            if (!isset($report[$key]['serials'][$serialKey])) {
+                $report[$key]['serials'][$serialKey] = [
+                    'serial_number' => $serialKey,
+                    'issued'        => 0,
+                    'used'          => 0,
+                    'balance'       => 0,
+                     'issued_indents'  => [],
+                    'tickets'       => []
+                ];
+            }
+
+            if ($row->transaction_type === 'ISSUE') {
+                $report[$key]['serials'][$serialKey]['issued'] += $row->quantity;
+                $report[$key]['issued'] += $row->quantity;
+                $indent = $row->indent_no ?: 'N/A';
+
+                $report[$key]['serials'][$serialKey]['issued_indents'][$indent] =
+                    ($report[$key]['serials'][$serialKey]['issued_indents'][$indent] ?? 0)
+                    + $row->quantity;
+
+            }
+
+            if ($row->transaction_type === 'USED') {
+                $report[$key]['serials'][$serialKey]['used'] += $row->quantity;
+                $report[$key]['used'] += $row->quantity;
+
+                if ($row->ticket_id) {
+                    $report[$key]['serials'][$serialKey]['tickets'][$row->ticket_id] =
+                        ($report[$key]['serials'][$serialKey]['tickets'][$row->ticket_id] ?? 0)
+                        + $row->quantity;
+                }
+            }
+
+            $report[$key]['serials'][$serialKey]['balance'] =
+                $report[$key]['serials'][$serialKey]['issued']
+                - $report[$key]['serials'][$serialKey]['used'];
+        }
     }
+
+    /* ============FINAL BALANCE =============================== */
+    foreach ($report as &$row) {
+        // ---- issued_indents (non-serial)
+        $issuedIndents = [];
+        foreach ($row['issued_indents'] as $indent => $qty) {
+            $issuedIndents[] = [
+                'indent_no' => $indent,
+                'qty'       => $qty
+            ];
+        }
+        $row['issued_indents'] = $issuedIndents;
+        // ---- serials normalize
+        foreach ($row['serials'] as &$s) {
+
+            $indents = [];
+            foreach ($s['issued_indents'] as $indent => $qty) {
+                $indents[] = [
+                    'indent_no' => $indent,
+                    'qty'       => $qty
+                ];
+            }
+            $s['issued_indents'] = $indents;
+
+            // tickets normalize (already grouped)
+            $tickets = [];
+            foreach ($s['tickets'] as $ticketId => $qty) {
+                $tickets[] = [
+                    'ticket_id' => $ticketId,
+                    'used'      => $qty
+                ];
+            }
+            $s['tickets'] = $tickets;
+        }
+
+
+
+        $row['balance'] = $row['issued'] - $row['used'];
+
+        // tickets ,indexed array
+        $tickets = [];
+        foreach ($row['tickets'] as $ticketId => $qty) {
+            $tickets[] = [
+                'ticket_id' => $ticketId,
+                'used'      => $qty
+            ];
+        }
+        $row['tickets'] = $tickets;
+
+        // serials,indexed
+        $row['serials'] = array_values($row['serials']);
+    }
+
+    /* ============ PAGINATION =============================== */
+    $reportArray = array_values($report);
+    $total       = count($reportArray);
+    $items       = array_slice($reportArray, ($page - 1) * $perPage, $perPage);
+
+    $paginated = new LengthAwarePaginator(
+        $items,
+        $total,
+        $perPage,
+        $page,
+        [
+            'path'  => $request->url(),
+            'query' => $request->query(),
+        ]
+    );
+
+    /* === DISTRICTS =============================== */
+    $districtQuery = DB::table('districts')->where('state_id', $user->state_id);
+
+    if (!empty($user->district_id)) {
+        $districtQuery->where('id', $user->district_id);
+    }
+
+    if ($request->district) {
+        $districtQuery->where('id', $request->district);
+    }
+
+    $districts = $districtQuery->get();
+
+    return view('admin.stock-issue.stockreport', [
+        'report'    => $paginated,
+        'employees' => Provider::all(),
+        'materials' => Material::all(),
+        'districts' => $districts
+    ]);
 }
+
+
+
+
 
 
 

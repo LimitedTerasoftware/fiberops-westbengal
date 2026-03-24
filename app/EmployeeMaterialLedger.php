@@ -31,9 +31,16 @@ class EmployeeMaterialLedger extends Model
         // Transaction
         'transaction_type',
         'quantity',
+        'used',
+        'wastage',
+        'Image',
+        'Image_lat_long',
+        'wastage_reason',
+        'note',
 
         // Ticket / usage
         'ticket_id',
+        'is_pre_used',
 
         // Dates
         'issue_date',
@@ -43,6 +50,8 @@ class EmployeeMaterialLedger extends Model
         'has_serial'  => 'boolean',
         'quantity'    => 'decimal:3',
         'issue_date'  => 'datetime',
+        'is_pre_used' => 'boolean',
+
     ];
 
 

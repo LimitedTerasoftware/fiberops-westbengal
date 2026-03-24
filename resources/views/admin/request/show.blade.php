@@ -345,6 +345,28 @@ if (!function_exists('getDuration')) {
                                 <label class="detail-label">Issue Type</label>
                                 <div class="detail-value">{{ isset($request->issue_type) ? $request->issue_type : '' }}</div>
                             </div>
+                                @php
+                                    $issues = json_decode($documents->issues, true);
+                                @endphp
+
+                            <div class="detail-group mb-3">
+                                <label class="detail-label">Issues</label>
+                                <div class="detail-value">
+                                    @if(!empty($issues))
+                                        @foreach($issues as $issue)
+                                            <div>
+                                                <strong>Type:</strong> {{ $issue['issue_type'] ?? '-' }} <br>
+                                                <strong>Reason:</strong> {{ $issue['reason'] ?? '-' }} <br>
+                                                <strong>Old Serial:</strong> {{ $issue['old_serial_number'] ?? '-' }} <br>
+                                                <strong>New Serial:</strong> {{ $issue['serial_number'] ?? '-' }}
+                                            </div>
+                                            <hr>
+                                        @endforeach
+                                    @else
+                                        -
+                                    @endif
+                                </div>
+                            </div>
                            
                             <div class="detail-group mb-3">
                                 <label class="detail-label">Issue Reason</label>
@@ -407,6 +429,10 @@ if (!function_exists('getDuration')) {
                             <div class="detail-group mb-3">
                                 <label class="detail-label">Estimated Time</label>
                                 <div class="detail-value">4 Hours</div>
+                            </div>
+                             <div class="detail-group mb-3">
+                                <label class="detail-label">Used Material Image LatLong</label>
+                                <div class="detail-value">{{isset($documents->used_image_locations ) ? $documents->used_image_locations : '' }}</div>
                             </div>
                         </div>
                         
@@ -630,6 +656,19 @@ if (!function_exists('getDuration')) {
                                         <label class="detail-label">OTDR Images</label>
                                         <div class="detail-value" id="otdrimg">
                                             @foreach($otdrImages as $image)
+                                                <a data-magnify="gallery" data-group="otdr">
+                                                    <img src="{{ asset('/uploads/SubmitFiles/'.$image) }}" style="width:100px;height:70px;" alt="Image"/>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+                                @php $material_used_images = getImages($documents ?? null, 'material_used_images'); @endphp
+                                @if(count($material_used_images))
+                                    <div class="detail-group mb-3">
+                                        <label class="detail-label">Material Used Images</label>
+                                        <div class="detail-value" id="otdrimg">
+                                            @foreach($material_used_images as $image)
                                                 <a data-magnify="gallery" data-group="otdr">
                                                     <img src="{{ asset('/uploads/SubmitFiles/'.$image) }}" style="width:100px;height:70px;" alt="Image"/>
                                                 </a>

@@ -1684,25 +1684,122 @@ class UserApiController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function savedocuments(Request $request){
+        DB::beginTransaction();
+        Log::info('Request Details:', $request->all());
 
         try{
 
            ini_set('post_max_size', '100M');
            ini_set('upload_max_filesize', '100M');
 
-            $documents = $request->all();
-             Log::info('Received request data:', $documents); 
-            $downreason = $request->category;
+           // ── Handle materials field ────────────────────────────────────────
+            if (empty($request->materials) || $request->materials === '') {
+                // Materials not sent or empty string — merge as empty array
+                $request->merge(['materials' => []]);
+
+            } elseif (is_string($request->materials)) {
+                $decoded = json_decode($request->materials, true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'Invalid materials JSON'
+                    ], 422);
+                }
+
+                $request->merge(['materials' => $decoded]);
+            }
+
+         
+            $validator = Validator::make($request->all(), [
+                'request_id'               => 'required',
+                'ticket_id'                => 'required',
+                'provider_id'              => 'required|integer',
+                // 'state_id'    => 'required',
+                // 'district_id' => 'required',
+                // 'materials'                => 'nullable|array',
+                // 'materials.materialUsage'  => 'nullable|array|min:1',
+                // 'materials.materialIssues' => 'nullable|array',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            // ── Provider lookup ───────────────────────────────────────────────
+            $employeeId = $request->provider_id;
+            $basicinfo  = Provider::where('id', $employeeId)->first();
+
+            if (!$basicinfo) {
+                return response()->json([
+                    'status' => false,
+                    'errors' => "Provider $employeeId Not found"
+                ], 422);
+            }
+
+            $stateId    = $basicinfo->state_id;
+            $districtId = $basicinfo->district_id; 
+            // $stateId    = $request->state_id;
+            // $districtId = $request->district_id;
+            $ticketId   = $request->ticket_id;
+
+            // ── Misc fields ───────────────────────────────────────────────────
+            $documents          = $request->all();
+            $downreason         = $request->category;
             $downreasondetailed = $request->description;
             $issue_type	= $request->issue_type ? $request->issue_type : null;
             $ownership=$request->ownership ? $request->ownership : null;
-            
             $request_ids = $documents['request_id'];
             $requestids= explode(',',$request_ids);
-                    Log::info('Request IDs to process:', $requestids);
+            Log::info('Request IDs to process:', $requestids);
 
-             //dd($requestids);   
-               $i=0;    
+            // ── Materials ────────────────────────────────────────
+
+            $materialsData = $request->input('materials.materialUsage', []);
+            $issuesData    = $request->input('materials.materialIssues', []);
+        
+            $resolveIsSerial = function (array $item): bool {
+                $serial = trim($item['material_serial_number'] ?? '');
+
+                if ($serial === '') {
+                    return false;
+                }
+
+                return (bool) preg_match('/\d/', $serial);
+            };
+           $knownMaterialIds = collect($materialsData)
+                    ->filter(function ($item) {
+                        return !empty($item['material_id']);
+                    })
+                    ->pluck('material_id')
+                    ->unique()
+                    ->toArray();
+            $materialsMaster    = Material::whereIn('id', $knownMaterialIds)->pluck('name', 'id'); // [id   => name]
+            $allMaterialsByName = Material::pluck('id', 'name'); // [name => id]
+
+            // ──  materials summary string (for SubmitFile) ───────────────
+                                  
+            $materialUsageSummary = [];
+            foreach ($materialsData as $item) {
+                $matName = !empty($item['material_id'])
+                    ? ($materialsMaster[$item['material_id']] ?? $item['material_type'])
+                    : ($item['material_type'] ?? 'Unknown');
+
+                $total = (float) ($item['quantity_used'] ?? 0) + (float) ($item['quantity_wastage'] ?? 0);
+
+                if ($total > 0) {
+                    $materialUsageSummary[$matName] = ($materialUsageSummary[$matName] ?? 0) + $total;
+                }
+            }
+            $parts = [];
+            foreach ($materialUsageSummary as $name => $qty) {
+                if ($qty > 0) {
+                    $parts[] = "{$name}={$qty}";
+                }
+            }
+            $materialsString = '{' . implode(', ', $parts) . '}';
+              $i=0;    
               $beforefile_names = [];
               $afterfile_names = [];
               $otdrfile_names=[];
@@ -1710,10 +1807,9 @@ class UserApiController extends Controller
               $joint_afterimgs=[];
               $used_img_names = [];
               $used_img_locations = [];
-              $video_name = null;
 
              foreach($requestids as $request_id){
-                           Log::info("Processing request ID: $request_id");
+                Log::info("Processing request ID: $request_id");
 
                  DB::table('user_requests')->where('id',$request_id)->update(array(
                                  'status'=>'COMPLETED',
@@ -1724,7 +1820,7 @@ class UserApiController extends Controller
                                  'autoclose'=>'Manual',
                                  'finished_at'=> date('Y-m-d H:i:s')
                   ));
-              Log::info("Updated user_requests for request ID: $request_id");
+                  Log::info("Updated user_requests for request ID: $request_id");
 
                  
                    if($i==0){
@@ -1748,18 +1844,12 @@ class UserApiController extends Controller
                                     }
                                 }
                             }
-
-                            // make filename-safe
-                            // $lat  = str_replace(['.', '-', '"'], '_', $lat);
-                            // $long = str_replace(['.', '-', '"'], '_', $long);
-
                             return [
                                 'lat' => $lat,
                                 'long' => $long
                             ];
                         };
-
-
+                    
 
                 if ($request->hasFile('before_image')) {
                         $before_image = $request->before_image;
@@ -1836,7 +1926,13 @@ class UserApiController extends Controller
                 }
                 if($request->hasFile('used_images')) {
                     $used_images = $request->used_images;
-                    $locations = $request->input('used_image_locations');
+                    $locationsInput = $request->input('used_image_locations') 
+                        ?? $request->input('used_images_locations') 
+                        ?? [];
+                   if (is_string($locationsInput)) {
+                        $decoded = json_decode($locationsInput, true);
+                        $locationsInput = is_array($decoded) ? $decoded : [];
+                    }
 
 
                     foreach ($used_images as $index => $image) {
@@ -1844,13 +1940,22 @@ class UserApiController extends Controller
                           $lat = '0_0';
                           $long = '0_0';
 
-                            if(isset($locations[$index])) {
-                                $val = trim($locations[$index], "\"' ");
-                                if(str_contains($val, ',')) {
-                                    [$lat, $long] = explode(',', $val);
+                          $locationStr = is_array($locationsInput) ? ($locationsInput[0] ?? '') : $locationsInput;
+                            if (is_string($locationStr)) {
+                                $coords = json_decode($locationStr, true);
+                                if (!is_array($coords)) {
+                                    $coords = array_map('trim', explode(',', $locationStr));
                                 }
+                            } elseif (is_array($locationStr)) {
+                                $coords = $locationStr;
                             }
-                                                
+
+                            if (isset($coords[0]) && is_numeric($coords[0])) {
+                                $lat = $coords[0];
+                            }
+                            if (isset($coords[1]) && is_numeric($coords[1])) {
+                                $long = $coords[1];
+                            }         
                         $extension = $image->getClientOriginalExtension();
                         $used_img_filename = time() . uniqid() . '_' . $lat . '_' . $long . '.' . $extension;
                         $image->move(public_path('uploads/SubmitFiles'), $used_img_filename);
@@ -1859,25 +1964,9 @@ class UserApiController extends Controller
                         Log::info("Uploaded used_image: $used_img_filename");
                     }
                 }
-                //  if ($request->hasFile('video')) {
-                //         $video = $request->video;
-                //         $extension = $video->getClientOriginalExtension();
-                //         $allowedExtensions = ['mp4', 'avi', 'mov', 'wmv'];
-                //         if (in_array(strtolower($extension), $allowedExtensions)) {
-                //             $videofilename = $video->getClientOriginalName();
-                //             $destinationPath = public_path('uploads/SubmitFiles/videos');
-                //             if (!file_exists($destinationPath)) {
-                //                 mkdir($destinationPath, 0777, true);
-                //             }
-                //             $video->move($destinationPath, $videofilename);
-                //             $video_name = $videofilename;
-                //             Log::info("Uploaded video: $videofilename");
-                //         } else {
-                //             return response()->json(['error' => 'Invalid video format. Allowed: mp4, avi, mov, wmv'], 422);
-                //         }
-                //     }
-
-                 }  
+          
+              
+                }
                  $i++;
  
 
@@ -1889,7 +1978,8 @@ class UserApiController extends Controller
                 $documents['joint_enclouser_afterimg'] =json_encode($joint_afterimgs);
                 $documents['material_used_images'] =json_encode($used_img_names);
                 $documents['used_image_locations'] =json_encode($used_img_locations);
-                $documents['video'] = $video_name;
+                $documents['materials']                 = $materialsString;
+                $documents['issues']                    = json_encode($issuesData);
 
                   //Log::info($documents);
 
@@ -1932,35 +2022,175 @@ class UserApiController extends Controller
 
              }
                         
+            $materialsData = $request->input('materials.materialUsage', []);
 
+            if (!empty($materialsData)) {
+                $this->storeMaterialLedger(
+                    $materialsData,
+                    $employeeId,
+                    $stateId,
+                    $districtId,
+                    $ticketId,
+                    $request
+                );
+            } else {
+                Log::info("Materials empty — skipping ledger entries for ticket: {$ticketId}");
+            }
+
+            DB::commit();
 
 
             return response()->json(['success' => 'true','status'=>1]);
 
         } catch(Exception $e) {
-              dd($e);
-            return response()->json(['error' => $e->getMessage()], 500);
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 422);
         }
 
     }
+
+
+private function storeMaterialLedger(
+    array  $materialsData,
+    int    $employeeId,
+    string $stateId,
+    string $districtId,
+    string $ticketId,
+    $request
+   ): void {
+
+    // ── Resolve is_serial from material_serial_number ─────────────
+    $resolveIsSerial = function (array $item): bool {
+        $serial = trim($item['material_serial_number'] ?? '');
+
+        if ($serial === '' ) {
+            return false;
+        }
+
+        return (bool) preg_match('/\d/', $serial);
+    };
+
+  
+
+    // ── Process each material item ────────────────────────────────
+    foreach ($materialsData as $item) {
+
+        // ── Skip if material_id is empty ──────────────────────────
+        if (empty($item['material_id'])) {
+            Log::info("Skipping ledger — material_id empty for type: " . ($item['material_type'] ?? 'unknown'));
+            continue;
+        }
+
+        // ── Skip if nothing was used or wasted ────────────────────
+        $used     = (float) ($item['quantity_used']    ?? 0);
+        $wastage  = (float) ($item['quantity_wastage'] ?? 0);
+        $quantity = $used + $wastage;
+
+        if ($quantity <= 0) {
+            Log::info("Skipping ledger — zero quantity for material ID: " . $item['material_id']);
+            continue;
+        }
+
+        $isSerial   = $resolveIsSerial($item);
+        $materialId = $item['material_id'];
+
+        // ── Stock availability check ──────────────────────────────
+        $isPreUsed = false;
+
+        if (!$isSerial) {
+            $stock = $this->getAvailableQty($employeeId, $materialId);
+
+            if (!$stock['has_issue'] || $stock['available'] <= 0) {
+                $isPreUsed = true;
+                Log::info("Pre-used — no ISSUE for material ID {$materialId}, employee {$employeeId}");
+
+            } elseif ($quantity > $stock['available']) {
+                throw new \Exception(
+                    "Insufficient stock for material '{$item['material_type']}' (ID: {$materialId}). " .
+                    "Available: {$stock['available']}, Requested: {$quantity}"
+                );
+            }
+
+        } else {
+            $serialNumber = $item['material_serial_number'];
+            $stock        = $this->getAvailableQty($employeeId, $materialId, $serialNumber);
+
+            if (!$stock['has_issue']) {
+                $isPreUsed = true;
+                Log::info("Pre-used serial — no ISSUE for serial {$serialNumber}, employee {$employeeId}");
+
+            } elseif ($quantity > $stock['available']) {
+                throw new \Exception(
+                    "Insufficient stock for serial '{$serialNumber}'. " .
+                    "Available: {$stock['available']}, Requested: {$quantity}"
+                );
+            }
+        }
+
+        // ── Insert single ledger row ──────────────────────────────
+        EmployeeMaterialLedger::create([
+            'request_id'       => !empty($item['request_id'])     ? $item['request_id']     : null,
+            'issued_item_id'   => !empty($item['issued_item_id']) ? $item['issued_item_id'] : null,
+            'indent_no'        => !empty($item['indent_no'])      ? $item['indent_no']      : null,
+            'employee_id'      => $employeeId,
+            'state_id'         => $stateId,
+            'district_id'      => $districtId,
+            'material_id'      => $materialId,
+            'material_code'    => !empty($item['material_code'])  ? $item['material_code']  : null,
+            'has_serial'       => $isSerial ? 1 : 0,
+            'serial_number'    => $isSerial ? ($item['material_serial_number'] ?? null) : null,
+            'transaction_type' => 'USED',
+            'quantity'         => $quantity,
+            'used'             => $used,
+            'wastage'          => $wastage,
+            'wastage_reason'   => !empty($item['wastage_reason']) ? $item['wastage_reason'] : null,
+            'ticket_id'        => $ticketId,
+            'issue_date'       => Carbon::now(),
+            'is_pre_used'      => $isPreUsed ? 1 : 0,
+            
+        ]);
+
+        Log::info("Ledger entry created for material ID: {$materialId}, quantity: {$quantity}");
+    }
+}
 
 private function getAvailableQty($employeeId, $materialId, $serial = null)
 {
     $query = EmployeeMaterialLedger::where([
         'employee_id' => $employeeId,
-        'material_id' => $materialId
+        'material_id' => $materialId,
     ]);
 
     if ($serial) {
         $query->where('serial_number', $serial);
     }
 
-    $issued = (clone $query)->where('transaction_type', 'ISSUE')->sum('quantity');
-    $used   = (clone $query)->where('transaction_type', 'USED')->sum('quantity');
-    $return = (clone $query)->where('transaction_type', 'RETURN')->sum('quantity');
+    $issued = (clone $query)
+        ->where('transaction_type', 'ISSUE')
+        ->sum('quantity');
 
-    return $issued - $used - $return;
+    $returned = (clone $query)
+        ->where('transaction_type', 'RETURN')
+        ->sum('quantity');
+
+    $used = (clone $query)
+        ->where('transaction_type', 'USED')
+        ->sum('quantity');
+
+    Log::info("Stock check — employee: $employeeId, material: $materialId" .
+              ($serial ? ", serial: $serial" : '') .
+              " | issued: $issued, returned: $returned, used: $used, available: " . ($issued + $returned - $used));
+
+    return [
+        'available' => $issued + $returned - $used,
+        'has_issue' => $issued > 0,
+    ];
 }
+
 
 
 public function consumeMaterials(Request $request)
@@ -4023,6 +4253,26 @@ public function patroller_checklist(Request $request)
             'ups_backup',
             'power_cable_condition',
 
+            'pole_condition',
+            'joint_enclosure_condition',
+            'trees_touching_condition',
+
+             'trench_exposure_photo_location',
+            'manhole_or_chamber_photo_location',
+            'router_maker_photo_location',
+            'digging_activity_photo_location',
+            'forced_entry_signs_photo_location',
+            'env_moisture_photo_location',
+            'ups_backup_photo_location',
+            'power_cable_photo_location',
+            'ont_olt_router_working_photo_location',
+            'rack_condition_photo_location',
+            'los_lof_alarm_photo_location',
+            'ont_dbm_reading_photo_location',
+            'pole_photo_location',
+            'joint_enclosure_photo_location',
+            'trees_touching_photo_location',
+
             'ont_olt_router_working',
             'rack_condition',
             'los_lof_alarm',
@@ -4039,6 +4289,9 @@ public function patroller_checklist(Request $request)
             'ups_backup_photo',
             'power_cable_photo',
             'ont_olt_router_working_photo',
+            'pole_photo',
+            'joint_enclosure_photo',
+            'trees_touching_photo',
             'rack_condition_photo',
             'los_lof_alarm_photo',
             'ont_dbm_reading_photo'
@@ -4223,12 +4476,37 @@ public function get_employee_list(Request $request)
 
         $timestamp = $payload['ADDITIONAL_DATA']['alert_timestamp'] ?? null;
 
-        if ($timestamp) {
-            $carbon = Carbon::createFromTimestampUTC((float) $timestamp)
-                        ->setTimezone('Asia/Kolkata');
-        } else {
+         if ($timestamp) {
+
+        try {
+
+            // handle float timestamps like 1773203115.575
+            if (strpos((string)$timestamp, '.') !== false) {
+                $timestamp = explode('.', $timestamp)[0];
+            }
+
+            // handle milliseconds timestamps
+            if (strlen($timestamp) > 10) {
+                $timestamp = substr($timestamp, 0, 10);
+            }
+
+            $carbon = Carbon::createFromTimestampUTC((int)$timestamp)
+                ->setTimezone('Asia/Kolkata');
+
+        } catch (\Exception $e) {
+
+            Log::warning('Invalid timestamp received', [
+                'timestamp' => $timestamp
+            ]);
+
             $carbon = Carbon::now('Asia/Kolkata');
         }
+
+    } else {
+
+        $carbon = Carbon::now('Asia/Kolkata');
+    }        
+
 
         return [[
             'district' => $payload['CI_DISTRICT'] ?? null,
@@ -4283,8 +4561,7 @@ private function processTicketData(array $jsonData)
             $problemType = $keyvalue['problem_type'] ?? '';
 
         if (
-            stripos($problemType, '[DOWN]') === false ||
-            stripos($problemType, 'Host alert') === false
+            stripos($problemType, 'host') === false 
         ) {
             continue;
         }
@@ -4393,7 +4670,7 @@ private function processTicketData(array $jsonData)
             $UserRequest->provider_id = $provider->id;
             $UserRequest->current_provider_id = $provider->id;
             $UserRequest->service_type_id = 2;
-            $UserRequest->status = 'SEARCHING';
+            $UserRequest->status = 'INCOMING';
             $UserRequest->s_latitude = $provider->latitude;
             $UserRequest->s_longitude = $provider->longitude;
             $UserRequest->d_latitude = $lat;
@@ -4494,9 +4771,11 @@ private function mapSnocStatusId($statusId)
     }
 }
 
-private function updateSnocTicketStatus($incidentId, $teamId, $projectId, $status, $comments, $rcaFlag)
+private function updateSnocTicketStatus($incidentId, $status, $comments, $rcaFlag)
 {
     $statusId = $this->mapSnocStatusId($status);
+
+   //dd( $statusId );
 
     if (!$statusId) {
         throw new \Exception('Invalid SNOC status mapping');
@@ -4517,11 +4796,9 @@ private function updateSnocTicketStatus($incidentId, $teamId, $projectId, $statu
             'auth' => ['snoc', 'Welcome@123'], // Basic Auth
             'json' => [
                 'incidentId'       => $incidentId,
-                'teamId'           => $teamId,
-                'projectId'        => $projectId,
-                'statusId'         => $statusId,
+                'status'         => $status,
                 'incidentComments' => $finalComment,
-                'incidentRcaFlag'  => $rcaFlag ?? ''
+                'incidentRCAFlag'  => $rcaFlag ?? ''
             ]
         ]);
 
@@ -4530,6 +4807,7 @@ private function updateSnocTicketStatus($incidentId, $teamId, $projectId, $statu
         return $body;
 
     } catch (\GuzzleHttp\Exception\RequestException $e) {
+         dd($e->getResponse());
         throw new \Exception(
             $e->hasResponse()
                 ? $e->getResponse()->getBody()->getContents()
@@ -4547,9 +4825,7 @@ public function getticketstatus(Request $request)
         $comments = $request->incidentComments;
         $rcaFlag  = $request->incidentRCAFlag;
         $status   = $request->status;
-        $teamId    = 1;
-        $projectId = 'TeraProject';
-   
+           
 
         if (!$ticketId) {
              return response()->json([
@@ -4593,8 +4869,6 @@ public function getticketstatus(Request $request)
 
          $this->updateSnocTicketStatus(
    	 $ticketId,
-    	$teamId,
-    	$projectId,
     	$status,
     	$comments,
     	$rcaFlag
@@ -4634,7 +4908,7 @@ public function getticketstatus(Request $request)
         1 => 'ACCEPTED',
         2 => 'ONHOLD',
         3 => 'PICKEDUP',
-        4 => 'ARRIVED',
+        4 => 'INCOMING',
         5 => 'COMPLETED',
     ][$status] ?? 'UNKNOWN';
 }

@@ -915,19 +915,38 @@ public function employeeStockReport(Request $request)
         $ledgerQuery->where('material_id', $request->material_id);
     }
 
-    if ($request->from_date && $request->to_date) {
-        $ledgerQuery->whereBetween('issue_date', [
-            $request->from_date . ' 00:00:00',
-            $request->to_date . ' 23:59:59'
-        ]);
-    }
+    // if ($request->from_date && $request->to_date) {
+    //     $ledgerQuery->whereBetween('issue_date', [
+    //         $request->from_date . ' 00:00:00',
+    //         $request->to_date . ' 23:59:59'
+    //     ]);
+    // }
 
-    if ($request->search) {
-        $search = $request->search;
-        $ledgerQuery->whereHas('material', function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%");
-        });
-    }
+       if ($request->search) {
+            $search = $request->search;
+
+            $ledgerQuery->where(function ($q) use ($search) {
+
+                // Search by material name
+                $q->whereHas('material', function ($mq) use ($search) {
+                    $mq->where('name', 'like', "%{$search}%");
+                })
+
+                // OR search by employee fields
+                ->orWhereHas('employee', function ($eq) use ($search) {
+                    $eq->where(function ($inner) use ($search) {
+                        $inner->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name',  'like', "%{$search}%")
+                            ->orWhere('email',      'like', "%{$search}%")
+                            ->orWhere('mobile',     'like', "%{$search}%");
+                    });
+                })
+
+                // OR search by ticket_id or indent_no directly on ledger
+                ->orWhere('ticket_id',  'like', "%{$search}%")
+                ->orWhere('indent_no',  'like', "%{$search}%");
+            });
+        }
 
     $ledgerRows = $ledgerQuery->get();
 

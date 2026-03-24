@@ -513,7 +513,7 @@
                     @endforeach
                 </select>
             </div>
-
+<!-- 
             <div class="sr-filter-group">
                 <label>From Date</label>
                 <input type="date" name="from_date" value="{{ request('from_date') }}">
@@ -522,7 +522,7 @@
             <div class="sr-filter-group">
                 <label>To Date</label>
                 <input type="date" name="to_date" value="{{ request('to_date') }}">
-            </div>
+            </div> -->
             <div class="sr-filter-group">
                 <label>Search</label>
                 <input type="text" name="search" 
@@ -568,7 +568,7 @@
                             <td><span class="sr-used">{{ number_format($item['used'], 2) }}({{$item['baseunit']}})</span></td>
                             <td><span class="sr-balance">{{ number_format($item['balance'], 2) }}({{$item['baseunit']}})</span></td>
                             <td>
-                                    @if(
+                                    <!-- @if(
                                         ($item['is_serial'] && count($item['serials']) > 0) ||
                                         (!$item['is_serial'] && count($item['issued_indents']) > 0)
                                     )
@@ -577,7 +577,10 @@
                                     </button>
                                 @else
                                     <span style="color: #ddd;">—</span>
-                                @endif
+                                @endif -->
+                                  <button type="button" class="sr-action-link" data-toggle="modal" data-target="#detailsModal" onclick="loadSerialDetails('{{ json_encode($item) }}')">
+                                        <i class="fa fa-eye"></i> View
+                                    </button>
                             </td>
                         </tr>
                     @endforeach
