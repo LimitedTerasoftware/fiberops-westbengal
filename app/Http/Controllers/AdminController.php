@@ -7874,7 +7874,7 @@ public function exportProviders(Request $request)
             $data = [];
             // Header row
             $data[] = [
-                'Name', 'Mobile', 'Email','Date of joining','Zone', 'District', 'Role', 'Version', 'Status'
+                'Name', 'Mobile', 'Email','Date of joining','Zone', 'District', 'Role', 'Version', 'Available Status','Status'
             ];
 
             foreach ($providers as $p) {
@@ -7890,7 +7890,8 @@ public function exportProviders(Request $request)
                     $p->district_name ?? 'N/A',
                     $role,
                     $p->version ?? '-',
-                    $status
+                    $status,
+                    $p->status
                     
                 ];
             }

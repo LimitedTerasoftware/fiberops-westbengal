@@ -2073,16 +2073,43 @@ private function storeMaterialLedger(
 
         return (bool) preg_match('/\d/', $serial);
     };
-
+    $materialMap = [
+        '48F CABLE' => ['id' => 10, 'code' => '20079'],
+        '24F CABLE' => ['id' => 9, 'code' => '20003'],
+        '12F CABLE' => ['id' => 8, 'code' => '20078'],
+        '8F CABLE'  => ['id' => 100, 'code' => '20120'],
+        '6F CABLE'  => ['id' => 7, 'code' => '20077'],
+        '4F CABLE'  => ['id' => 101, 'code' => '20121'],
+        'PATCH CORD' => ['id' => 83, 'code' => '20048'],
+        'JOINT ENCLOSURE UG' => ['id' => 73, 'code' => '20006'],
+        'OTHER JOINT BOX' => ['id' => 102, 'code' => '20122'],
+        'TENSION CLAMP' => ['id' => 103, 'code' => '20123'],
+        'BUCKLES' => ['id' => 104, 'code' => '20124'],
+        'FRAMES' => ['id' => 105, 'code' => '20125'],
+        'ENCLOSURES AERIAL' => ['id' => 17, 'code' => '20083'],
+        'HDPE DUCT PIPE' => ['id' => 11, 'code' => '20001'],
+    ];
   
 
     // ── Process each material item ────────────────────────────────
     foreach ($materialsData as $item) {
 
         // ── Skip if material_id is empty ──────────────────────────
+       
         if (empty($item['material_id'])) {
-            Log::info("Skipping ledger — material_id empty for type: " . ($item['material_type'] ?? 'unknown'));
-            continue;
+
+             $type = strtoupper(trim($item['material_type'] ?? ''));
+
+            if (isset($materialMap[$type])) {
+                $item['material_id']   = $materialMap[$type]['id'];
+                $item['material_code'] = $materialMap[$type]['code'];
+
+                Log::info("Mapped material_type '{$type}' to ID {$item['material_id']}");
+
+            } else {
+                Log::warning("Material mapping not found for type: {$type}");
+                continue;
+            }
         }
 
         // ── Skip if nothing was used or wasted ────────────────────
@@ -5027,5 +5054,24 @@ public function getticketstatus(Request $request)
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+    public function getMaterialsList(Request $request)
+    {
+        $query = \App\Material::query();
+
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('code', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $materials = $query->orderBy('id', 'asc')->get(['id', 'name', 'code', 'purchase_unit', 'base_unit', 'has_serial']);
+
+        return response()->json([
+            'success' => true,
+            'materials' => $materials
+        ]);
     }
 }
