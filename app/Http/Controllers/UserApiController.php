@@ -2066,8 +2066,9 @@ private function storeMaterialLedger(
     // ── Resolve is_serial from material_serial_number ─────────────
     $resolveIsSerial = function (array $item): bool {
         $serial = trim($item['material_serial_number'] ?? '');
+        $type        = trim($item['material_type'] ?? '');
 
-        if ($serial === '' ) {
+        if ($serial === '' || $serial === $type) {
             return false;
         }
 
@@ -2218,392 +2219,6 @@ private function getAvailableQty($employeeId, $materialId, $serial = null)
     ];
 }
 
-
-
-public function consumeMaterials(Request $request)
-{
-    DB::beginTransaction();
-      Log::info('Request Details:', $request->all());
-
-    try {
-           ini_set('post_max_size', '100M');
-           ini_set('upload_max_filesize', '100M');
-           $validator = Validator::make($request->all(), [
-                'request_id'  => 'required',
-                'ticket_id'   => 'required',
-                'employee_id' => 'required|integer',
-                'state_id'    => 'required|integer',
-                'district_id' => 'required|integer',
-                'materials'    => 'required|array',
-                'materials.data' => 'required|array|min:1',
-                'materials.issues' => 'nullable|array',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-        $employeeId = $request->employee_id;
-        $stateId    = $request->state_id;
-        $districtId = $request->district_id;
-        $ticketId   = $request->ticket_id;
-        $documents = $request->all();
-        $downreason = $request->category;
-        $downreasondetailed = $request->description;
-        $issue_type	= $request->issue_type ? $request->issue_type : null;
-        $ownership=$request->ownership ? $request->ownership : null;
-        
-        $request_ids = $documents['request_id'];
-        $requestids= explode(',',$request_ids);
-                Log::info('Request IDs to process:', $requestids);
-
-            $i=0;    
-            $beforefile_names = [];
-            $afterfile_names = [];
-            $otdrfile_names=[];
-            $joint_beforeimgs = [];
-            $joint_afterimgs=[];
-            $video_name = null;
-
-            $materialsData = $request->input('materials.data', []);
-            $issuesData    = $request->input('materials.issues', []);
-
-        $materialIds = collect($materialsData)
-            ->pluck('material_id')
-            ->unique()
-            ->toArray();
-
-        $materialsMaster = Material::whereIn('id', $materialIds)
-            ->pluck('name', 'id');
-        $materialUsage = [];
-
-        foreach ($materialsData as $item) {
-
-            $materialId = $item['material_id'];
-            $materialName = $materialsMaster[$materialId] ?? null;
-
-            if (!$materialName) {
-                continue;
-            }
-
-            // Non-serial material
-            if ($item['is_serial'] == 0) {
-                $qty = (float) $item['quantity'];
-
-                if ($qty > 0) {
-                    $materialUsage[$materialName] =
-                        ($materialUsage[$materialName] ?? 0) + $qty;
-                }
-            }
-
-            // Serial material (drum, cable, etc.)
-            if ($item['is_serial'] == 1 && !empty($item['serials'])) {
-
-                foreach ($item['serials'] as $serial) {
-                    $qty = (float) $serial['quantity'];
-
-                    if ($qty > 0) {
-                        $materialUsage[$materialName] =
-                            ($materialUsage[$materialName] ?? 0) + $qty;
-                    }
-                }
-            }
-        }
-
-        $parts = [];
-
-        foreach ($materialUsage as $name => $qty) {
-            if ($qty > 0) {
-                $parts[] = "{$name}={$qty}";
-            }
-        }
-
-        $materialsString = '{' . implode(', ', $parts) . '}';
-
-
-
-        foreach($requestids as $request_id){
-                Log::info("Processing request ID: $request_id");
-
-                 DB::table('user_requests')->where('id',$request_id)->update(array(
-                                 'status'=>'COMPLETED',
-                                 'downreason'=>$downreason,
-                                 'downreasonindetailed'=>$downreasondetailed,
-                                 'issue_type'=>$issue_type,
-                                 'ownership'=>$ownership,
-                                 'autoclose'=>'Manual',
-                                 'finished_at'=> date('Y-m-d H:i:s')
-                  ));
-              Log::info("Updated user_requests for request ID: $request_id");
-
-                 
-            if($i==0){
-                 $getLatLong = function ($key) use ($request) {
-
-                            $lat = '0_0';
-                            $long = '0_0';
-
-                            if ($request->has($key)) {
-                                $val = $request->input($key);
-
-                                if ($val) {
-                                    // remove quotes, spaces
-                                    $val = trim($val, "\"' ");
-
-                                    // support both "lat,long" and "lat:long"
-                                    if (str_contains($val, ',')) {
-                                        [$lat, $long] = explode(',', $val);
-                                    } elseif (str_contains($val, ':')) {
-                                        [$lat, $long] = explode(':', $val);
-                                    }
-                                }
-                            }
-
-                            // make filename-safe
-                            // $lat  = str_replace(['.', '-', '"'], '_', $lat);
-                            // $long = str_replace(['.', '-', '"'], '_', $long);
-
-                            return [
-                                'lat' => $lat,
-                                'long' => $long
-                            ];
-                        };
-
-
-              
-                if ($request->hasFile('before_image')) {
-                        $before_image = $request->before_image;
-                        $coords = $getLatLong('before_img_latlong');
-
-                        foreach ($before_image as $image) {
-                            $extension = $image->getClientOriginalExtension();
-                            $beforefilename =  time() . uniqid() . '_' .
-                                                $coords['lat'] . '_' .
-                                                $coords['long'] .
-                                                '.' . $extension;
-                            $image->move(public_path('uploads/SubmitFiles'), $beforefilename);
-                           array_push($beforefile_names, $beforefilename);
-                        Log::info("Uploaded before_image: $beforefilename");
-
-                          }
-                }
-
-
-                if ($request->hasFile('after_image')) {
-                        $after_image = $request->after_image;
-                        $coords = $getLatLong('after_img_latlong');
-                        foreach ($after_image as $image) {
-                           $extension = $image->getClientOriginalExtension();
-                           $afterfilename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
-
-                           $image->move(public_path('uploads/SubmitFiles'), $afterfilename);
-                           array_push($afterfile_names, $afterfilename);
-                        Log::info("Uploaded after_image: $afterfilename");
-
-                          }
-                }
-                if ($request->hasFile('otdr_img')) {
-                        $otdr_img = $request->otdr_img;
-                        $coords = $getLatLong('otdr_img_latlong');
-
-                        foreach ($otdr_img as $image) {
-                            $extension = $image->getClientOriginalExtension();
-                            $otdrfilename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
-                            $image->move(public_path('uploads/SubmitFiles'), $otdrfilename);
-                           array_push($otdrfile_names, $otdrfilename);
-                        Log::info("Uploaded otdr_img: $otdrfilename");
-
-                          }
-                }
-                if ($request->hasFile('joint_enclouser_beforeimg')) {
-                        $joint_befimg = $request->joint_enclouser_beforeimg;
-                        $coords = $getLatLong('joint_enclosurebefore_latlong');
-
-                        foreach ($joint_befimg as $image) {
-                            $extension = $image->getClientOriginalExtension();
-                            $joint_before_filename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
-                       
-                           $image->move(public_path('uploads/SubmitFiles'), $joint_before_filename);
-                           array_push($joint_beforeimgs, $joint_before_filename);
-                        Log::info("Uploaded joint_enclouser_beforeimg: $joint_before_filename");
-
-                          }
-                }
-                if ($request->hasFile('joint_enclouser_afterimg')) {
-                        $joint_aftimg = $request->joint_enclouser_afterimg;
-                        $coords = $getLatLong('joint_enclosureafter_latlong');
-
-
-                        foreach ($joint_aftimg as $image) {
-                            $extension = $image->getClientOriginalExtension();
-                            $joint_after_filename = time() . uniqid() . '_' . $coords['lat'] . '_' . $coords['long'] . '.' . $extension;
-                        
-                           $image->move(public_path('uploads/SubmitFiles'), $joint_after_filename);
-                           array_push($joint_afterimgs, $joint_after_filename);
-                        Log::info("Uploaded joint_enclouser_afterimg: $joint_after_filename");
-
-                          }
-                }
-                if($request->hasFile('video')) {
-                        $video = $request->video;
-                        $extension = $video->getClientOriginalExtension();
-                        $allowedExtensions = ['mp4', 'avi', 'mov', 'wmv'];
-                        if (in_array(strtolower($extension), $allowedExtensions)) {
-                            $videofilename = $video->getClientOriginalName();
-                            $destinationPath = public_path('uploads/SubmitFiles/videos');
-                            if (!file_exists($destinationPath)) {
-                                mkdir($destinationPath, 0777, true);
-                            }
-                            $video->move($destinationPath, $videofilename);
-                            $video_name = $videofilename;
-                            Log::info("Uploaded video: $videofilename");
-                        } else {
-                            return response()->json(['error' => 'Invalid video format. Allowed: mp4, avi, mov, wmv'], 422);
-                        }
-                    }
-
-            }  
-                 $i++;
- 
-                 
-            
-                $documents['request_id'] =$request_id;
-                $documents['before_image'] =json_encode($beforefile_names);
-                $documents['after_image'] =json_encode($afterfile_names);
-                $documents['otdr_img'] =json_encode($otdrfile_names);
-                $documents['joint_enclouser_beforeimg'] =json_encode($joint_beforeimgs);
-                $documents['joint_enclouser_afterimg'] =json_encode($joint_afterimgs);
-                $documents['materials']  = $materialsString;
-                $documents['issues'] = json_encode($issuesData);
-                $documents['video'] = $video_name;
-
-               Log::info("Inserting SubmitFile record:", $documents);
-
-                SubmitFile::create($documents);
-
-               $UserRequest = UserRequests::where('id', $request_id)
-                ->where('status', 'COMPLETED')
-                ->firstOrFail();
-
-                        if($UserRequest->rating == null) {
-                UserRequestRating::create([
-                        'provider_id' => $UserRequest->provider_id,
-                        'user_id' => $UserRequest->user_id,
-                        'request_id' => $UserRequest->id,
-                        'provider_rating' => 5,
-                        'provider_comment' => 'test',
-                    ]);
-            } else {
-                $UserRequest->rating->update([
-                        'provider_rating' => 5,
-                        'provider_comment' => 'test',
-                    ]);
-            }
-
-            $UserRequest->update(['provider_rated' => 1]);
-
-           //MasterTicket::where('ticketid', 'like', '%TKTN1115%')->update(['status' =>1]);
-
-            DB::table('master_tickets')->where('ticketid',$UserRequest->booking_id)->update(array(
-                                 'status'=>1,
-                  ));
-
-
-            // Delete from filter so that it doesn't show up in status checks.
-            RequestFilter::where('request_id', $request_id)->delete();
-
-            ProviderService::where('provider_id',$UserRequest->provider_id)->update(['status' =>'active']);
-
-             }
-       foreach ($materialsData as $item) {
-
-            /* ---------------- NON SERIAL ---------------- */
-            if ($item['is_serial'] == 0) {
-
-                $available = $this->getAvailableQty(
-                    $employeeId,
-                    $item['material_id']
-                );
-
-                if ($item['quantity'] > $available) {
-                    throw new Exception('Insufficient stock for material ID ' . $item['material_id']);
-                }
-
-                EmployeeMaterialLedger::create([
-                    'request_id'       => $item['request_id'] ?? null,
-                    'issued_item_id'   => $item['issued_item_id'] ?? null,
-                    'indent_no'        =>$item['indent_no'] ?? null,
-                    'employee_id'      => $employeeId,
-                    'state_id'         => $stateId,
-                    'district_id'      => $districtId,
-                    'material_id'      => $item['material_id'],
-                    'material_code'    =>$item['material_code'],
-                    'has_serial'       => 0,
-                    'transaction_type' => 'USED',
-                    'quantity'         => $item['quantity'],
-                    'ticket_id'        => $ticketId,
-                    'issue_date'       => Carbon::now(),
-                ]);
-            }
-
-            /* ---------------- SERIAL ---------------- */
-            if ($item['is_serial'] == 1) {
-
-                foreach ($item['serials'] as $serial) {
-
-                    $available = $this->getAvailableQty(
-                        $employeeId,
-                        $item['material_id'],
-                        $serial['serial_id']
-                    );
-
-                    if ($serial['quantity'] > $available) {
-                        throw new Exception(
-                            "Insufficient stock for serial {$serial['serial_id']}"
-                        );
-                    }
-
-                    EmployeeMaterialLedger::create([
-                        'request_id'       => $serial['request_id'] ?? null,
-                        'issued_item_id'   => $serial['issued_item_id'] ?? null,
-                        'indent_no'        =>$serial['indent_no'] ?? null,
-                        'employee_id'       => $employeeId,
-                        'state_id'          => $stateId,
-                        'district_id'       => $districtId,
-                        'material_id'       => $item['material_id'],
-                        'material_code'    =>$item['material_code'],
-                        'has_serial'        => 1,
-                        'serial_number'     => $serial['serial_id'],
-                        'replaced_serial_number' => $serial['old_serial_number'] ?? null,
-                        'transaction_type'  => 'USED',
-                        'quantity'          => $serial['quantity'],
-                        'ticket_id'         => $ticketId,
-                        'issue_date'        =>  Carbon::now(),
-                    ]);
-                }
-            }
-        }
-                 
-    DB::commit();
-
-        return response()->json([
-           'success' => 'true','status'=>1
-        ]);
-
-    } catch (Exception $e) {
-        DB::rollBack();
-
-        return response()->json([
-            'status' => false,
-            'message' => $e->getMessage()
-        ], 422);
-    }
-}
-
-
 public function getEmployeeMaterials(Request $request)
 {
     $employeeId = $request->emp_id;
@@ -2699,6 +2314,120 @@ public function getEmployeeMaterials(Request $request)
     return response()->json([
         'status' => true,
         'data'   => array_values($materials)
+    ]);
+}
+
+
+public function getAllEmployeesMaterials(Request $request)
+{
+    $employees = EmployeeMaterialLedger::select('employee_id')
+        ->distinct()
+        ->pluck('employee_id');
+
+    $employeeData = [];
+
+    foreach ($employees as $employeeId) {
+        $employee = \App\Provider::find($employeeId);
+        
+        if (!$employee) continue;
+
+        $ledgerRows = EmployeeMaterialLedger::with('material')
+            ->where('employee_id', $employeeId)
+            ->get();
+
+        $materials = [];
+        $ticketIds = [];
+        $stateId = null;
+        $districtId = null;
+
+        foreach ($ledgerRows as $row) {
+            if (!$stateId && $row->state_id) {
+                $stateId = $row->state_id;
+                $districtId = $row->district_id;
+            }
+            if ($row->ticket_id) {
+                $ticketIds[] = $row->ticket_id;
+            }
+
+            $materialId = $row->material_id;
+            $isSerial = $row->has_serial && $row->serial_number;
+
+            if (!isset($materials[$materialId])) {
+                $materials[$materialId] = [
+                    // 'request_id'=>$row->request_id,
+                    // 'issued_item_id'=>$row->issued_item_id,
+                    // 'indent_no'=>$row->indent_no,
+                    'material_id'   => $materialId,
+                    'material_code' => $row->material->code ?? '',
+                    'material_name' => $row->material->name ?? '',
+                    'base_unit'     => $row->material->base_unit ?? '',
+                    'is_serial'     => (bool)$row->has_serial,
+                    'issued'        => 0,
+                    'used'          => 0,
+                    'quantity'      => 0,
+                    'serials'       => []
+                ];
+            }
+
+            if ($row->transaction_type === 'ISSUE') {
+                $materials[$materialId]['issued'] += $row->quantity;
+            }
+
+            if ($row->transaction_type === 'USED') {
+                $materials[$materialId]['used'] += $row->quantity;
+            }
+
+            if ($isSerial) {
+                $serialKey = $row->serial_number;
+                
+                if (!isset($materials[$materialId]['serials'][$serialKey])) {
+                    $materials[$materialId]['serials'][$serialKey] = [
+                        'serial_number' => $row->serial_number,
+                        'issued'        => 0,
+                        'used'          => 0,
+                        'balance'       => 0,
+                        'ticket_ids'    => []
+                    ];
+                }
+
+                if ($row->transaction_type === 'ISSUE') {
+                    $materials[$materialId]['serials'][$serialKey]['issued'] += $row->quantity;
+                }
+
+                if ($row->transaction_type === 'USED') {
+                    $materials[$materialId]['serials'][$serialKey]['used'] += $row->quantity;
+                }
+
+                if ($row->ticket_id && !in_array($row->ticket_id, $materials[$materialId]['serials'][$serialKey]['ticket_ids'])) {
+                    $materials[$materialId]['serials'][$serialKey]['ticket_ids'][] = $row->ticket_id;
+                }
+            }
+        }
+
+        foreach ($materials as &$mat) {
+            $mat['quantity'] = $mat['issued'] - $mat['used'];
+            
+            if ($mat['is_serial'] && !empty($mat['serials'])) {
+                foreach ($mat['serials'] as &$serial) {
+                    $serial['balance'] = $serial['issued'] - $serial['used'];
+                }
+            }
+        }
+
+        $employeeData[] = [
+            'employee_id'   => $employeeId,
+            'employee_name' => $employee->first_name . ' ' . $employee->last_name,
+            'employee_mobile' => $employee->mobile ?? '',
+            'state_id'      => $stateId,
+            'district_id'   => $districtId,
+            'ticket_ids'    => array_unique($ticketIds),
+            'materials'     => array_values($materials)
+        ];
+    }
+
+    return response()->json([
+        'status' => true,
+        'data'   => $employeeData
     ]);
 }
 

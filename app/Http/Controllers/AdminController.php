@@ -8228,7 +8228,11 @@ public function getTrackingData($id, Request $request)
             if (is_array($points)) {
                 $historyDate = date('Y-m-d', strtotime($history->created_at));
                 foreach ($points as $point) {
-                    if (isset($point['latitude'], $point['longitude'])) {
+                    if (
+                        isset($point['latitude'], $point['longitude']) &&
+                        (float)$point['latitude'] != 0.0 &&
+                        (float)$point['longitude'] != 0.0
+                    ) {
                         $trackingData[] = [
                             'latitude' => (float)$point['latitude'],
                             'longitude' => (float)$point['longitude'],
