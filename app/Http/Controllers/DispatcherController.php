@@ -295,6 +295,56 @@ class DispatcherController extends Controller
         }
     }
 
+    public function bulkHold(Request $request)
+    {
+        try {
+            $ticketIds = $request->ticket_ids;
+            $downreason = $request->downreason_name;
+            $downreasonindetailed = $request->downreasonindetailed;
+            $subcategory = $request->sub_category_name;
+            $subcategoryId = $request->sub_category;
+
+            if (empty($ticketIds)) {
+                return response()->json(['success' => false, 'message' => 'No tickets selected']);
+            }
+
+            $updated = UserRequests::whereIn('booking_id', $ticketIds)
+                ->whereIn('status', ['INCOMING', 'PICKEDUP'])
+                ->update([
+                    'status' => 'ONHOLD',
+                    'downreason' => $downreason,
+                    'downreasonindetailed' => $downreasonindetailed,
+                    'subcategory' => $subcategory,
+                    'autoclose' => 'Auto'
+                ]);
+
+            if ($updated > 0) {
+                // $bookingIds = UserRequests::whereIn('booking_id', $ticketIds)->pluck('booking_id');
+                
+                DB::table('master_tickets')
+                    ->whereIn('ticketid', $ticketIds)
+                    ->update([
+                        'status' => 1,
+                        'downreason' => $downreason,
+                        'downreasonindetailed' => $downreasonindetailed,
+                        'subsategory' => $subcategory
+                    ]);
+
+                return response()->json([
+                    'success' => true, 
+                    'message' => $updated . ' ticket(s) put on hold successfully'
+                ]);
+            }
+
+            return response()->json(['success' => false, 'message' => 'No tickets could be updated']);
+
+        } catch (Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+
+
 
 
 

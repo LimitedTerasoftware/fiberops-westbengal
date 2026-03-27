@@ -73,6 +73,7 @@ Route::group(['as' => 'dispatcher.', 'prefix' => 'dispatcher'], function () {
     Route::post('/closerequest', 'DispatcherController@closerequest')->name('closerequest');
     Route::get('/onholdform/{id}', 'DispatcherController@onholdform')->name('onholdform');
     Route::post('/onholdrequest', 'DispatcherController@onholdrequest')->name('onholdrequest');
+    Route::post('/bulk-hold-tickets', 'DispatcherController@bulkHold')->name('bulkHold');
 
 
 
