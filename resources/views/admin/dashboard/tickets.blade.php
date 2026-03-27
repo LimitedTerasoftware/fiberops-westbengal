@@ -1082,17 +1082,72 @@ $(document).on('change', '#bulk_sub_category', function() {
 });
 
 $(document).on('change', '#selectAllTickets', function() {
-    $('.ticket-checkbox').prop('checked', $(this).prop('checked'));
+    var isChecked = $(this).prop('checked');
+    $('.ticket-checkbox').prop('checked', isChecked);
+    if (isChecked) {
+        $('.ticket-checkbox').each(function() {
+            addToSelectedIds($(this).val());
+        });
+    } else {
+        clearSelectedIds();
+    }
     updateBulkActions();
 });
 
 $(document).on('change', '.ticket-checkbox', function() {
+    if ($(this).prop('checked')) {
+        addToSelectedIds($(this).val());
+    } else {
+        removeFromSelectedIds($(this).val());
+    }
     updateBulkActions();
 });
 
+function getSelectedIds() {
+    var ids = sessionStorage.getItem('bulkSelectedTicketIds');
+    return ids ? JSON.parse(ids) : [];
+}
+
+function addToSelectedIds(id) {
+    var ids = getSelectedIds();
+    if (!ids.includes(id)) {
+        ids.push(id);
+        sessionStorage.setItem('bulkSelectedTicketIds', JSON.stringify(ids));
+    }
+}
+
+function removeFromSelectedIds(id) {
+    var ids = getSelectedIds();
+    var index = ids.indexOf(id);
+    if (index > -1) {
+        ids.splice(index, 1);
+        sessionStorage.setItem('bulkSelectedTicketIds', JSON.stringify(ids));
+    }
+}
+
+function clearSelectedIds() {
+    sessionStorage.removeItem('bulkSelectedTicketIds');
+}
+
+function restoreCheckboxStates() {
+    var selectedIds = getSelectedIds();
+    $('.ticket-checkbox').each(function() {
+        var id = $(this).val();
+        if (selectedIds.includes(id)) {
+            $(this).prop('checked', true);
+        } else {
+            $(this).prop('checked', false);
+        }
+    });
+    updateBulkActions();
+}
+
+$(document).ready(function() {
+    restoreCheckboxStates();
+});
 
 function updateBulkActions() {
-    var selected = $('.ticket-checkbox:checked').length;
+    var selected = getSelectedIds().length;
     $('#selectedCount').text(selected);
     if (selected > 0) {
         $('#bulkActionsBar').show();
@@ -1102,9 +1157,7 @@ function updateBulkActions() {
 }
 
 function openBulkHoldModal() {
-    var selected = $('.ticket-checkbox:checked').map(function() {
-        return $(this).val();
-    }).get();
+    var selected = getSelectedIds();
     
     if (selected.length === 0) {
         alert('Please select at least one ticket');
@@ -1131,9 +1184,7 @@ $('#bulk_sub_category').on('change', function() {
 
 
 function submitBulkHold() {
-    var selected = $('.ticket-checkbox:checked').map(function() {
-        return $(this).val();
-    }).get();
+    var selected = getSelectedIds();
     
     var category = $('#bulk_category').val();
     var subCategory = $('#bulk_sub_category').val();
@@ -1165,6 +1216,7 @@ function submitBulkHold() {
         success: function(response) {
             if (response.success) {
                 alert(response.message);
+                clearSelectedIds();
                 location.reload();
             } else {
                 alert('Error: ' + response.message);
