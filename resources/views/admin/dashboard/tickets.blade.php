@@ -629,11 +629,11 @@ $formattedTime = sprintf("%02d:%02d", $hours, $minutes);
                            <span class="font-weight-bold @if($request->autoclose == 'Auto') text-primary @elseif($request->autoclose == 'Manual') text-success  @endif">{{ $request->autoclose}}</span>
                            
                         </td>
-                        @php
-                            $admin = \App\Admin::find($request->created_by);
-                            $name = $admin->name ?? '-';
+                       @php
+                            $name = $request->created_by_name ?? $request->created_by ?? '-';
 
-                            if (in_array($name, ['WestBengal Tracking', 'Andaman Tracking'])) {
+                            $adminNames = ['WestBengal Tracking', 'Andaman Tracking'];
+                            if (in_array($name, $adminNames)) {
                                 $name = 'Admin';
                             }
                         @endphp
@@ -701,7 +701,7 @@ $formattedTime = sprintf("%02d:%02d", $hours, $minutes);
                                     @endif
                               
                                                                      
-                                     @if(auth()->user()->role == 'admin' ||  auth()->user()->role == 'super_admin')
+                                     @if(auth()->user()->role == 'admin' ||  auth()->user()->role == 'super_admin' || auth()->user()->name == 'KOL ZONE' )
 
                                       <?php if($request->status == 'INCOMING' || $request->status == 'ONHOLD'){ ?>
                                      <li>
@@ -892,6 +892,7 @@ jQuery.fn.DataTable.Api.register( 'buttons.exportData()', function ( options ) {
             let formattedTime = 
                 String(hours).padStart(2, "0") + ":" + 
                 String(minutes).padStart(2, "0");
+         
 
 
            var item = [
@@ -940,9 +941,16 @@ jQuery.fn.DataTable.Api.register( 'buttons.exportData()', function ( options ) {
             d.materials['FRAMES'] || '',
             d.materials['ENCLOSURES'] || '',
             d.materials['Joint chamber'] || '',
+            d.materials['HDPE Duct Pipe'] || '',
             d.joint_enclosure_before_latlong || '',
             d.joint_enclosure_after_latlong || '',
-               
+            (function() {
+                var name = d.created_by_name || d.created_by || '-';
+                if (name === 'WestBengal Tracking' || name === 'Andaman Tracking') {
+                    return 'Admin';
+                }
+                return name;
+             })(),
            d.status
            ];
            p.push(item);
@@ -998,8 +1006,10 @@ jQuery.fn.DataTable.Api.register( 'buttons.exportData()', function ( options ) {
         "Frames",
         "Enclosures",
         "Joint Chamber",
+        "HDPE Duct Pipe",
         "Before LatLong",
         "After LatLong",
+         "Created By",
        "Status"
        );            
      return {body: p, header: head};
@@ -1084,20 +1094,20 @@ $(document).on('change', '#bulk_sub_category', function() {
 $(document).on('change', '#selectAllTickets', function() {
     var isChecked = $(this).prop('checked');
     $('.ticket-checkbox').prop('checked', isChecked);
-    if (isChecked) {
-        $('.ticket-checkbox').each(function() {
+    if(isChecked){
+        $('ticket-checkbox').each(function(){
             addToSelectedIds($(this).val());
         });
-    } else {
+    }else{
         clearSelectedIds();
     }
     updateBulkActions();
 });
 
 $(document).on('change', '.ticket-checkbox', function() {
-    if ($(this).prop('checked')) {
+    if($(this).prop('checked')){
         addToSelectedIds($(this).val());
-    } else {
+    }else{
         removeFromSelectedIds($(this).val());
     }
     updateBulkActions();
@@ -1115,7 +1125,6 @@ function addToSelectedIds(id) {
         sessionStorage.setItem('bulkSelectedTicketIds', JSON.stringify(ids));
     }
 }
-
 function removeFromSelectedIds(id) {
     var ids = getSelectedIds();
     var index = ids.indexOf(id);
@@ -1128,7 +1137,6 @@ function removeFromSelectedIds(id) {
 function clearSelectedIds() {
     sessionStorage.removeItem('bulkSelectedTicketIds');
 }
-
 function restoreCheckboxStates() {
     var selectedIds = getSelectedIds();
     $('.ticket-checkbox').each(function() {
@@ -1157,7 +1165,7 @@ function updateBulkActions() {
 }
 
 function openBulkHoldModal() {
-    var selected = getSelectedIds();
+     var selected = getSelectedIds();
     
     if (selected.length === 0) {
         alert('Please select at least one ticket');
@@ -1175,6 +1183,7 @@ function closeBulkHoldModal() {
     $('#bulk_downreasonindetailed').val('');
     $('#bulk_downreason_name').val('');
     $('#bulk_sub_category_name').val('');
+      clearSelectedIds();
 }
 $('#bulk_sub_category').on('change', function() {
     var subCategoryName = $('#bulk_sub_category option:selected').data('name');
@@ -1184,7 +1193,7 @@ $('#bulk_sub_category').on('change', function() {
 
 
 function submitBulkHold() {
-    var selected = getSelectedIds();
+     var selected = getSelectedIds();
     
     var category = $('#bulk_category').val();
     var subCategory = $('#bulk_sub_category').val();

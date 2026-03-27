@@ -503,12 +503,12 @@ $('#tickets-table').DataTable({
     dom: 'Bfrtip',
     scrollX: true,
     autoWidth: false,
-    buttons: [
-        'copyHtml5',
-        'excelHtml5',
-        'csvHtml5',
-        'pdfHtml5'
-    ]
+    // buttons: [
+    //     'copyHtml5',
+    //     'excelHtml5',
+    //     'csvHtml5',
+    //     'pdfHtml5'
+    // ]
 });
 </script>
 <script>

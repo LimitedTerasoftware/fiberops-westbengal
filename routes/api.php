@@ -40,6 +40,8 @@ Route::get('/export_non_geotagged_images', 'UserApiController@exportNonGeotagged
 Route::post('/consume_material' , 	'UserApiController@consumeMaterials');
 
 Route::get('/assigned-materials','UserApiController@getEmployeeMaterials');
+Route::get('/all-employees-materials', 'UserApiController@getAllEmployeesMaterials');
+Route::get('/materials', 'UserApiController@getMaterialsList');
 Route::post('/multiupload' , 	'UserApiController@multiupload');
 
 Route::post('/savehistory' , 	'UserApiController@savehistory');

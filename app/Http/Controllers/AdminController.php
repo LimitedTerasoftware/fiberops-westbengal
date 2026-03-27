@@ -1640,7 +1640,7 @@ public function patrollertickets(Request $request)
         $blocks = $blockQuery->get();
 
         $ticketsQuery = DB::table('raise_tickets as rt')
-            ->leftJoin('gp_list as gp', 'gp.gp_name', '=', 'rt.gp_name')
+            ->leftJoin('gp_list as gp', 'gp.lgd_code', '=', 'rt.lgd_code')
             ->leftJoin('providers as p', 'p.id', '=', 'rt.patroller_id')
             ->leftJoin('user_requests','user_requests.booking_id','=','rt.ticket_id')
             ->select(
@@ -1693,7 +1693,7 @@ public function patrollertickets(Request $request)
         // ── Widget 1: scope-aware count base (no date range restriction) ──
 
         $baseCountQuery = DB::table('raise_tickets as rt')
-                ->leftJoin('gp_list as gp', 'gp.gp_name', '=', 'rt.gp_name')
+                ->leftJoin('gp_list as gp', 'gp.lgd_code', '=', 'rt.lgd_code')
                 ->where('gp.state_id', $state_id);
 
             if (!empty($district_id)) {
@@ -1742,7 +1742,7 @@ public function patrollertickets(Request $request)
         $state_id    = $user->state_id;
         $district_id = $user->district_id;
         $query = DB::table('raise_tickets as rt')
-            ->leftJoin('gp_list as gp', 'gp.gp_name', '=', 'rt.gp_name')
+            ->leftJoin('gp_list as gp', 'gp.lgd_code', '=', 'rt.lgd_code')
             ->leftJoin('providers as p', 'p.id', '=', 'rt.patroller_id')
             ->leftJoin('districts as d', 'd.id', '=', 'gp.district_id')
             ->leftJoin('blocks as b', 'b.id', '=', 'gp.block_id')
@@ -5044,7 +5044,11 @@ public function tickets1(Request $request){
                 ->pluck('host_group_name');
         $tickets = DB::table('user_requests')
          //->select('master_tickets.id as master_id','master_tickets.ticketid','master_tickets.district','master_tickets.mandal','master_tickets.gpname','master_tickets.subsategory','master_tickets.downreason','master_tickets.downreasonindetailed','user_requests.id as request_id','user_requests.status','master_tickets.downdate','master_tickets.downtime','providers.first_name','providers.last_name','providers.mobile','user_requests.started_at','user_requests.finished_at')
-          ->select('master_tickets.host_name','master_tickets.host_group_name','user_requests.created_by','user_requests.description','user_requests.issue_type','master_tickets.id as master_id','master_tickets.ticketid','master_tickets.district','master_tickets.mandal','master_tickets.gpname','master_tickets.lgd_code','user_requests.subcategory','user_requests.downreason','user_requests.downreasonindetailed','user_requests.id as request_id','user_requests.status','master_tickets.downdate','user_requests.purpose','master_tickets.downtime','zonal_managers.Name as zone_name','providers.first_name','providers.last_name','providers.last_name','providers.mobile','providers.zone_id','user_requests.s_address','user_requests.d_address','user_requests.s_latitude','user_requests.s_longitude','user_requests.d_latitude','user_requests.d_longitude','user_requests.assigned_at','user_requests.started_at','user_requests.started_location','user_requests.reached_at','user_requests.reached_location','user_requests.finished_at','user_requests.autoclose','user_requests.default_autoclose',DB::Raw('TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now().'") as duringhours'))
+          ->select('master_tickets.host_name','master_tickets.host_group_name','user_requests.created_by','user_requests.description','user_requests.issue_type','master_tickets.id as master_id','master_tickets.ticketid','master_tickets.district','master_tickets.mandal','master_tickets.gpname',
+                   'master_tickets.lgd_code','user_requests.subcategory','user_requests.downreason','user_requests.downreasonindetailed','user_requests.id as request_id','user_requests.status','master_tickets.downdate','user_requests.purpose','master_tickets.downtime','zonal_managers.Name as zone_name',
+                   'providers.first_name','providers.last_name','providers.last_name','providers.mobile','providers.zone_id','user_requests.s_address','user_requests.d_address','user_requests.s_latitude','user_requests.s_longitude','user_requests.d_latitude','user_requests.d_longitude','user_requests.assigned_at',
+                   'user_requests.started_at','user_requests.started_location','user_requests.reached_at','user_requests.reached_location','user_requests.finished_at','user_requests.autoclose','user_requests.default_autoclose',DB::Raw('TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now().'") as duringhours'),
+                   DB::raw('COALESCE((SELECT name FROM admins WHERE admins.id = user_requests.created_by LIMIT 1), (SELECT CONCAT(first_name, " ", last_name) FROM providers WHERE providers.id = user_requests.created_by LIMIT 1)) as created_by_name'))
           ->leftjoin('master_tickets', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
          ->leftjoin('providers', 'providers.id', '=', 'user_requests.provider_id')
          ->leftjoin('gp_list', 'master_tickets.lgd_code', '=', 'gp_list.lgd_code')
@@ -5371,7 +5375,8 @@ public function tickets1(Request $request){
                             'BUCKLES' => '',
                             'FRAMES' => '',
                             'ENCLOSURES' => '',
-                            'Joint chamber' => ''
+                            'Joint chamber' => '',
+                            'HDPE Duct Pipe'=>''
                         ];
 
                         $ticket->joint_enclosure_before_latlong = '';

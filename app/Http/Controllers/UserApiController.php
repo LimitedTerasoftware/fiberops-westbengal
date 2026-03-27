@@ -3643,13 +3643,14 @@ Log::info('raised request: ' . json_encode($request->all()));
 
         $data['created_at'] = date('Y-m-d H:i:s');
         $data['updated_at'] = date('Y-m-d H:i:s');
-
-       $raiseTicketId = DB::table('raise_tickets')->insertGetId($data);
+        $data['lgd_code'] = $request->lgd_code ?  $request->lgd_code  : null;
+       
+        $raiseTicketId = DB::table('raise_tickets')->insertGetId($data);
         $gp = DB::table('gp_list')
-            ->where('gp_name', $request->gp_name)
+            ->where('lgd_code', $request->lgd_code)
             ->first();
         if (!$gp) {
-            Log::error("GP not found for: " . $request->gp_name);
+            Log::error("GP not found for: " . $request->lgd_code);
             return response()->json([
                 'status' => 1,
                 'message' => 'Patroller ticket saved (GP not found)'
