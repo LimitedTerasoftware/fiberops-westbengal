@@ -979,7 +979,7 @@ public function getFrtReport(Request $request)
     $user = Session::get('user');
     $state_id    = $user->state_id;
     $district_id = $user->district_id;
-
+    $company_id = $user->company_id;
     // ================= DATES =================
     $today = Carbon::today();
 
@@ -1060,24 +1060,24 @@ public function getFrtReport(Request $request)
         ->selectRaw('
             provider_id,
 
-            SUM(created_at BETWEEN ? AND ?) as tickets_assigned,
-            SUM(default_autoclose="Auto" AND created_at BETWEEN ? AND ?) as tickets_auto_assigned,
-            SUM(default_autoclose="Manual" AND created_at BETWEEN ? AND ?) as tickets_manual_assigned,
+            SUM(user_requests.created_at BETWEEN ? AND ?) as tickets_assigned,
+            SUM(user_requests.default_autoclose="Auto" AND user_requests.created_at BETWEEN ? AND ?) as tickets_auto_assigned,
+            SUM(user_requests.default_autoclose="Manual" AND user_requests.created_at BETWEEN ? AND ?) as tickets_manual_assigned,
 
-            SUM(status="INCOMING") as open_tickets,
-            SUM(status="INCOMING" AND default_autoclose="Auto") as open_auto_tickets,
-            SUM(status="INCOMING" AND default_autoclose="Manual") as open_manual_tickets,
+            SUM(user_requests.status="INCOMING") as open_tickets,
+            SUM(user_requests.status="INCOMING" AND user_requests.default_autoclose="Auto") as open_auto_tickets,
+            SUM(user_requests.status="INCOMING" AND user_requests.default_autoclose="Manual") as open_manual_tickets,
 
-            SUM(status="COMPLETED" AND autoclose="Manual" AND finished_at BETWEEN ? AND ?) as manual_completed,
-            SUM(status="COMPLETED" AND autoclose="Auto" AND finished_at BETWEEN ? AND ?) as auto_completed,
+            SUM(user_requests.status="COMPLETED" AND user_requests.default_autoclose="Manual" AND user_requests.finished_at BETWEEN ? AND ?) as manual_completed,
+            SUM(user_requests.status="COMPLETED" AND user_requests.default_autoclose="Auto" AND user_requests.finished_at BETWEEN ? AND ?) as auto_completed,
 
-            SUM(status="PICKEDUP" AND started_at BETWEEN ? AND ?) as tickets_accepted,
-            SUM(status="PICKEDUP" AND default_autoclose="Auto" AND started_at BETWEEN ? AND ?) as tickets_auto_accepted,
-            SUM(status="PICKEDUP" AND default_autoclose="Manual" AND started_at BETWEEN ? AND ?) as tickets_manual_accepted,
+            SUM(user_requests.status="PICKEDUP" AND user_requests.started_at BETWEEN ? AND ?) as tickets_accepted,
+            SUM(user_requests.status="PICKEDUP" AND user_requests.default_autoclose="Auto" AND user_requests.started_at BETWEEN ? AND ?) as tickets_auto_accepted,
+            SUM(user_requests.status="PICKEDUP" AND user_requests.default_autoclose="Manual" AND user_requests.started_at BETWEEN ? AND ?) as tickets_manual_accepted,
 
-            SUM(status="ONHOLD" AND started_at BETWEEN ? AND ?) as tickets_onhold,
-            SUM(status="ONHOLD" AND default_autoclose="Auto" AND started_at BETWEEN ? AND ?) as tickets_auto_onhold,
-            SUM(status="ONHOLD" AND default_autoclose="Manual" AND started_at BETWEEN ? AND ?) as tickets_manual_onhold
+            SUM(user_requests.status="ONHOLD" AND user_requests.started_at BETWEEN ? AND ?) as tickets_onhold,
+            SUM(user_requests.status="ONHOLD" AND user_requests.default_autoclose="Auto" AND user_requests.started_at BETWEEN ? AND ?) as tickets_auto_onhold,
+            SUM(user_requests.status="ONHOLD" AND user_requests.default_autoclose="Manual" AND user_requests.started_at BETWEEN ? AND ?) as tickets_manual_onhold
         ', array(
             $startDate, $endDate,
             $startDate, $endDate,
@@ -1091,6 +1091,7 @@ public function getFrtReport(Request $request)
             $startDate, $endDate,
             $startDate, $endDate
         ))
+         ->where('company_id', $company_id)
         ->where('state_id', $state_id);
 
     if (!empty($district_id)) {
@@ -1104,12 +1105,12 @@ public function getFrtReport(Request $request)
     // ================= LEAVES =================
         $leaves = DB::table('leaves')
             ->where('status', 'approved')
-            ->where(function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('start_date', [$startDate, $endDate])
-                    ->orWhereBetween('end_date', [$startDate, $endDate])
-                    ->orWhere(function ($q2) use ($startDate, $endDate) {
-                        $q2->where('start_date', '<=', $startDate)
-                            ->where('end_date', '>=', $endDate);
+            ->where(function ($q) use ($fromDate, $toDate) {
+                $q->whereBetween('start_date', [$fromDate, $toDate])
+                    ->orWhereBetween('end_date', [$fromDate, $toDate])
+                    ->orWhere(function ($q2) use ($fromDate, $toDate) {
+                        $q2->where('start_date', '<=', $fromDate)
+                            ->where('end_date', '>=', $toDate);
                     });
             })
             ->get()
@@ -1136,7 +1137,7 @@ public function getFrtReport(Request $request)
         $stat  = isset($requests[$p->id]) ? $requests[$p->id] : null;
 
         $isOnLeave = isset($leaves[$p->id]);
-        if ($isOnLeave) {
+        if ($isOnLeave && $fromDate === $toDate) {
                 $attendancePercent = '0%';
         } else {
             $presentDays = ($att ? $att->present_days : 0);
