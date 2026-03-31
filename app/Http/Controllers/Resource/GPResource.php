@@ -1400,7 +1400,8 @@ public function gettodayFrtReport(Request $request)
             'completed_4_10' => 0,
             'completed_10_24' => 0,
             'completed_24_48' => 0,
-            'completed_gt_48' => 0
+            'completed_gt_48' => 0,
+            'available'     => 0,
         ];
 
         $today = date('Y-m-d');
@@ -1457,6 +1458,13 @@ public function gettodayFrtReport(Request $request)
                     $prov->completed_tickets == 0
                 ) {
                     $summary['only_hold']++;
+                }
+                if (
+                    $prov->pending_tickets == 0 &&
+                    $prov->pickup_tickets == 0 &&
+                    $prov->hold_tickets == 0
+                ) {
+                    $summary['available']++;
                 }
 
             } else {
@@ -1588,6 +1596,12 @@ private function getProviderStage($prov, $attendance,$leaves)
         $prov->hold_tickets == 0 &&
         $prov->completed_tickets == 0
     ) return 'not_started';
+
+    if (
+        $prov->pending_tickets == 0 &&
+        $prov->pickup_tickets == 0 &&
+        $prov->hold_tickets == 0 
+    ) return 'available';
 
     if ($prov->completed_tickets > 0 && $prov->pickup_tickets == 0) return 'completed';
 

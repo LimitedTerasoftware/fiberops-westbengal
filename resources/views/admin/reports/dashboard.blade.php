@@ -156,14 +156,14 @@
 
   <div class="col-md-6 mb-2">
      <div class="canvas-card mt-4">
-        <h6 class="mb-3 fw-bold">Risk Heatmap - Zone Vs FRT</h6>
+        <h6 class="mb-3 fw-bold">Zone Vs FRT</h6>
         <div id="frtHeatmap" class="heatmap"></div>
       </div>
   </div>
    
   <div class="col-md-6 mb-2">
       <div class="canvas-card mt-4">
-         <h6 class="mb-3 fw-bold">Risk Heatmap - Zone Vs Patrollers</h6>
+         <h6 class="mb-3 fw-bold">Zone Vs Patrollers</h6>
         <div id="patHeatmap" class="heatmap"></div>
      </div>
    </div>
@@ -586,8 +586,8 @@ function renderpatHeatmap(data) {
   const heatmapContainer = $('#patHeatmap');
   heatmapContainer.empty();
 
-  const stages = ['no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
-  const stageLabels = ['Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
+  const stages = ['available', 'no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = ['Available', 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
 
   // === Header Row ===
   let headerRow = `
@@ -617,6 +617,9 @@ function renderpatHeatmap(data) {
 
       // === Color logic based on count + meaning ===
       switch (stage) {
+        case 'available':
+           riskClass = value > 0 ? 'good' : 'neutral'; 
+          break;
         // ? High-risk stages (should be 0)
         case 'no_ticket':
         case 'not_started':
@@ -739,8 +742,8 @@ function renderHeatmap(data) {
   const heatmapContainer = $('#frtHeatmap');
   heatmapContainer.empty();
 
-  const stages = ['no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
-  const stageLabels = ['Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
+  const stages = ['available', 'no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = ['Available', 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
 
   // === Header Row ===
   let headerRow = `
@@ -768,6 +771,9 @@ function renderHeatmap(data) {
 
       // === Color logic based on count + meaning ===
       switch (stage) {
+        case 'available':
+          riskClass = value > 0 ? 'good' : 'neutral';
+          break;
         // ? High-risk stages (should be 0)
         case 'no_ticket':
         case 'not_started':
