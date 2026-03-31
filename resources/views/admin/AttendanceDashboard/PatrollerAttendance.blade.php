@@ -104,9 +104,10 @@
             </div>
              <div class="filter-group">
                 <label class="filter-label">Status</label>
-                <select name="status" class="filter-select">
+                    <select name="status" class="filter-select">
+                    <option value="">All Statuses</option>
                     <option value="present" {{ request('status') == 'present' ? 'selected' : '' }}>Present</option>
-                    <option value="absent" {{ request('status') == 'absent' ? 'selected' : '' }}>obsent</option>
+                    <option value="absent" {{ request('status') == 'absent' ? 'selected' : '' }}>Absent</option>
                     <option value="late" {{ request('status') == 'late' ? 'selected' : '' }}>Late check in</option>
                 </select>
             </div>
@@ -363,7 +364,9 @@
                         </label>
                         <select id="type" name="type" class="terrasoft-form-select">
                             <option value="leave" selected>On Leave (Today)</option>
+                            @if(auth()->user()->role == 'admin' || auth()->user()->name == 'zonal manager')
                             <option value="late_login">Late Login (Today)</option>
+                            @endif
                         </select>
                     </div>
 
@@ -378,6 +381,7 @@
                             class="terrasoft-form-textarea"
                             placeholder="Reason (optional)"
                             rows="3"
+                            required
                         ></textarea>
                     </div>
 
