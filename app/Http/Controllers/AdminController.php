@@ -8618,6 +8618,7 @@ public function velocityTrend(Request $request)
     $company_id = $user->company_id;
     $state_id = $user->state_id;
     $district_id = $user->district_id;
+
     $daysMap = [
         '7days'  => 7,
         '15days' => 15,
@@ -8633,12 +8634,18 @@ public function velocityTrend(Request $request)
     $toDate   = date('Y-m-d 23:59:59');
     $type  = $request->type ? $request->type : 'all';
     $g_type  = $request->g_type ? $request->g_type : 'all';
+    $ticket_type = $request->ticket_type ? $request->ticket_type : 'all';
 
     /* ================= BASE QUERY ================= */
-    $baseQuery = DB::table('user_requests')->where('state_id',$state_id);
+    $baseQuery = DB::table('user_requests')->where('state_id',$state_id)->where('company_id', $company_id);
 
     if (!empty($district_id)) {
         $baseQuery->where('district_id', $district_id);
+    }
+    if($ticket_type == 'ont'){
+        $baseQuery->where('booking_id', 'not like', 'INC%');
+    }else if($ticket_type == 'router'){
+        $baseQuery->where('booking_id', 'like', 'INC%');
     }
 
 

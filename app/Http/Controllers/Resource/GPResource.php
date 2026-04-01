@@ -1061,23 +1061,23 @@ public function getFrtReport(Request $request)
             provider_id,
 
             SUM(user_requests.created_at BETWEEN ? AND ?) as tickets_assigned,
-            SUM(user_requests.default_autoclose="Auto" AND user_requests.created_at BETWEEN ? AND ?) as tickets_auto_assigned,
-            SUM(user_requests.default_autoclose="Manual" AND user_requests.created_at BETWEEN ? AND ?) as tickets_manual_assigned,
+            SUM(user_requests.autoclose="Auto" AND user_requests.created_at BETWEEN ? AND ?) as tickets_auto_assigned,
+            SUM(user_requests.autoclose="Manual" AND user_requests.created_at BETWEEN ? AND ?) as tickets_manual_assigned,
 
             SUM(user_requests.status="INCOMING") as open_tickets,
-            SUM(user_requests.status="INCOMING" AND user_requests.default_autoclose="Auto") as open_auto_tickets,
-            SUM(user_requests.status="INCOMING" AND user_requests.default_autoclose="Manual") as open_manual_tickets,
+            SUM(user_requests.status="INCOMING" AND user_requests.autoclose="Auto") as open_auto_tickets,
+            SUM(user_requests.status="INCOMING" AND user_requests.autoclose="Manual") as open_manual_tickets,
 
-            SUM(user_requests.status="COMPLETED" AND user_requests.default_autoclose="Manual" AND user_requests.finished_at BETWEEN ? AND ?) as manual_completed,
-            SUM(user_requests.status="COMPLETED" AND user_requests.default_autoclose="Auto" AND user_requests.finished_at BETWEEN ? AND ?) as auto_completed,
+            SUM(user_requests.status="COMPLETED" AND user_requests.autoclose="Manual" AND user_requests.finished_at BETWEEN ? AND ?) as manual_completed,
+            SUM(user_requests.status="COMPLETED" AND user_requests.autoclose="Auto" AND user_requests.finished_at BETWEEN ? AND ?) as auto_completed,
 
             SUM(user_requests.status="PICKEDUP" AND user_requests.started_at BETWEEN ? AND ?) as tickets_accepted,
-            SUM(user_requests.status="PICKEDUP" AND user_requests.default_autoclose="Auto" AND user_requests.started_at BETWEEN ? AND ?) as tickets_auto_accepted,
-            SUM(user_requests.status="PICKEDUP" AND user_requests.default_autoclose="Manual" AND user_requests.started_at BETWEEN ? AND ?) as tickets_manual_accepted,
+            SUM(user_requests.status="PICKEDUP" AND user_requests.autoclose="Auto" AND user_requests.started_at BETWEEN ? AND ?) as tickets_auto_accepted,
+            SUM(user_requests.status="PICKEDUP" AND user_requests.autoclose="Manual" AND user_requests.started_at BETWEEN ? AND ?) as tickets_manual_accepted,
 
             SUM(user_requests.status="ONHOLD" AND user_requests.started_at BETWEEN ? AND ?) as tickets_onhold,
-            SUM(user_requests.status="ONHOLD" AND user_requests.default_autoclose="Auto" AND user_requests.started_at BETWEEN ? AND ?) as tickets_auto_onhold,
-            SUM(user_requests.status="ONHOLD" AND user_requests.default_autoclose="Manual" AND user_requests.started_at BETWEEN ? AND ?) as tickets_manual_onhold
+            SUM(user_requests.status="ONHOLD" AND user_requests.autoclose="Auto" AND user_requests.started_at BETWEEN ? AND ?) as tickets_auto_onhold,
+            SUM(user_requests.status="ONHOLD" AND user_requests.autoclose="Manual" AND user_requests.started_at BETWEEN ? AND ?) as tickets_manual_onhold
         ', array(
             $startDate, $endDate,
             $startDate, $endDate,

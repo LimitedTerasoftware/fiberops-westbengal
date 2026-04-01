@@ -347,7 +347,7 @@ $(document).ready(function () {
 
                     totalOnHold += parseInt(row.tickets_onhold) || 0;
                     totalAutoOnHold += parseInt(row.tickets_auto_onhold) || 0;
-                    totalManualOnHold += parseInt(row.tickets_manaul_onhold) || 0;
+                    totalManualOnHold += parseInt(row.tickets_manual_onhold) || 0;
 
                     totalOngoing += parseFloat(row.tickets_accepted) || 0;
                     totalAutoOngoing += parseFloat(row.tickets_auto_accepted) || 0;

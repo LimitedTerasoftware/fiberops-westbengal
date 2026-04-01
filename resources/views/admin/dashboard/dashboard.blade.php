@@ -584,6 +584,11 @@ $yesterday= $yesterdaydate->toDateString();
             <option value="auto">Auto</option>
             <option value="manual">Manual</option>
         </select>
+        <select id="velocityTicketType" class="mini-select">
+            <option value="all">All</option>
+            <option value="ont" selected>ONT</option>
+            <option value="router">Router</option>
+        </select>
     </div>
 </div>
         <!-- CHART -->
@@ -1736,8 +1741,9 @@ function loadVelocity() {
     const range = document.getElementById('velocityRange').value;
     const type  = document.getElementById('velocityType').value;
     const g_type  = document.getElementById('velocityGType').value;
+    const TicketType = document.getElementById('velocityTicketType').value;
 
-    fetch(`/admin/velocity?range=${range}&type=${type}&g_type=${g_type}`)
+    fetch(`/admin/velocity?range=${range}&type=${type}&g_type=${g_type}&ticket_type=${TicketType}`)
         .then(res => res.json())
         .then(data => {
             renderVelocityChart(data);
@@ -1938,6 +1944,8 @@ loadVelocity();
 document.getElementById('velocityRange').addEventListener('change', loadVelocity);
 document.getElementById('velocityType').addEventListener('change', loadVelocity);
 document.getElementById('velocityGType').addEventListener('change', loadVelocity);
+document.getElementById('velocityTicketType').addEventListener('change', loadVelocity);
+
 
 </script>
 
