@@ -1328,6 +1328,12 @@ public function gettodayFrtReport(Request $request)
     }
     $pendingTicketsMorethen24 .= ' THEN user_requests.id END) as pending_tickets_morethen_24';
 
+    // SLA Failed tickets (>8 hours from down time to close time)
+    $slaFailedQuery = 'COUNT(CASE WHEN user_requests.status = "COMPLETED" AND user_requests.autoclose = "Auto" AND ';
+    $slaFailedQuery .= 'DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" AND ';
+    $slaFailedQuery .= 'TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate, " ", master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), user_requests.finished_at) > 8';
+    $slaFailedQuery .= ' THEN user_requests.id END) as sla_failed_tickets';
+
    //dd($pendingTicketsQuery);
 
     $today = date('Y-m-d');
@@ -1362,7 +1368,8 @@ public function gettodayFrtReport(Request $request)
             DB::raw('COUNT(CASE WHEN user_requests.status = "COMPLETED" AND user_requests.autoclose= "Manual" AND DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" AND TIMESTAMPDIFF(MINUTE, user_requests.started_at, user_requests.finished_at) > 1440 AND TIMESTAMPDIFF(MINUTE, user_requests.started_at, user_requests.finished_at) <= 2880 THEN user_requests.id END) as completed_24_48'),
             DB::raw('COUNT(CASE WHEN user_requests.status = "COMPLETED" AND user_requests.autoclose= "Manual" AND DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" AND TIMESTAMPDIFF(MINUTE, user_requests.started_at, user_requests.finished_at) > 2880 THEN user_requests.id END) as completed_gt_48'),
             DB::raw($pendingTicketsQuery),
-            DB::raw($pendingTicketsMorethen24)
+            DB::raw($pendingTicketsMorethen24),
+            DB::raw($slaFailedQuery)
         )
         ->get();
 
@@ -1654,6 +1661,13 @@ private function getProviderStage($prov, $attendance,$leaves)
                      $filtered[] = $prov;
                 }
             }
+        } elseif ($stage === 'sla_failed') {
+            // SLA failed teams
+            foreach ($list as $prov) {
+                if (isset($prov->sla_failed_tickets) && $prov->sla_failed_tickets > 0) {
+                    $filtered[] = $prov;
+                }
+            }
         } else {
              // Default priority-based logic
             foreach ($list as $prov) {
@@ -1683,6 +1697,7 @@ private function getProviderStage($prov, $attendance,$leaves)
             'online'       => 0,
             'offline'      => 0,
             'leave'=>0,
+            'sla_failed'=>0,
             
         ];
 
@@ -1690,6 +1705,9 @@ private function getProviderStage($prov, $attendance,$leaves)
             $stage = $this->getProviderStage($prov, $attendance,$leaves);
             if (isset($summary[$stage])) {
                 $summary[$stage]++;
+            }
+            if (isset($prov->sla_failed_tickets) && $prov->sla_failed_tickets > 0) {
+                $summary['sla_failed']++;
             }
         }
 

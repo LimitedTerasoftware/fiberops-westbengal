@@ -708,9 +708,13 @@ $yesterday= $yesterdaydate->toDateString();
         <a href="{{ url('/admin/workforce_details?stage=open_morethen2&type=frt') }}"><span class="font-weight-bold text-danger" id="more-then-2">0</span></a>
       </li>
        <li class="d-flex justify-content-between py-1 header-fix">
-        <span><i class="bi bi-clock-fill text-danger"></i> Old Tickets Pending Teams</span>
-        <a href="{{ url('/admin/workforce_details?stage=old_ongoing&type=frt') }}"><span class="font-weight-bold text-danger" id="old-tickes-teams">0</span></a>
-      </li>
+         <span><i class="bi bi-clock-fill text-danger"></i> Old Tickets Pending Teams</span>
+         <a href="{{ url('/admin/workforce_details?stage=old_ongoing&type=frt') }}"><span class="font-weight-bold text-danger" id="old-tickes-teams">0</span></a>
+       </li>
+       <li class="d-flex justify-content-between py-1 header-fix">
+         <span><i class="bi bi-exclamation-octagon-fill text-danger"></i> SLA Failed Teams</span>
+         <a href="{{ url('/admin/workforce_details?stage=sla_failed&type=frt') }}"><span class="font-weight-bold text-danger" id="sla-failed-teams">0</span></a>
+       </li>
 
 
 
@@ -1566,6 +1570,7 @@ $(document).ready(function() {
         $('#no-t-teams').text(res.no_ticket_teams);
         $('#more-then-2').text(res.not_started_morethan2);
         $('#old-tickes-teams').text(res.teams_working_on_old_tickets);
+        $('#sla-failed-teams').text(res.sla_failed_teams);
 
 
         let ticket_asign_teams = res.total_teams - res.no_ticket_teams;

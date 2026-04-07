@@ -6885,6 +6885,11 @@ public function getTeamStatus(Request $request)
     }
     $pendingTicketsMorethen24 .= ' THEN user_requests.id END) as pending_tickets_morethen_24';
 
+    $slaFailedQuery = 'COUNT(CASE WHEN user_requests.status = "COMPLETED" AND user_requests.autoclose = "Auto" AND ';
+    $slaFailedQuery .= 'DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" AND ';
+    $slaFailedQuery .= 'TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate, " ", master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), user_requests.finished_at) > 8';
+    $slaFailedQuery .= ' THEN user_requests.id END) as sla_failed_tickets';
+
     $teamsquery = DB::table('providers')
         ->join('zonal_managers','zonal_managers.id','providers.zone_id')
         ->join('teams','teams.id','providers.team_id')
@@ -6910,7 +6915,8 @@ public function getTeamStatus(Request $request)
                         DB::raw('COUNT(CASE WHEN user_requests.status = "PICKEDUP" AND DATE(user_requests.started_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" THEN user_requests.id END) as pickup_tickets'),
                         DB::raw($pendingTicketsQuery),
                         DB::raw($pendingTicketsMorethen24),
-                        DB::raw('COUNT(CASE WHEN user_requests.status = "PICKEDUP" AND DATE(user_requests.started_at) < "' . $fromDate . '" THEN user_requests.id END) as old_ongoing_tickets')
+                        DB::raw('COUNT(CASE WHEN user_requests.status = "PICKEDUP" AND DATE(user_requests.started_at) < "' . $fromDate . '" THEN user_requests.id END) as old_ongoing_tickets'),
+                        DB::raw($slaFailedQuery)
                     )->get();
 
     // --- Calculate summary stats ---
@@ -6922,6 +6928,7 @@ public function getTeamStatus(Request $request)
     $onlyHoldTeams   = 0;
     $notStartedMoreThan2AndOngoing0 = 0; // <-- New counter
     $teamsWorkingOnOldTickets = 0;
+    $slaFailedTeams = 0;
 
     foreach ($teams as $team) {
         if ($team->pickup_tickets > 0) {
@@ -6968,6 +6975,11 @@ public function getTeamStatus(Request $request)
         $teamsWorkingOnOldTickets++;
        }
 
+       // Count teams with SLA failed tickets
+       if ($team->sla_failed_tickets > 0) {
+        $slaFailedTeams++;
+       }
+
     }
 
     return response()->json([
@@ -6981,6 +6993,7 @@ public function getTeamStatus(Request $request)
         'only_hold_teams' => $onlyHoldTeams,
         'not_started_morethan2' => $notStartedMoreThan2AndOngoing0, // ? New value
         'teams_working_on_old_tickets' => $teamsWorkingOnOldTickets,
+        'sla_failed_teams' => $slaFailedTeams,
     ]);
 }
 
