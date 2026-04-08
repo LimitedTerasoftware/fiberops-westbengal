@@ -72,7 +72,7 @@
 
             <div class="filter-group">
                 <label class="filter-label">Zone</label>
-                <select name="zone_id" class="filter-select">
+                <select name="zone_id" id="zone_id" class="filter-select">
                     <option value="">Select Zone</option>
                     @foreach($zonals as $zon)
                         <option value="{{ $zon->id }}" {{ request('zone_id') == $zon->id ? 'selected' : '' }}>
@@ -84,7 +84,7 @@
 
             <div class="filter-group">
                 <label class="filter-label">District</label>
-                <select name="district_id" class="filter-select">
+                <select name="district_id" id="district_id" class="filter-select">
                     <option value="">Select District</option>
                     @foreach($districts as $district)
                         <option value="{{ $district->id }}" 
@@ -1435,7 +1435,27 @@ document.addEventListener('keydown', function(event) {
         closeAddLeaveModal();
     }
 });
+// Zone ? District
+$('#zone_id').on('change', function () {
+    var zoneId = $(this).val();
 
+    if(zoneId) {
+        $.ajax({
+            url: "{{ url('admin/get_districts') }}/" + zoneId, 
+            type: "GET",
+            dataType: "json",
+            success: function(data) {
+                $('#district_id').empty().append('<option value="">All Districts</option>');
+                $.each(data, function(key, district) {
+                    $('#district_id').append('<option value="'+ district.id +'">'+ district.name +'</option>');
+                });
+
+            }
+        });
+    } else {
+        $('#district_id').empty().append('<option value="">All Districts</option>');
+    }
+});
 </script>
 
 

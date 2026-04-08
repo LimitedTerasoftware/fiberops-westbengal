@@ -90,6 +90,12 @@ public function index(Request $request)
     $districtQuery = District::query();
       if (!empty($district_id)) {
         $districtQuery->where('id', $district_id);
+    }else if($request->has('zone_id') && !empty($request->zone_id) && empty($district_id)){
+        $districtQuery->whereIn('id', function($query) use ($request){
+            $query->select('district_id')
+                ->from('gp_list')
+                ->where('zonal_id', $request->zone_id);
+        });
     }
     $districts = $districtQuery->get();
 
@@ -676,6 +682,17 @@ public function exportProviders(Request $request)
                     'success' => false,
                      'message' => "Already marked as {$request->type} for today"
                 ], 409);
+            }
+            $todayAttendance = DB::table('attendance')
+                ->where('provider_id', $request->provider_id)
+                ->whereDate('created_at', Carbon::today())
+                ->first();
+
+            if ($todayAttendance && $todayAttendance->status === 'active') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are currently logged in APP. Please logout first to apply for leave.'
+                ], 422);
             }
 
     

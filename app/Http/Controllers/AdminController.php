@@ -1623,6 +1623,13 @@ public function patrollertickets(Request $request)
         $districtQuery = District::where('state_id',$state_id);
         if (!empty($district_id)) {
             $districtQuery->where('id', $district_id);
+        }else if($request->has('zone_id') && !empty($request->zone_id) && empty($district_id) ){
+            $districtQuery->whereIn('id', function($query) use ($request){
+                $query->select('district_id')
+                    ->from('gp_list')
+                    ->where('zonal_id', $request->zone_id);
+            });
+
         }
         $districts = $districtQuery->get();
 
@@ -5429,6 +5436,14 @@ public function tickets1(Request $request){
         //$url = $tickets->url($tickets->currentPage());
 
        //$request->session()->put('ticketspage', $url);
+        $zonals= DB::table('zonal_managers')
+                  ->where(function($query) use ($state_id)
+                          {if($state_id ==1){
+                            $query->where('id','!=',6);
+                          }else{
+                             $query->where('id',6);
+                          }
+                          })->get();
 
         $districtName = null;
         $distriQuery= DB::table('districts')->where('state_id',$state_id);
@@ -5438,21 +5453,22 @@ public function tickets1(Request $request){
                 ->where('state_id', $state_id)
                 ->where('id', $Roledistrict_id)
                 ->value('name');
+        }else if($request->has('zone_id') && !empty($request->zone_id) && empty($Roledistrict_id)){
+            $ZoneQuery = DB::table('gp_list')->where('zonal_id', $request->zone_id)->where('type', 'GP');
+            $districtIds =  $ZoneQuery->pluck('district_id')->unique(); 
+            $distriQuery->whereIn('id', $districtIds);
         }
+
         $districts = $distriQuery->get();
         $blockQuery= DB::table('blocks')->whereIn('district_id', $districts->pluck('id')->all());
          if (!empty($Roledistrict_id)) {
             $blockQuery->where('district_id', $Roledistrict_id);
+        }else if($request->has('district_id') && !empty($request->district_id) && empty($Roledistrict_id)){
+            $blockQuery->where('district_id', $request->district_id);
+
         }
         $blocks = $blockQuery->get();
-        $zonals= DB::table('zonal_managers')
-                  ->where(function($query) use ($state_id)
-                          {if($state_id ==1){
-                            $query->where('id','!=',6);
-                          }else{
-                             $query->where('id',6);
-                          }
-                          })->get();
+       
         $services= DB::table('service_types')->get();
 
         $ticket_status = array('Open', 'OnGoing','Completed', 'Onhold');
@@ -6905,7 +6921,7 @@ public function getTeamStatus(Request $request)
             $teamsquery->where('providers.district_id', $district_id);
         }
        
-        $teams = $teamsquery->groupBy('providers.id')
+        $teams = $teamsquery->groupBy('providers.zone_id','providers.team_id')
                     ->select(
                         'providers.id as provider_id',
                         'providers.first_name',
@@ -6919,7 +6935,7 @@ public function getTeamStatus(Request $request)
                         DB::raw($pendingTicketsMorethen24),
                         DB::raw('COUNT(CASE WHEN user_requests.status = "PICKEDUP" AND DATE(user_requests.started_at) < "' . $fromDate . '" THEN user_requests.id END) as old_ongoing_tickets'),
                         DB::raw($slaFailedQuery)
-                    )->get();
+                        )->get();
 
     // --- Calculate summary stats ---
     $totalTeams      = $teams->count();
@@ -6945,7 +6961,7 @@ public function getTeamStatus(Request $request)
             $notStartedTeams++;
         }
 
-        if ($team->completed_tickets > 0) {
+        if ($team->completed_tickets > 0 && $team->pickup_tickets == 0) {
             $completedTeams++;
         }
 
@@ -6961,8 +6977,7 @@ public function getTeamStatus(Request $request)
         if (
             $team->hold_tickets > 0 &&
             $team->pending_tickets == 0 &&
-            $team->pickup_tickets == 0 &&
-            $team->completed_tickets == 0
+            $team->pickup_tickets == 0 
         ) {
             $onlyHoldTeams++;
         }
@@ -6976,11 +6991,12 @@ public function getTeamStatus(Request $request)
        if ($team->old_ongoing_tickets > 0) {
         $teamsWorkingOnOldTickets++;
        }
-
-       // Count teams with SLA failed tickets
+         // Count teams with SLA failed tickets
        if ($team->sla_failed_tickets > 0) {
         $slaFailedTeams++;
        }
+
+
 
     }
 
@@ -6996,6 +7012,7 @@ public function getTeamStatus(Request $request)
         'not_started_morethan2' => $notStartedMoreThan2AndOngoing0, // ? New value
         'teams_working_on_old_tickets' => $teamsWorkingOnOldTickets,
         'sla_failed_teams' => $slaFailedTeams,
+
     ]);
 }
 
@@ -7282,13 +7299,25 @@ return view('admin.reports.dashboard');
     $districtQuery = District::query();
     if (!empty($district_id)) {
         $districtQuery->where('id', $district_id);
+    }else if($request->has('zone_id') && !empty($request->zone_id) && empty($district_id)){
+          $districtQuery->whereIn('id', function($query) use ($request){
+            $query->select('district_id')
+                ->from('gp_list')
+                ->where('zonal_id', $request->zone_id);
+        });
+
     }
+
     $districts = $districtQuery->get();
 
 
     $blockQuery= Block::query();
     if (!empty($district_id)) {
         $blockQuery->where('district_id', $district_id);
+    }else if($request->has('district_id') && !empty($request->district_id) && empty($district_id)){
+            $blockQuery->where('district_id', $request->district_id);
+
+
     }
     $blocks = $blockQuery->get();
    
@@ -7535,6 +7564,38 @@ private function buildAttendanceQuery(Request $request)
     $company_id = $user->company_id;
     $state_id   = $user->state_id;
     $district_id = $user->district_id;
+    if ($request->has('from_date') && $request->has('to_date') && !empty($request->from_date) && !empty($request->to_date)) {
+    $startDate = Carbon::parse($request->from_date)->startOfDay();
+    $endDate = Carbon::parse($request->to_date)->endOfDay();
+
+    } elseif ($request->has('date_range') && !empty($request->date_range)) {
+        switch ($request->date_range) {
+            case 'today':
+                $startDate = Carbon::today()->startOfDay();
+                $endDate = Carbon::today()->endOfDay();
+                break;
+
+            case 'yesterday':
+                $startDate = Carbon::yesterday()->startOfDay();
+                $endDate = Carbon::yesterday()->endOfDay();
+                break;
+
+            case 'week':
+                $startDate = Carbon::now()->startOfWeek();
+                $endDate = Carbon::now()->endOfWeek();
+                break;
+
+            case 'month':
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+                break;
+        }
+
+    } else {
+        $startDate = Carbon::today()->startOfDay();
+        $endDate = Carbon::today()->endOfDay();
+    }
+
     $leaveSubSql = '
     (
             SELECT
@@ -7545,7 +7606,8 @@ private function buildAttendanceQuery(Request $request)
                 start_date
             FROM leaves
             WHERE status = "approved"
-            AND CURDATE() BETWEEN start_date AND end_date
+            AND start_date <= "' . $endDate->toDateString() . '"
+            AND end_date >= "' . $startDate->toDateString() . '"
         ) AS leaves_today
     ';
     $lastAttendanceSubSql = '
@@ -7717,6 +7779,13 @@ public function PatrollerAttendanceList(Request $request){
     $districtQuery = District::query();
     if (!empty($district_id)) {
         $districtQuery->where('id', $district_id);
+    }else if($request->has('zone_id') && !empty($request->zone_id) && empty($district_id)){
+          $districtQuery->whereIn('id', function($query) use ($request){
+            $query->select('district_id')
+                ->from('gp_list')
+                ->where('zonal_id', $request->zone_id);
+        });
+
     }
     $districts = $districtQuery->get();
 

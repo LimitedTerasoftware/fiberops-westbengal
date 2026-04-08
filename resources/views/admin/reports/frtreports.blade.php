@@ -4,6 +4,7 @@
 
 @section('content')
 
+
 <div class="content-area dashboard-page py-1" id="main_content">
     <div class="container-fluid">
 
@@ -32,9 +33,9 @@
 
           <div class="filter-pill">
             <i class="bi bi-person-walking text-primary"></i>
-            <select name="role_id" id="role_id">
+            <select name="role_id" id="role_id" >
                 <option value="">All roles</option>
-                <option value="2">FRT</option>
+                <option value="2" {{ $role == 2 ? 'selected' : '' }}>FRT</option>
                 <option value="5">Patroller</option>
                 <option value="3">Zonal incharge</option>
                 <option value="4">District incharge</option>

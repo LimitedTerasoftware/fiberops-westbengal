@@ -676,7 +676,7 @@ $yesterday= $yesterdaydate->toDateString();
     <ul class="list-unstyled mb-0">
        <li class="d-flex justify-content-between py-1 header-fix">
         <span><i class="bi bi-people-fill"></i> Total Teams</span>
-        <a href="{{ url('/admin/dailyrepots') }}"><span class="font-weight-bold" id="total-teams">0</span></a>
+        <a href="{{ url('/admin/dailyrepots?role=2') }}"><span class="font-weight-bold" id="total-teams">0</span></a>
       </li>
 
       <li class="d-flex justify-content-between py-1 header-fix">
@@ -708,11 +708,11 @@ $yesterday= $yesterdaydate->toDateString();
         <a href="{{ url('/admin/workforce_details?stage=open_morethen2&type=frt') }}"><span class="font-weight-bold text-danger" id="more-then-2">0</span></a>
       </li>
        <li class="d-flex justify-content-between py-1 header-fix">
-         <span><i class="bi bi-clock-fill text-danger"></i> Old Tickets Pending Teams</span>
-         <a href="{{ url('/admin/workforce_details?stage=old_ongoing&type=frt') }}"><span class="font-weight-bold text-danger" id="old-tickes-teams">0</span></a>
-       </li>
-       <li class="d-flex justify-content-between py-1 header-fix">
-         <span><i class="bi bi-exclamation-octagon-fill text-danger"></i> SLA Failed Teams</span>
+        <span><i class="bi bi-clock-fill text-danger"></i> Old Tickets Pending Teams</span>
+        <a href="{{ url('/admin/workforce_details?stage=old_ongoing&type=frt') }}"><span class="font-weight-bold text-danger" id="old-tickes-teams">0</span></a>
+      </li>
+           <li class="d-flex justify-content-between py-1 header-fix">
+         <span><i class="bi bi-exclamation-octagon-fill text-danger"></i> SLA Failed Teams (>8)</span>
          <a href="{{ url('/admin/workforce_details?stage=sla_failed&type=frt') }}"><span class="font-weight-bold text-danger" id="sla-failed-teams">0</span></a>
        </li>
 

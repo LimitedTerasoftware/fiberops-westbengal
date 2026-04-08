@@ -328,7 +328,7 @@ inc {
                         </div>
                           <div class="filter-pill">
                             <i class="bi bi-globe-central-south-asia text-info"></i>
-                            <select name="zone_id">
+                            <select name="zone_id" id="zone_id">
                                 <option value="">Zonal</option>
                                 @foreach($zonals as $zone)
                                     <option value="{{$zone->id}}" {{ Request::get('zone_id') == $zone->id ? 'selected' : '' }}>
@@ -339,7 +339,7 @@ inc {
                         </div>
                         <div class="filter-pill">
                             <i class="bi bi-geo-alt-fill text-danger"></i>
-                            <select name="district_id">
+                            <select name="district_id" id="district_id">
                                 <option value="">All Districts</option>
                                 @foreach($districts as $district)
                                     <option value="{{$district->id}}" 
@@ -353,7 +353,7 @@ inc {
                       
                         <div class="filter-pill">
                             <i class="bi bi-dice-4-fill text-primary"></i>
-                            <select name="block_id">
+                            <select name="block_id" id="block_id">
                                 <option value="">Block</option>
                                 @foreach($blocks as $block)
                                     <option value="{{$block->name}}" {{ Request::get('block_id') == $block->name ? 'selected' : '' }}>
@@ -1112,6 +1112,49 @@ $(document).on('change', '.ticket-checkbox', function() {
     }
     updateBulkActions();
 });
+
+// Zone ? District
+$('#zone_id').on('change', function () {
+    var zoneId = $(this).val();
+
+    if(zoneId) {
+        $.ajax({
+            url: "{{ url('admin/get_districts') }}/" + zoneId, 
+            type: "GET",
+            dataType: "json",
+            success: function(data) {
+                $('#district_id').empty().append('<option value="">All Districts</option>');
+                $.each(data, function(key, district) {
+                    $('#district_id').append('<option value="'+ district.id +'">'+ district.name +'</option>');
+                });
+                $('#block_id').empty().append('<option value="">All Blocks</option>');
+
+
+            }
+        });
+    } else {
+        $('#district_id').empty().append('<option value="">All Districts</option>');
+        $('#block_id').empty().append('<option value="">All Blocks</option>');
+
+    }
+});
+  // ===== DISTRICT ? BLOCK =====
+    $('#district_id').on('change', function () {
+
+        let districtId = $(this).val();
+        $('#block_id').html('<option value="">All Blocks</option>');
+
+        if (!districtId) return;
+
+        $.get("{{ url('admin/get_blocks') }}/" + districtId, function (res) {
+            let h = '<option value="">All Blocks</option>';
+            res.forEach(b => {
+                h += `<option value="${b.name}">${b.name}</option>`;
+            });
+            $('#block_id').html(h);
+        });
+    });
+
 
 function getSelectedIds() {
     var ids = sessionStorage.getItem('bulkSelectedTicketIds');

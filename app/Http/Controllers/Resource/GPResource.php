@@ -893,6 +893,7 @@ public function frtreports(Request $request)
     $company_id = $user->company_id;
     $state_id = $user->state_id;
     $district_id = $user->district_id;
+    $role = $request->input('role');
 
     
     // ---------- Dropdown Data ----------
@@ -906,7 +907,7 @@ public function frtreports(Request $request)
     $zoneIds = $zoneIdsQuery->pluck('zonal_id')->unique();
     $zonals    = DB::table('zonal_managers')->whereIn('id',$zoneIds)->get();
 
-    return view('admin.reports.frtreports', compact('districts', 'blocks', 'zonals'));
+    return view('admin.reports.frtreports', compact('districts', 'blocks', 'zonals','role'));
 }
 
 public function frtreports_details(Request $request)
@@ -1328,12 +1329,6 @@ public function gettodayFrtReport(Request $request)
     }
     $pendingTicketsMorethen24 .= ' THEN user_requests.id END) as pending_tickets_morethen_24';
 
-    // SLA Failed tickets (>8 hours from down time to close time)
-    $slaFailedQuery = 'COUNT(CASE WHEN user_requests.status = "COMPLETED" AND user_requests.autoclose = "Auto" AND ';
-    $slaFailedQuery .= 'DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" AND ';
-    $slaFailedQuery .= 'TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate, " ", master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), user_requests.finished_at) > 8';
-    $slaFailedQuery .= ' THEN user_requests.id END) as sla_failed_tickets';
-
    //dd($pendingTicketsQuery);
 
     $today = date('Y-m-d');
@@ -1368,8 +1363,7 @@ public function gettodayFrtReport(Request $request)
             DB::raw('COUNT(CASE WHEN user_requests.status = "COMPLETED" AND user_requests.autoclose= "Manual" AND DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" AND TIMESTAMPDIFF(MINUTE, user_requests.started_at, user_requests.finished_at) > 1440 AND TIMESTAMPDIFF(MINUTE, user_requests.started_at, user_requests.finished_at) <= 2880 THEN user_requests.id END) as completed_24_48'),
             DB::raw('COUNT(CASE WHEN user_requests.status = "COMPLETED" AND user_requests.autoclose= "Manual" AND DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" AND TIMESTAMPDIFF(MINUTE, user_requests.started_at, user_requests.finished_at) > 2880 THEN user_requests.id END) as completed_gt_48'),
             DB::raw($pendingTicketsQuery),
-            DB::raw($pendingTicketsMorethen24),
-            DB::raw($slaFailedQuery)
+            DB::raw($pendingTicketsMorethen24)
         )
         ->get();
 
@@ -1661,6 +1655,7 @@ private function getProviderStage($prov, $attendance,$leaves)
                      $filtered[] = $prov;
                 }
             }
+           
         } elseif ($stage === 'sla_failed') {
             // SLA failed teams
             foreach ($list as $prov) {
@@ -1668,7 +1663,9 @@ private function getProviderStage($prov, $attendance,$leaves)
                     $filtered[] = $prov;
                 }
             }
-        } else {
+        } 
+        else {
+            
              // Default priority-based logic
             foreach ($list as $prov) {
                 $provStage = $this->getProviderStage($prov, $attendance, $leaves);
@@ -1706,7 +1703,7 @@ private function getProviderStage($prov, $attendance,$leaves)
             if (isset($summary[$stage])) {
                 $summary[$stage]++;
             }
-            if (isset($prov->sla_failed_tickets) && $prov->sla_failed_tickets > 0) {
+              if (isset($prov->sla_failed_tickets) && $prov->sla_failed_tickets > 0) {
                 $summary['sla_failed']++;
             }
         }
@@ -1740,7 +1737,6 @@ public function getTodayFrtDetails(Request $request)
     $slaFailedQuery .= 'DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" AND ';
     $slaFailedQuery .= 'TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate, " ", master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), user_requests.finished_at) > 8';
     $slaFailedQuery .= ' THEN user_requests.id END) as sla_failed_tickets';
-
 
 
     // same provider query as before (without filters)
@@ -1783,10 +1779,7 @@ public function getTodayFrtDetails(Request $request)
             DB::raw($pendingTicketsQuery),
             DB::raw('COUNT(CASE WHEN user_requests.status = "PICKEDUP" AND DATE(user_requests.started_at) < "' . $fromDate . '" AND (user_requests.finished_at IS NULL OR user_requests.status != "COMPLETED") THEN user_requests.id END) as old_ongoing'),
             DB::raw($slaFailedQuery)
-
-
-                  
-    )
+)
     ->groupBy('providers.id')
     ->get();
 

@@ -34,10 +34,20 @@
     <form method="GET" action="{{ route('admin.attendance_dashboard') }}">
          <div class="filters-row">
           
-        
+           <div class="filter-group">
+                <label class="filter-label">Zone</label>
+                <select name="zone_id"  id="zone_id" class="filter-select">
+                    <option value="">Select Zone</option>
+                    @foreach($zonals as $zon)
+                        <option value="{{ $zon->id }}" {{ request('zone_id') == $zon->id ? 'selected' : '' }}>
+                            {{ $zon->Name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
             <div class="filter-group">
                 <label class="filter-label">District</label>
-                <select name="district_id" class="filter-select">
+                <select name="district_id"  id="district_id" class="filter-select">
                     <option value="">Select District</option>
                     @foreach($districts as $district)
                         <option value="{{ $district->id }}" 
@@ -52,7 +62,7 @@
 
             <div class="filter-group">
                 <label class="filter-label">Block</label>
-                <select name="block_id" class="filter-select">
+                <select name="block_id"  id="block_id" class="filter-select">
                     <option value="">Select Block</option>
                     @foreach($blocks as $block)
                         <option value="{{ $block->id }}" {{ request('block_id') == $block->id ? 'selected' : '' }}>
@@ -61,17 +71,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="filter-group">
-                <label class="filter-label">Zone</label>
-                <select name="zone_id" class="filter-select">
-                    <option value="">Select Zone</option>
-                    @foreach($zonals as $zon)
-                        <option value="{{ $zon->id }}" {{ request('zone_id') == $zon->id ? 'selected' : '' }}>
-                            {{ $zon->Name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+         
             <div class="filter-group">
                 <label class="filter-label">Role</label>
                 <select name="role" class="filter-select">
@@ -1103,6 +1103,47 @@ function loadDashboardMapData() {
 }
     
 });
+// Zone ? District
+$('#zone_id').on('change', function () {
+    var zoneId = $(this).val();
+
+    if(zoneId) {
+        $.ajax({
+            url: "{{ url('admin/get_districts') }}/" + zoneId, 
+            type: "GET",
+            dataType: "json",
+            success: function(data) {
+                $('#district_id').empty().append('<option value="">All Districts</option>');
+                $.each(data, function(key, district) {
+                    $('#district_id').append('<option value="'+ district.id +'">'+ district.name +'</option>');
+                });
+               $('#block_id').empty().append('<option value="">All Blocks</option>');
+
+
+            }
+        });
+    } else {
+        $('#district_id').empty().append('<option value="">All Districts</option>');
+        $('#block_id').empty().append('<option value="">All Blocks</option>');
+
+    }
+});
+ // ===== DISTRICT ? BLOCK =====
+    $('#district_id').on('change', function () {
+
+        let districtId = $(this).val();
+        $('#block_id').html('<option value="">All Blocks</option>');
+
+        if (!districtId) return;
+
+        $.get("{{ url('admin/get_blocks') }}/" + districtId, function (res) {
+            let h = '<option value="">All Blocks</option>';
+            res.forEach(b => {
+                h += `<option value="${b.id}">${b.name}</option>`;
+            });
+            $('#block_id').html(h);
+        });
+    });
 </script>
 
 
