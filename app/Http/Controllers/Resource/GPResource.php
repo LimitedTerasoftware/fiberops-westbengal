@@ -1735,6 +1735,12 @@ public function getTodayFrtDetails(Request $request)
 
    $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING" THEN user_requests.id END) as pending_tickets';
 
+    // SLA Failed tickets (>8 hours from down time to close time)
+    $slaFailedQuery = 'COUNT(CASE WHEN user_requests.status = "COMPLETED" AND user_requests.autoclose = "Auto" AND ';
+    $slaFailedQuery .= 'DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" AND ';
+    $slaFailedQuery .= 'TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate, " ", master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p"), user_requests.finished_at) > 8';
+    $slaFailedQuery .= ' THEN user_requests.id END) as sla_failed_tickets';
+
 
 
     // same provider query as before (without filters)
@@ -1775,7 +1781,8 @@ public function getTodayFrtDetails(Request $request)
             DB::raw('COUNT(CASE WHEN user_requests.status = "COMPLETED" AND user_requests.autoclose= "Manual" AND DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" AND TIMESTAMPDIFF(MINUTE, user_requests.started_at, user_requests.finished_at) > 2880 THEN user_requests.id END) as completed_gt_48'),
 
             DB::raw($pendingTicketsQuery),
-            DB::raw('COUNT(CASE WHEN user_requests.status = "PICKEDUP" AND DATE(user_requests.started_at) < "' . $fromDate . '" AND (user_requests.finished_at IS NULL OR user_requests.status != "COMPLETED") THEN user_requests.id END) as old_ongoing')
+            DB::raw('COUNT(CASE WHEN user_requests.status = "PICKEDUP" AND DATE(user_requests.started_at) < "' . $fromDate . '" AND (user_requests.finished_at IS NULL OR user_requests.status != "COMPLETED") THEN user_requests.id END) as old_ongoing'),
+            DB::raw($slaFailedQuery)
 
 
                   

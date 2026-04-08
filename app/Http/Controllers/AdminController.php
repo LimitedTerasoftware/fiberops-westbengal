@@ -6891,24 +6891,26 @@ public function getTeamStatus(Request $request)
     $slaFailedQuery .= ' THEN user_requests.id END) as sla_failed_tickets';
 
     $teamsquery = DB::table('providers')
-        ->join('zonal_managers','zonal_managers.id','providers.zone_id')
-        ->join('teams','teams.id','providers.team_id')
         ->leftJoin('user_requests','user_requests.provider_id','providers.id')
         ->leftJoin('master_tickets','user_requests.booking_id','master_tickets.ticketid')
+        ->leftJoin('zonal_managers','zonal_managers.id','providers.zone_id')
         ->leftJoin('districts','districts.id','providers.district_id')
         ->where('providers.zone_id', '!=', 0)
         ->where('providers.company_id', $company_id)
         ->where('providers.state_id', $state_id)
+        ->where('providers.status', 'approved')
         ->whereIn('providers.type', [2]);
        
         if (!empty($district_id)) {
             $teamsquery->where('providers.district_id', $district_id);
         }
        
-        $teams = $teamsquery->groupBy('providers.zone_id','providers.team_id')
+        $teams = $teamsquery->groupBy('providers.id')
                     ->select(
-                        'teams.id as team_id',
-                        'teams.name as team_name',
+                        'providers.id as provider_id',
+                        'providers.first_name',
+                        'providers.zone_id',
+                        'zonal_managers.Name as zone_name',
                         DB::raw('COUNT(CASE WHEN DATE(master_tickets.downdate) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" THEN user_requests.id END) as total_tickets'),
                         DB::raw('COUNT(CASE WHEN user_requests.status = "COMPLETED" AND user_requests.autoclose= "Manual" AND DATE(user_requests.finished_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" THEN user_requests.id END) as completed_tickets'),
                         DB::raw('COUNT(CASE WHEN user_requests.status = "ONHOLD" AND DATE(user_requests.started_at) BETWEEN "' . $fromDate . '" AND "' . $toDate . '" THEN user_requests.id END) as hold_tickets'),
