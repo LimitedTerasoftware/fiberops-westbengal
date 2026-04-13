@@ -260,19 +260,7 @@
             <div class="pt-issue-card">
                 <div class="card-header-row">
                     <h6><i class="fa fa-bar-chart text-primary"></i>&nbsp; Issues Breakdown</h6>
-                    <form method="GET" action="{{ route('admin.patrollertickets') }}" id="stat-date-form">
-                        {{-- carry over all current filters --}}
-                        @foreach(request()->except('stat_date') as $k => $v)
-                            <input type="hidden" name="{{ $k }}" value="{{ $v }}">
-                        @endforeach
-                        <div class="pt-issue-date-form">
-                            <label style="font-size:12px;margin:0;">From Date:</label>
-                            <input type="date" name="stat_date" value="{{ $statDate }}">
-                            <label style="font-size:12px;margin:0;">To Date:</label>
-                            <input type="date" name="end_date" value="{{ $endDate }}">
-                            <button type="submit">Go</button>
-                        </div>
-                    </form>
+                  
                 </div>
 
                 <div class="pt-issue-pills">
@@ -503,12 +491,12 @@ $('#tickets-table').DataTable({
     dom: 'Bfrtip',
     scrollX: true,
     autoWidth: false,
-    // buttons: [
-    //     'copyHtml5',
-    //     'excelHtml5',
-    //     'csvHtml5',
-    //     'pdfHtml5'
-    // ]
+    buttons: [
+        'copyHtml5',
+        // 'excelHtml5',
+        // 'csvHtml5',
+        // 'pdfHtml5'
+    ]
 });
 </script>
 <script>

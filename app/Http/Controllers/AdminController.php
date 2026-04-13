@@ -1727,14 +1727,21 @@ public function patrollertickets(Request $request)
             $yesterdayCount = (clone $baseCountQuery)->whereDate('rt.created_at', \Carbon\Carbon::yesterday())->distinct('rt.id')->count('rt.id');
 
             // ── Widget 2: issue breakdown for a specific date ────────────
-            $statDate = $request->input('stat_date', \Carbon\Carbon::today()->toDateString());
-            $endDate = $request->input('end_date', \Carbon\Carbon::today()->toDateString());
-            $issueCountsRaw = (clone $baseCountQuery)
-                ->whereBetween(DB::raw('DATE(rt.created_at)'), [$statDate, $endDate])
+            $statDate = $request->input('from_date');
+            $endDate = $request->input('to_date');
+            $query = clone $baseCountQuery;
+
+            if ($statDate && $endDate) {
+                $query->whereBetween(DB::raw('DATE(rt.created_at)'), [$statDate, $endDate]);
+            }
+
+            $issueCountsRaw = $query
                 ->select('rt.issue_type', DB::raw('COUNT(DISTINCT rt.id) as cnt'))
                 ->groupBy('rt.issue_type')
                 ->get();
+
             $issueCounts = $issueCountsRaw->pluck('cnt', 'issue_type')->toArray();
+          
 
 
 
