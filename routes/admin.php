@@ -276,6 +276,7 @@ Route::get('/provider-export', 'AdminController@exportProviders')->name('provide
 Route::get('workforce', 'AdminController@dashboard_workforce')->name('workforce');
 Route::get('dailyrepots', 'Resource\GPResource@frtreports')->name('dailyrepots');
 Route::get('get_todayfrtreport', 'Resource\GPResource@gettodayFrtReport')->name('get_todayfrtreport');
+Route::get('get_dimis_report', 'Resource\GPResource@getDiMisReport')->name('get_dimis_report');
 //Route::get('workforce_details', 'Resource\GPResource@getFrtReport')->name('workforce_details');
 Route::get('get_frtreport', 'Resource\GPResource@getFrtReport')->name('get_frtreport');
 Route::get('get_todayfrt_details', 'Resource\GPResource@getTodayFrtDetails')->name('get_todayfrt_details');

@@ -7275,8 +7275,6 @@ public function dashboardMap(Request $request)
 public function dashboard_workforce(Request $request)
 {
 return view('admin.reports.dashboard');
-
-
 }
 
 

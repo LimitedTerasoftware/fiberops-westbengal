@@ -1,0 +1,21 @@
+<?php
+
+namespace App;
+
+use Illuminate\Database\Eloquent\Model;
+
+class GpRouterUptime extends Model
+{
+    protected $table = 'gp_router_uptime';
+
+    protected $fillable = [
+        'lgd_code',
+        'uptime_percent',
+        'record_date',
+    ];
+
+    protected $casts = [
+        'record_date' => 'date',
+        'uptime_percent' => 'decimal:2',
+    ];
+}

@@ -167,6 +167,20 @@
         <div id="patHeatmap" class="heatmap"></div>
      </div>
    </div>
+     <div class="col-md-6 mb-2">
+      <div class="canvas-card mt-4">
+         <h6 class="mb-3 fw-bold">Zone Vs District Incharge</h6>
+         <div id="diHeatmap" class="heatmap"></div>
+      </div>
+   </div>
+
+   <div class="col-md-6 mb-2">
+       <div class="canvas-card mt-4">
+          <h6 class="mb-3 fw-bold">Zone Vs MIS</h6>
+         <div id="misHeatmap" class="heatmap"></div>
+      </div>
+    </div>
+
 
 <div class="col-md-6 mb-2">
     <div class="canvas-card mt-4">
@@ -572,6 +586,21 @@ $(document).ready(function() {
             renderCompletionHeatmap(response, 'frt');
             renderCompletionHeatmap(response, 'patrollers');
 
+            // ===== Render DI/MIS Heatmaps =====
+            $.ajax({
+                url: "{{ url('/admin/get_dimis_report') }}",
+                method: 'GET',
+                dataType: 'json',
+                success: function(dimisResponse) {
+                    renderDiHeatmap(dimisResponse);
+                    renderMisHeatmap(dimisResponse);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching DI/MIS report:', error);
+                }
+            });
+
+
 
         },
         error: function(xhr, status, error) {
@@ -586,8 +615,8 @@ function renderpatHeatmap(data) {
   const heatmapContainer = $('#patHeatmap');
   heatmapContainer.empty();
 
-  const stages = ['available', 'no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
-  const stageLabels = ['Available', 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
+  const stages = [ 'no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = [ 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
 
   // === Header Row ===
   let headerRow = `
@@ -617,10 +646,6 @@ function renderpatHeatmap(data) {
 
       // === Color logic based on count + meaning ===
       switch (stage) {
-        case 'available':
-           riskClass = value > 0 ? 'good' : 'neutral'; 
-          break;
-        // ? High-risk stages (should be 0)
         case 'no_ticket':
         case 'not_started':
           riskClass = value === 0 ? 'good' : 'bad';
@@ -742,8 +767,8 @@ function renderHeatmap(data) {
   const heatmapContainer = $('#frtHeatmap');
   heatmapContainer.empty();
 
-  const stages = ['available', 'no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
-  const stageLabels = ['Available', 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
+  const stages = [ 'no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = [ 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
 
   // === Header Row ===
   let headerRow = `
@@ -771,10 +796,6 @@ function renderHeatmap(data) {
 
       // === Color logic based on count + meaning ===
       switch (stage) {
-        case 'available':
-          riskClass = value > 0 ? 'good' : 'neutral';
-          break;
-        // ? High-risk stages (should be 0)
         case 'no_ticket':
         case 'not_started':
           riskClass = value === 0 ? 'good' : 'bad';
@@ -826,6 +847,144 @@ function renderHeatmap(data) {
   heatmapContainer.append(legend);
 }
 	
+
+function renderDiHeatmap(data) {
+  const heatmapContainer = $('#diHeatmap');
+  heatmapContainer.empty();
+
+  const stages = ['no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = [ 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
+
+  let headerRow = `
+    <div class="heatmap-row header">
+      <div class="zone-name"></div>
+      ${stageLabels.map(label => `<div class="cell-header">${label}</div>`).join('')}
+    </div>`;
+  heatmapContainer.append(headerRow);
+
+  $.each(data.zones, function (zoneId, zoneData) {
+    const di = zoneData.di;
+    const zoneName = zoneData.zone_name;
+    const zone_id = zoneData.zone_id;
+    const total = di.total || 1;
+
+    let row = `<div class="heatmap-row">
+      <div class="zone-name">${zoneName} (${di.total})</div>`;
+
+    stages.forEach((stage, i) => {
+      const value = di[stage] ?? 0;
+      const percent = (value / total) * 100;
+
+      let riskClass = 'neutral';
+      switch (stage) {
+        case 'no_ticket':
+        case 'not_started':
+          riskClass = value === 0 ? 'good' : 'bad';
+          break;
+        case 'only_hold':
+          if (value === 0) riskClass = 'good';
+          else if (percent <= 10) riskClass = 'medium';
+          else riskClass = 'bad';
+          break;
+        case 'working':
+          riskClass = value > 0 ? 'good' : 'bad';
+          break;
+        case 'completed':
+          riskClass = value > 0 ? 'good' : 'neutral';
+          break;
+        default:
+          riskClass = 'neutral';
+      }
+
+      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=di`;
+      row += `<a href="${url}" class="cell ${riskClass}" 
+     title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
+    ${value}
+  </a>`;
+    });
+
+    row += '</div>';
+    heatmapContainer.append(row);
+  });
+
+  const legend = `
+    <div class="heatmap-legend mt-2">
+      <span><span class="box good"></span> Healthy</span>
+      <span><span class="box medium"></span> Moderate Risk</span>
+      <span><span class="box bad"></span> High Risk</span>
+      <span><span class="box neutral"></span> Neutral</span>
+    </div>`;
+  heatmapContainer.append(legend);
+}
+
+function renderMisHeatmap(data) {
+  const heatmapContainer = $('#misHeatmap');
+  heatmapContainer.empty();
+
+  const stages = ['no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = [ 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
+
+  let headerRow = `
+    <div class="heatmap-row header">
+      <div class="zone-name"></div>
+      ${stageLabels.map(label => `<div class="cell-header">${label}</div>`).join('')}
+    </div>`;
+  heatmapContainer.append(headerRow);
+
+  $.each(data.zones, function (zoneId, zoneData) {
+    const mis = zoneData.mis;
+    const zoneName = zoneData.zone_name;
+    const zone_id = zoneData.zone_id;
+    const total = mis.total || 1;
+
+    let row = `<div class="heatmap-row">
+      <div class="zone-name">${zoneName} (${mis.total})</div>`;
+
+    stages.forEach((stage, i) => {
+      const value = mis[stage] ?? 0;
+      const percent = (value / total) * 100;
+
+      let riskClass = 'neutral';
+      switch (stage) {
+        case 'no_ticket':
+        case 'not_started':
+          riskClass = value === 0 ? 'good' : 'bad';
+          break;
+        case 'only_hold':
+          if (value === 0) riskClass = 'good';
+          else if (percent <= 10) riskClass = 'medium';
+          else riskClass = 'bad';
+          break;
+        case 'working':
+          riskClass = value > 0 ? 'good' : 'bad';
+          break;
+        case 'completed':
+          riskClass = value > 0 ? 'good' : 'neutral';
+          break;
+        default:
+          riskClass = 'neutral';
+      }
+
+      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=mis`;
+      row += `<a href="${url}" class="cell ${riskClass}" 
+     title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
+    ${value}
+  </a>`;
+    });
+
+    row += '</div>';
+    heatmapContainer.append(row);
+  });
+
+  const legend = `
+    <div class="heatmap-legend mt-2">
+      <span><span class="box good"></span> Healthy</span>
+      <span><span class="box medium"></span> Moderate Risk</span>
+      <span><span class="box bad"></span> High Risk</span>
+      <span><span class="box neutral"></span> Neutral</span>
+    </div>`;
+  heatmapContainer.append(legend);
+}
 
 
 function renderCharts(data) {
