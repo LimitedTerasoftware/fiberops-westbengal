@@ -310,12 +310,18 @@ Route::get('/olt_dashboard', "OltLocationController@OltData")->name('olt_dashboa
 Route::get('/olt_performance', "OltLocationController@OltDataList")->name('olt_performance');
 Route::get('/samriddh_dashboard', "OltLocationController@SamriddhData")->name('samriddh_dashboard');
 Route::get('/samriddh_analytics', "OltLocationController@SamriddhDataList")->name('samriddh_analytics');
+Route::get('/gprouter_dashboard', "OltLocationController@GprouterData")->name('gprouter_dashboard');
+Route::get('/gprouter_performance', "OltLocationController@GprouterDataList")->name('gprouter_performance');
+Route::get('/blockrouter_dashboard', "OltLocationController@BlockrouterData")->name('blockrouter_dashboard');
+Route::get('/blockrouter_performance', "OltLocationController@BlockrouterDataList")->name('blockrouter_performance');
 Route::post('upload-otdr-images', 'AdminController@uploadImages')->name('upload-otdr-images');
 
 
 
 Route::post('/ont-upload', "OltLocationController@OntUpload")->name('ont-upload');
 Route::post('/olt-upload', "OltLocationController@OltUpload")->name('olt-upload');
+Route::post('/gprouter-upload', "OltLocationController@GprouterUpload")->name('gprouter-upload');
+Route::post('/blockrouter-upload', "OltLocationController@BlockrouterUpload")->name('blockrouter-upload');
 
 
 Route::get('/olt-export', 'OltLocationController@ExportOlt')->name('olt-export');

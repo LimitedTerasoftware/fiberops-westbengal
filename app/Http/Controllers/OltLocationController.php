@@ -16,6 +16,8 @@ use DB;
 use Setting;
 use App\OntUptime;
 use App\OltUptime;
+use App\GpRouterUptime;
+use App\BlockRouterUptime;
 use \Carbon\Carbon;
 
 
@@ -376,6 +378,106 @@ public function OltUpload(Request $request)
     ]);
 }
 
+public function GprouterUpload(Request $request)
+{
+    $this->validate($request, [
+        'csv_file' => 'required|mimes:csv,txt|max:2048',
+    ]);
+
+    $path = $request->file('csv_file')->getRealPath();
+    $content = file_get_contents($path);
+    $content = preg_replace("/\r\n|\r/", "\n", $content);
+    file_put_contents($path, $content);
+    $file = fopen($path, 'r');
+    $header = fgetcsv($file);
+    $records = [];
+
+    try {
+        while (($row = fgetcsv($file)) !== false) {
+            if ($row === null || empty(array_filter($row))) continue;
+
+            $date = null;
+            if (!empty($row[2])) {
+                try {
+                    $date = \Carbon\Carbon::parse($row[2])->format('Y-m-d');
+                } catch (\Exception $e) {
+                    throw new \Exception("Invalid date format in CSV.");
+                }
+            }
+
+            $data = [
+                'lgd_code' => $row[0],
+                'uptime_percent' => $row[1],
+                'record_date' => $date,
+            ];
+
+            GpRouterUptime::create($data);
+            $records[] = $data;
+        }
+    } catch (\Exception $e) {
+        fclose($file);
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);
+    }
+
+    fclose($file);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'GP Router CSV uploaded successfully!',
+        'records' => $records
+    ]);
+}
+
+public function BlockrouterUpload(Request $request)
+{
+    $this->validate($request, [
+        'csv_file' => 'required|mimes:csv,txt|max:2048',
+    ]);
+
+    $path = $request->file('csv_file')->getRealPath();
+    $content = file_get_contents($path);
+    $content = preg_replace("/\r\n|\r/", "\n", $content);
+    file_put_contents($path, $content);
+    $file = fopen($path, 'r');
+    $header = fgetcsv($file);
+    $records = [];
+
+    try {
+        while (($row = fgetcsv($file)) !== false) {
+            if ($row === null || empty(array_filter($row))) continue;
+
+            $date = null;
+            if (!empty($row[2])) {
+                try {
+                    $date = \Carbon\Carbon::parse($row[2])->format('Y-m-d');
+                } catch (\Exception $e) {
+                    throw new \Exception("Invalid date format in CSV.");
+                }
+            }
+
+            $data = [
+                'lgd_code' => $row[0],
+                'uptime_percent' => $row[1],
+                'record_date' => $date,
+            ];
+
+            BlockRouterUptime::create($data);
+            $records[] = $data;
+        }
+    } catch (\Exception $e) {
+        fclose($file);
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);
+    }
+
+    fclose($file);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Block Router CSV uploaded successfully!',
+        'records' => $records
+    ]);
+}
+
 
 
 public function OntData(Request $request)
@@ -721,6 +823,201 @@ public function SamriddhData(Request $request)
         'data' => $records,
     ]);
 
+}
+
+public function GprouterData(Request $request)
+{
+    $month    = $request->get('month');
+    $fromDate = $request->get('fromDate');
+    $toDate   = $request->get('toDate');
+
+    Session::put('user', Auth::User());
+    $user = Session::get('user');
+    $company_id = $user->company_id;
+    $state_id = $user->state_id;
+    $district_id = $user->district_id;
+
+    $query = GpRouterUptime::query()
+        ->join('gp_list', 'gp_list.lgd_code', '=', 'gp_router_uptime.lgd_code')
+        ->where('gp_list.company_id', $company_id)
+        ->where('gp_list.state_id', $state_id);
+    
+    if (!empty($district_id)) {
+        $query->where('gp_list.district_id', $district_id);
+    }
+
+    if (!empty($month)) {
+        try {
+            $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+            $end   = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+            $query->whereBetween('record_date', [$start, $end]);
+        } catch (\Exception $e) {
+            $query->whereBetween('record_date', [
+                Carbon::now()->subDays(6)->toDateString(),
+                Carbon::now()->toDateString()
+            ]);
+        }
+    } elseif (!empty($fromDate) && !empty($toDate)) {
+        $query->whereBetween('record_date', [$fromDate, $toDate]);
+    } else {
+        $query->whereBetween('record_date', [
+            Carbon::now()->subDays(6)->toDateString(),
+            Carbon::now()->toDateString()
+        ]);
+    }
+
+    $data = $query
+        ->selectRaw('DATE(record_date) as day')
+        ->selectRaw('COUNT(*) as total')
+        ->selectRaw('SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
+        ->selectRaw('SUM(CASE WHEN uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
+        ->selectRaw('ROUND(SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as pct_gte98')
+        ->groupBy('day')
+        ->orderBy('day', 'asc')
+        ->get();
+
+    $averages = [
+        'total'     => round($data->avg('total'), 2),
+        'gte98'     => round($data->avg('gte98'), 2),
+        'lt98'      => round($data->avg('lt98'), 2),
+        'pct_gte98' => round($data->avg('pct_gte98'), 2),
+    ];
+
+    return response()->json([
+        'data' => $data,
+        'averages' => $averages
+    ]);
+}
+
+public function GprouterDataList()
+{
+    Session::put('user', Auth::User());
+    $user = Session::get('user');
+    $company_id = $user->company_id;
+    $state_id   = $user->state_id;
+    $district_id = $user->district_id;
+
+    $query = GpRouterUptime::query()
+        ->join('gp_list', 'gp_list.lgd_code', '=', 'gp_router_uptime.lgd_code')
+        ->join('districts', 'gp_list.district_id', '=', 'districts.id')
+        ->join('blocks', 'gp_list.block_id', '=', 'blocks.id')
+        ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
+        ->where('gp_list.company_id', $company_id)
+        ->where('gp_list.state_id', $state_id);
+
+    if (!empty($district_id)) {
+        $query->where('gp_list.district_id', $district_id);
+    }
+
+    $records = $query->orderBy('gp_router_uptime.id', 'asc')
+        ->select(
+            'gp_router_uptime.*',
+            'districts.name as district_name',
+            'blocks.name as block_name',
+            'zonal_managers.name as zone_name',
+            'gp_list.phase',
+            'gp_list.gp_name'
+        )->paginate(10);
+
+    return response()->json([
+        'data' => $records,
+    ]);
+}
+
+public function BlockrouterData(Request $request)
+{
+    $month    = $request->get('month');
+    $fromDate = $request->get('fromDate');
+    $toDate   = $request->get('toDate');
+
+    Session::put('user', Auth::User());
+    $user = Session::get('user');
+    $company_id = $user->company_id;
+    $state_id = $user->state_id;
+    $district_id = $user->district_id;
+
+    $query = BlockRouterUptime::query()
+        ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
+        ->where('blocks.company_id', $company_id)
+        ->where('blocks.state_id', $state_id);
+
+    if (!empty($district_id)) {
+        $query->where('blocks.district_id', $district_id);
+    }
+
+    if (!empty($month)) {
+        try {
+            $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+            $end   = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+            $query->whereBetween('record_date', [$start, $end]);
+        } catch (\Exception $e) {
+            $query->whereBetween('record_date', [
+                Carbon::now()->subDays(6)->toDateString(),
+                Carbon::now()->toDateString()
+            ]);
+        }
+    } elseif (!empty($fromDate) && !empty($toDate)) {
+        $query->whereBetween('record_date', [$fromDate, $toDate]);
+    } else {
+        $query->whereBetween('record_date', [
+            Carbon::now()->subDays(6)->toDateString(),
+            Carbon::now()->toDateString()
+        ]);
+    }
+
+    $data = $query
+        ->selectRaw('DATE(record_date) as day')
+        ->selectRaw('COUNT(*) as total')
+        ->selectRaw('SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
+        ->selectRaw('SUM(CASE WHEN uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
+        ->selectRaw('ROUND(SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as pct_gte98')
+        ->groupBy('day')
+        ->orderBy('day', 'asc')
+        ->get();
+
+    $averages = [
+        'total'     => round($data->avg('total'), 2),
+        'gte98'     => round($data->avg('gte98'), 2),
+        'lt98'      => round($data->avg('lt98'), 2),
+        'pct_gte98' => round($data->avg('pct_gte98'), 2),
+    ];
+
+    return response()->json([
+        'data' => $data,
+        'averages' => $averages
+    ]);
+}
+
+public function BlockrouterDataList()
+{
+    Session::put('user', Auth::User());
+    $user = Session::get('user');
+    $company_id = $user->company_id;
+    $state_id   = $user->state_id;
+    $district_id = $user->district_id;
+
+    $query = BlockRouterUptime::query()
+        ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
+        ->join('districts', 'blocks.district_id', '=', 'districts.id')
+        ->leftJoin('zonal_managers', 'blocks.zonal_id', '=', 'zonal_managers.id')
+        ->where('blocks.company_id', $company_id)
+        ->where('blocks.state_id', $state_id);
+
+    if (!empty($district_id)) {
+        $query->where('blocks.district_id', $district_id);
+    }
+
+    $records = $query->orderBy('block_router_uptime.id', 'asc')
+        ->select(
+            'block_router_uptime.*',
+            'districts.name as district_name',
+            'blocks.name as block_name',
+            'zonal_managers.name as zone_name'
+        )->paginate(10);
+
+    return response()->json([
+        'data' => $records,
+    ]);
 }
 
 }

@@ -45,6 +45,14 @@
                     <i class="ti-pie-chart"></i>
                     SAMRIDDH
                 </button>
+                <button class="terrasoft-tab-btn" data-tab="Gprouterdashboard">
+                    <i class="ti-router"></i>
+                    GP Router
+                </button>
+                <button class="terrasoft-tab-btn" data-tab="Blockrouterdashboard">
+                    <i class="ti-server"></i>
+                    Block Router
+                </button>
             </div>
 
             {{-- ONT Dashboard Tab Content --}}
@@ -235,6 +243,120 @@
                             <span>Loading SAMRIDDH analytics data...</span>
                         </div>
                         <div id="samriddhAnalyticsTableContainer">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- GP Router Dashboard Tab Content --}}
+            <div class="terrasoft-tab-content" id="Gprouterdashboard-tab">
+                {{-- Date Filter Section --}}
+                <div class="terrasoft-filter-section">
+                    <div class="terrasoft-date-filters">
+                        <div class="terrasoft-date-group">
+                            <label class="terrasoft-date-label">Month</label>
+                            <input type="month" name="gprouter_month" id="gprouter_month" class="terrasoft-date-input">
+                        </div>
+                        <div class="terrasoft-date-group">
+                            <label class="terrasoft-date-label">From Date</label>
+                            <input type="date" class="terrasoft-date-input" id="gprouter_from_date" name="gprouterFromDate">
+                        </div>
+                        <div class="terrasoft-date-group">
+                            <label class="terrasoft-date-label">To Date</label>
+                            <input type="date" class="terrasoft-date-input" id="gprouter_to_date" name="gprouterToDate">
+                        </div>
+                        <button class="terrasoft-btn terrasoft-btn-primary" id="applyGprouterFilters">
+                            <i class="ti-filter"></i>
+                            Apply
+                        </button>
+                    </div>
+                </div>
+
+                {{-- GP Router Data Table Tabs --}}
+                <div class="terrasoft-data-tab-container">
+                    <div class="terrasoft-data-tab-nav">
+                        <button class="terrasoft-data-tab-btn active" data-data-tab="gprouter-dashboard">
+                            <i class="ti-database"></i>
+                            Dashboard
+                        </button>
+                        <button class="terrasoft-data-tab-btn" data-data-tab="gprouter-performance">
+                            <i class="ti-activity"></i>
+                            Performance Data
+                        </button>
+                    </div>
+
+                    <div class="terrasoft-data-tab-content active" id="gprouter-dashboard-tab">
+                        <div class="terrasoft-loading" id="loadingIndicatorGprouter" style="display: none;">
+                            <div class="terrasoft-spinner"></div>
+                            <span>Loading GP Router data...</span>
+                        </div>
+                        <div id="gprouterTableContainer">
+                        </div>
+                    </div>
+
+                    <div class="terrasoft-data-tab-content" id="gprouter-performance-tab">
+                        <div class="terrasoft-loading" id="loadingIndicatorGprouterPerf" style="display: none;">
+                            <div class="terrasoft-spinner"></div>
+                            <span>Loading GP Router performance data...</span>
+                        </div>
+                        <div id="gprouterPerfTableContainer">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Block Router Dashboard Tab Content --}}
+            <div class="terrasoft-tab-content" id="Blockrouterdashboard-tab">
+                {{-- Date Filter Section --}}
+                <div class="terrasoft-filter-section">
+                    <div class="terrasoft-date-filters">
+                        <div class="terrasoft-date-group">
+                            <label class="terrasoft-date-label">Month</label>
+                            <input type="month" name="blockrouter_month" id="blockrouter_month" class="terrasoft-date-input">
+                        </div>
+                        <div class="terrasoft-date-group">
+                            <label class="terrasoft-date-label">From Date</label>
+                            <input type="date" class="terrasoft-date-input" id="blockrouter_from_date" name="blockrouterFromDate">
+                        </div>
+                        <div class="terrasoft-date-group">
+                            <label class="terrasoft-date-label">To Date</label>
+                            <input type="date" class="terrasoft-date-input" id="blockrouter_to_date" name="blockrouterToDate">
+                        </div>
+                        <button class="terrasoft-btn terrasoft-btn-primary" id="applyBlockrouterFilters">
+                            <i class="ti-filter"></i>
+                            Apply
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Block Router Data Table Tabs --}}
+                <div class="terrasoft-data-tab-container">
+                    <div class="terrasoft-data-tab-nav">
+                        <button class="terrasoft-data-tab-btn active" data-data-tab="blockrouter-dashboard">
+                            <i class="ti-database"></i>
+                            Dashboard
+                        </button>
+                        <button class="terrasoft-data-tab-btn" data-data-tab="blockrouter-performance">
+                            <i class="ti-activity"></i>
+                            Performance Data
+                        </button>
+                    </div>
+
+                    <div class="terrasoft-data-tab-content active" id="blockrouter-dashboard-tab">
+                        <div class="terrasoft-loading" id="loadingIndicatorBlockrouter" style="display: none;">
+                            <div class="terrasoft-spinner"></div>
+                            <span>Loading Block Router data...</span>
+                        </div>
+                        <div id="blockrouterTableContainer">
+                        </div>
+                    </div>
+
+                    <div class="terrasoft-data-tab-content" id="blockrouter-performance-tab">
+                        <div class="terrasoft-loading" id="loadingIndicatorBlockrouterPerf" style="display: none;">
+                            <div class="terrasoft-spinner"></div>
+                            <span>Loading Block Router performance data...</span>
+                        </div>
+                        <div id="blockrouterPerfTableContainer">
                         </div>
                     </div>
                 </div>
@@ -1360,6 +1482,14 @@ document.addEventListener('DOMContentLoaded', function() {
         loadDataTabData('Samriddhdashboard', 'samriddh-dashboard');
     });
     
+    document.getElementById('applyGprouterFilters').addEventListener('click', function() {
+        loadDataTabData('Gprouterdashboard', 'gprouter-dashboard');
+    });
+    
+    document.getElementById('applyBlockrouterFilters').addEventListener('click', function() {
+        loadDataTabData('Blockrouterdashboard', 'blockrouter-dashboard');
+    });
+    
     // Load initial data
     loadMainTabData('Ontdashboard');
     
@@ -1379,6 +1509,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return 'olt-dashboard';
             case 'Samriddhdashboard':
                 return 'samriddh-dashboard';
+            case 'Gprouterdashboard':
+                return 'gprouter-dashboard';
+            case 'Blockrouterdashboard':
+                return 'blockrouter-dashboard';
             default:
                 return 'ont-data';
         }
@@ -1401,6 +1535,14 @@ document.addEventListener('DOMContentLoaded', function() {
             'Samriddhdashboard': {
                 'samriddh-dashboard': 'loadingIndicatorSamriddh',
                 'samriddh-analytics': 'loadingIndicatorSamriddhAnalytics'
+            },
+            'Gprouterdashboard': {
+                'gprouter-dashboard': 'loadingIndicatorGprouter',
+                'gprouter-performance': 'loadingIndicatorGprouterPerf'
+            },
+            'Blockrouterdashboard': {
+                'blockrouter-dashboard': 'loadingIndicatorBlockrouter',
+                'blockrouter-performance': 'loadingIndicatorBlockrouterPerf'
             }
         };
         return mapping[mainTab][dataTab];
@@ -1419,6 +1561,14 @@ document.addEventListener('DOMContentLoaded', function() {
             'Samriddhdashboard': {
                 'samriddh-dashboard': 'samriddhTableContainer',
                 'samriddh-analytics': 'samriddhAnalyticsTableContainer'
+            },
+            'Gprouterdashboard': {
+                'gprouter-dashboard': 'gprouterTableContainer',
+                'gprouter-performance': 'gprouterPerfTableContainer'
+            },
+            'Blockrouterdashboard': {
+                'blockrouter-dashboard': 'blockrouterTableContainer',
+                'blockrouter-performance': 'blockrouterPerfTableContainer'
             }
         };
         return mapping[mainTab][dataTab];
@@ -1452,6 +1602,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     month: document.getElementById('samriddh_month').value,
                     fromDate: document.getElementById('samriddh_from_date').value,
                     toDate: document.getElementById('samriddh_to_date').value
+                };
+                break;
+            case 'Gprouterdashboard':
+                filters = {
+                    month: document.getElementById('gprouter_month').value,
+                    fromDate: document.getElementById('gprouter_from_date').value,
+                    toDate: document.getElementById('gprouter_to_date').value
+                };
+                break;
+            case 'Blockrouterdashboard':
+                filters = {
+                    month: document.getElementById('blockrouter_month').value,
+                    fromDate: document.getElementById('blockrouter_from_date').value,
+                    toDate: document.getElementById('blockrouter_to_date').value
                 };
                 break;
         }
@@ -1501,7 +1665,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const secondTabFormats = {
             'Ontdashboard': 'uptime-data',
             'Oltdashboard': 'olt-performance', 
-            'Samriddhdashboard': 'samriddh-analytics'
+            'Samriddhdashboard': 'samriddh-analytics',
+            'Gprouterdashboard': 'gprouter-performance',
+            'Blockrouterdashboard': 'blockrouter-performance'
         };
         return secondTabFormats[mainTab] === dataTab;
     }
@@ -1648,6 +1814,32 @@ function generatePagination(data, mainTab, dataTab) {
                     { key: 'uptime_percent', label: 'Uptime %' },
                     { key: 'record_date', label: 'Record Date' }
                 ]
+            },
+            'Gprouterdashboard': {
+                'gprouter-performance': [
+                    { key: 'id', label: 'ID' },
+                    { key: 'district_name', label: 'District' },
+                    { key: 'block_name', label: 'Block' },
+                    { key: 'zone_name', label: 'Zone' },
+                    { key: 'phase', label: 'Phase' },
+                    { key: 'gp_name', label: 'GP Name' },
+                    { key: 'lgd_code', label: 'LGD Code' },
+                    { key: 'uptime_percent', label: 'Uptime %' },
+                    { key: 'record_date', label: 'Record Date' }
+                ]
+            },
+            'Blockrouterdashboard': {
+                'blockrouter-performance': [
+                    { key: 'id', label: 'ID' },
+                    { key: 'district_name', label: 'District' },
+                    { key: 'block_name', label: 'Block' },
+                    { key: 'zone_name', label: 'Zone' },
+                    { key: 'phase', label: 'Phase' },
+                    { key: 'block_name', label: 'Block Name' },
+                    { key: 'lgd_code', label: 'LGD Code' },
+                    { key: 'uptime_percent', label: 'Uptime %' },
+                    { key: 'record_date', label: 'Record Date' }
+                ]
             }
         };
         
@@ -1713,22 +1905,47 @@ function generatePagination(data, mainTab, dataTab) {
             'Samriddhdashboard': {
                 'samriddh-dashboard': 'SAMRIDDH METRICS',
                 'samriddh-analytics': 'ANALYTICS DATA'
+            },
+            'Gprouterdashboard': {
+                'gprouter-dashboard': 'GP ROUTER METRICS',
+                'gprouter-performance': 'PERFORMANCE DATA'
+            },
+            'Blockrouterdashboard': {
+                'blockrouter-dashboard': 'BLOCK ROUTER METRICS',
+                'blockrouter-performance': 'PERFORMANCE DATA'
             }
         };
         return headers[mainTab][dataTab] || 'METRICS';
     }
 
+    function getCategories(mainTab) {
+        const allCategories = [
+            { key: 'gte98', label: 'GPs with (>=98) to 100%', color: 'text-green-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'gte90', label: 'GPs with (>=90) to <98%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'gte75', label: 'GPs with (>=75) to <90%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'gte50', label: 'GPs with (>=50) to <75%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'gte20', label: 'GPs with (>=20) to <50%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'lt20', label: 'GPs with (0) to <20%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'total', label: 'Total', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
+            { key: 'pct_gte98', label: '>98%', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true }
+        ];
+
+        const routerCategories = [
+            { key: 'total', label: 'Total Integration', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
+            { key: 'gte98', label: '>98% Availability', color: 'text-green-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'lt98', label: '<98% Availability', color: 'text-red-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'pct_gte98', label: 'Availability %', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true }
+        ];
+
+        if (mainTab === 'Gprouterdashboard' || mainTab === 'Blockrouterdashboard') {
+            return routerCategories;
+        }
+
+        return allCategories;
+    }
+
     function generateTableRow(data,mainTab) {
-    const categories = [
-        { key: 'gte98', label: 'GPs with (>=98) to 100%', color: 'text-green-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
-        { key: 'gte90', label: 'GPs with (>=90) to <98%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
-        { key: 'gte75', label: 'GPs with (>=75) to <90%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
-        { key: 'gte50', label: 'GPs with (>=50) to <75%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
-        { key: 'gte20', label: 'GPs with (>=20) to <50%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
-        { key: 'lt20', label: 'GPs with (0) to <20%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
-        { key: 'total', label: 'Total', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
-        { key: 'pct_gte98', label: '>98%', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true }
-    ];
+    const categories = getCategories(mainTab);
 
     let html = '<tbody>';
     let slNo = 1;
@@ -1740,12 +1957,6 @@ function generatePagination(data, mainTab, dataTab) {
         html += `<td class="terrasoft-td-number">${cat.key !== 'total' && cat.key !== 'pct_gte98' ? slNo++ : ''}</td>`;
         html += `<td class="${cat.colClass || ''}">${cat.label}</td>`;
 
-        // date-wise values
-        // data.forEach(row => {
-        //     let value = row[cat.key] ?? 0;
-        //     if (cat.isPercent) value = `${value}%`;
-        //     html += `<td class="${cat.valClass || ''}">${value}</td>`;
-        // });
         data.forEach(row => {
             let value = row[cat.key] ?? 0;
             if (cat.isPercent) {
@@ -1904,6 +2115,8 @@ function closeCsvModal() {
     const routes = {
         Ontdashboard : "{{ route('admin.ont-upload') }}",
         Oltdashboard: "{{ route('admin.olt-upload') }}",
+        Gprouterdashboard: "{{ route('admin.gprouter-upload') }}",
+        Blockrouterdashboard: "{{ route('admin.blockrouter-upload') }}",
     };
 
   function uploadCsv() {
