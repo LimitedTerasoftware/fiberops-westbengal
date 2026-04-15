@@ -896,7 +896,7 @@ public function employeeStockReport(Request $request)
 
     $user = Auth::user();
 
-        $ledgerQuery = EmployeeMaterialLedger::with(['material', 'employee'])
+    $ledgerQuery = EmployeeMaterialLedger::with(['material', 'employee','district'])
         ->where('state_id', $user->state_id);
 
     if (!empty($user->district_id)) {
@@ -961,9 +961,12 @@ public function employeeStockReport(Request $request)
             $report[$key] = [
                 'employee_id' => $row->employee_id,
                 'material_id' => $row->material_id,
+                'district'    => $row->district->name ?? 'N/A',
                 'employee'    => $row->employee->first_name . ' ' . $row->employee->last_name,
                 'material'    => $row->material->name,
-                'baseunit'    =>$row->material->base_unit,
+                'material_code' => $row->material_code,
+                'baseunit'    => $row->material->base_unit,
+                'last_used'   => null,
                 'is_serial'   => (bool) $row->has_serial,
                 'issued'      => 0,
                 'used'        => 0,
@@ -991,6 +994,15 @@ public function employeeStockReport(Request $request)
                     $report[$key]['tickets'][$row->ticket_id] =
                         ($report[$key]['tickets'][$row->ticket_id] ?? 0) + $row->quantity;
                 }
+                if (!empty($row->created_at)) {
+                    if (
+                        !$report[$key]['last_used'] ||
+                        $row->created_at > $report[$key]['last_used']
+                    ) {
+                        $report[$key]['last_used'] = $row->created_at;
+                    }
+                }
+
             }
         }
 
@@ -1030,6 +1042,15 @@ public function employeeStockReport(Request $request)
                         ($report[$key]['serials'][$serialKey]['tickets'][$row->ticket_id] ?? 0)
                         + $row->quantity;
                 }
+                if (!empty($row->created_at)) {
+                    if (
+                        !$report[$key]['last_used'] ||
+                        $row->created_at > $report[$key]['last_used']
+                    ) {
+                        $report[$key]['last_used'] = $row->created_at;
+                    }
+                }
+
             }
 
             $report[$key]['serials'][$serialKey]['balance'] =
@@ -1090,6 +1111,9 @@ public function employeeStockReport(Request $request)
         $row['serials'] = array_values($row['serials']);
     }
 
+
+
+
     /* ============ PAGINATION =============================== */
     $reportArray = array_values($report);
     $total       = count($reportArray);
@@ -1119,15 +1143,25 @@ public function employeeStockReport(Request $request)
 
     $districts = $districtQuery->get();
 
+    $totalEmployees = count(array_unique(array_column($reportArray, 'employee_id')));
+    $totalIssued = array_sum(array_column($reportArray, 'issued'));
+    $totalUsed = array_sum(array_column($reportArray, 'used'));
+    $totalBalance = array_sum(array_column($reportArray, 'balance'));
+
     return view('admin.stock-issue.stockreport', [
         'report'    => $paginated,
         'employees' => Provider::all(),
         'materials' => Material::all(),
-        'districts' => $districts
+        'districts' => $districts,
+        'statCards'  => [
+            'totalEmployees' => $totalEmployees,
+            'totalIssued'    => $totalIssued,
+            'totalUsed'      => $totalUsed,
+            'totalBalance'   => $totalBalance
+        ]
+
     ]);
 }
-
-
 
 
 
