@@ -3,6 +3,7 @@
 @section('title', 'Material Usage Dashboard')
 
 @section('content')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   :root {
     --primary: #2196F3;
@@ -318,6 +319,7 @@
     grid-template-columns: 2fr 1fr;
     gap: 20px;
     margin-bottom: 24px;
+    align-items: start;
   }
 
   .chart-card {
@@ -325,6 +327,14 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 20px;
+    overflow: hidden;
+  }
+  
+  .chart-scroll-container {
+    overflow-x: auto;
+    overflow-y: visible;
+    padding-bottom: 10px;
+    max-height: 450px;
   }
 
   .chart-title {
@@ -340,12 +350,7 @@
     margin-bottom: 16px;
   }
 
-  .chart-tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
-  }
+
 
   .chart-tab {
     font-size: 12px;
@@ -734,6 +739,12 @@
     .stats-grid {
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
+    
+    .chart-scroll-container {
+      overflow-x: auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
   }
 
   @media (max-width: 768px) {
@@ -767,6 +778,32 @@
     table th,
     table td {
       padding: 10px 8px;
+    }
+    
+    .chart-scroll-container {
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 350px;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .chart-scroll-container::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    .chart-scroll-container::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    
+    .chart-scroll-container::-webkit-scrollbar-thumb {
+      background: #ccc;
+      border-radius: 4px;
+    }
+    
+    .chart-scroll-container::-webkit-scrollbar-thumb:hover {
+      background: #999;
     }
   }
 </style>
@@ -911,44 +948,9 @@
     <div class="chart-card">
       <div class="chart-title">Issue vs Used Overview</div>
       <div class="chart-subtitle">Material-wise Issued vs Used volume</div>
-      <div class="chart-tabs">
-        <div class="chart-tab active">MATERIAL</div>
-        <div class="chart-tab">CATEGORY</div>
-        <div class="chart-tab">TIME</div>
-      </div>
       @if(!empty($chartData) && count($chartData) > 0)
-      <div class="chart-bar-container" id="materialChartContainer">
-        @php
-          $maxValue = 0;
-          foreach($chartData as $item) {
-            $maxValue = max($maxValue, $item['issued'], $item['used']);
-          }
-          $maxValue = $maxValue > 0 ? $maxValue : 1;
-        @endphp
-        @foreach($chartData as $index => $item)
-          @php
-            $issuedHeight = ($item['issued'] / $maxValue) * 100;
-            $usedHeight = ($item['used'] / $maxValue) * 100;
-            $shortName = strlen($item['material_name']) > 12 ? substr($item['material_name'], 0, 10) . '..' : $item['material_name'];
-          @endphp
-          <div class="chart-bar-group">
-            <div class="chart-bar-pair">
-              <div class="chart-bar issued" style="height: {{ sprintf('%.1f', $issuedHeight) }}%" data-value="{{ $item['issued'] }}" title="{{ $item['material_name'] }} - Issued: {{ $item['issued'] }}"></div>
-              <div class="chart-bar used" style="height: {{ sprintf('%.1f', $usedHeight) }}%" data-value="{{ $item['used'] }}" title="{{ $item['material_name'] }} - Used: {{ $item['used'] }}"></div>
-            </div>
-            <div class="chart-bar-label" title="{{ $item['material_name'] }}">{{ $shortName }}</div>
-          </div>
-        @endforeach
-      </div>
-      <div class="chart-legend">
-        <div class="chart-legend-item">
-          <div class="chart-legend-dot issued"></div>
-          <span>Issued Qty</span>
-        </div>
-        <div class="chart-legend-item">
-          <div class="chart-legend-dot used"></div>
-          <span>Used Qty</span>
-        </div>
+      <div class="chart-scroll-container" style="min-height: 400px;">
+        <canvas id="barChart" style="max-width: 100%; min-width: 600px; max-height: 350px;"></canvas>
       </div>
       @else
       <div style="text-align: center; padding: 40px; color: var(--text-muted);">
@@ -962,16 +964,18 @@
     <div class="chart-card">
       <div class="chart-title">Category-wise Consumption</div>
       <div class="chart-subtitle">Asset distribution by primary group</div>
-      <div class="donut-container">
-        <svg width="160" height="160" style="transform: rotate(-90deg);">
-          <circle cx="80" cy="80" r="50" fill="none" stroke="#2196F3" stroke-width="20" stroke-dasharray="80 314" />
-          <circle cx="80" cy="80" r="50" fill="none" stroke="#4CAF50" stroke-width="20" stroke-dasharray="120 314" stroke-dashoffset="-80" />
-          <circle cx="80" cy="80" r="50" fill="none" stroke="#9C27B0" stroke-width="20" stroke-dasharray="58 314" stroke-dashoffset="-200" />
-          <circle cx="80" cy="80" r="50" fill="none" stroke="#d0d0d0" stroke-width="20" stroke-dasharray="56 314" stroke-dashoffset="-258" />
-        </svg>
-        <div class="donut-center">
-          <div class="donut-value">12.4k</div>
-          <div class="donut-label">PARTS TOTAL</div>
+      <div class="chart-scroll-container">
+        <div class="donut-container" style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+          <svg width="160" height="160" style="transform: rotate(-90deg); flex-shrink: 0;">
+            <circle cx="80" cy="80" r="50" fill="none" stroke="#2196F3" stroke-width="20" stroke-dasharray="80 314" />
+            <circle cx="80" cy="80" r="50" fill="none" stroke="#4CAF50" stroke-width="20" stroke-dasharray="120 314" stroke-dashoffset="-80" />
+            <circle cx="80" cy="80" r="50" fill="none" stroke="#9C27B0" stroke-width="20" stroke-dasharray="58 314" stroke-dashoffset="-200" />
+            <circle cx="80" cy="80" r="50" fill="none" stroke="#d0d0d0" stroke-width="20" stroke-dasharray="56 314" stroke-dashoffset="-258" />
+          </svg>
+          <div class="donut-center" style="position: relative; transform: none; text-align: center;">
+            <div class="donut-value">12.4k</div>
+            <div class="donut-label">PARTS TOTAL</div>
+          </div>
         </div>
       </div>
       <div class="donut-legend">
@@ -1007,16 +1011,17 @@
         <span style="font-size: 11px; color: var(--text-muted);">@if(isset($materialWiseData)){{ count($materialWiseData) }} materials @endif</span>
       </div>
     </div>
+    <div style="overflow-x: auto; overflow-y: visible; max-height: 400px;">
     <table>
-      <thead>
+      <thead style="position: sticky; top: 0; z-index: 10;">
         <tr>
-          <th>Code</th>
-          <th>Material Name</th>
-          <th>Issued</th>
-          <th>Used</th>
-          <th>Balance</th>
-          <th>Usage %</th>
-          <th>Status</th>
+          <th style="min-width: 80px;">Code</th>
+          <th style="min-width: 200px;">Material Name</th>
+          <th style="min-width: 100px;">Issued</th>
+          <th style="min-width: 100px;">Used</th>
+          <th style="min-width: 100px;">Balance</th>
+          <th style="min-width: 120px;">Usage %</th>
+          <th style="min-width: 100px;">Status</th>
         </tr>
       </thead>
       <tbody>
@@ -1041,7 +1046,7 @@
             @endphp
             <tr>
               <td><strong>{{ $item['material_code'] ?: 'N/A' }}</strong></td>
-              <td>{{ $item['material_name'] }}</td>
+              <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $item['material_name'] }}">{{ $item['material_name'] }}</td>
               <td>{{ number_format($item['issued']) }}</td>
               <td style="color: var(--success); font-weight: 600;">{{ number_format($item['used']) }}</td>
               <td style="color: @if($balance > 0) #E91E63 @else var(--text-muted) @endif; font-weight: 600;">{{ number_format($balance) }}</td>
@@ -1065,6 +1070,7 @@
         @endif
       </tbody>
     </table>
+    </div>
   </div>
 
   <!-- Alerts and Exceptions -->
@@ -1293,6 +1299,117 @@
             }
           });
       });
+    }
+    
+    // Chart.js Bar Chart
+    function formatQuantity(val) {
+      if (val >= 1000000) return (val / 1000000).toFixed(1);
+      if (val >= 1000) return (val / 1000).toFixed(1);
+      return val.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    }
+    
+    function renderChartJSBarChart() {
+    const chartData = {!! json_encode($chartData ?? []) !!};
+      const ctx = document.getElementById('barChart');
+      
+      if (!chartData || chartData.length === 0 || !ctx) return;
+      
+      const labels = chartData.map(d => d.material_name.length > 20 ? d.material_name.substring(0, 17) + '...' : d.material_name);
+      const issuedData = chartData.map(d => d.issued);
+      const usedData = chartData.map(d => d.used);
+      
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Issued Qty',
+              data: issuedData,
+              backgroundColor: 'rgba(33, 150, 243, 0.8)',
+              borderColor: 'rgba(25, 118, 210, 1)',
+              borderWidth: 1,
+              borderRadius: 4,
+              barPercentage: 0.6,
+              categoryPercentage: 0.7
+            },
+            {
+              label: 'Used Qty',
+              data: usedData,
+              backgroundColor: 'rgba(76, 175, 80, 0.8)',
+              borderColor: 'rgba(56, 142, 60, 1)',
+              borderWidth: 1,
+              borderRadius: 4,
+              barPercentage: 0.6,
+              categoryPercentage: 0.7
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                usePointStyle: true,
+                padding: 20,
+                font: { size: 12 }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  let value = context.parsed.y;
+                  const item = chartData[context.dataIndex];
+                  const unit = item.base_unit || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  label += formatQuantity(value) + ' ' + unit;
+                  return label;
+                },
+                title: function(context) {
+                  return chartData[context[0].dataIndex].material_name;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return formatQuantity(value);
+                },
+                font: { size: 11 }
+              },
+              grid: {
+                color: 'rgba(0,0,0,0.05)'
+              }
+            },
+            x: {
+              ticks: {
+                autoSkip: false,
+                maxRotation: 45,
+                minRotation: 0,
+                font: { size: 10 }
+              },
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // Initialize chart when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', renderChartJSBarChart);
+    } else {
+      renderChartJSBarChart();
     }
   });
 </script>

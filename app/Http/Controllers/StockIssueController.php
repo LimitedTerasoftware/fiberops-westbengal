@@ -1233,7 +1233,7 @@ public function employeeStockReport(Request $request)
 
 
 
-  public function materialUsageDashboard(Request $request)
+   public function materialUsageDashboard(Request $request)
     {
         $user = Auth::user();
 
@@ -1311,6 +1311,7 @@ public function employeeStockReport(Request $request)
                         'material_id' => $row->material_id,
                         'material_name' => $row->material->name ?? 'Unknown',
                         'material_code' => $row->material_code ?? '',
+                        'base_unit' => $row->material->base_unit ?? '',
                         'issued' => 0,
                         'used' => 0,
                     ];
@@ -1329,6 +1330,7 @@ public function employeeStockReport(Request $request)
                         'material_id' => $row->material_id,
                         'material_name' => $row->material->name ?? 'Unknown',
                         'material_code' => $row->material_code ?? '',
+                        'base_unit' => $row->material->base_unit ?? '',
                         'issued' => 0,
                         'used' => 0,
                     ];
@@ -1347,10 +1349,11 @@ public function employeeStockReport(Request $request)
         $serialAssets = $totalSerialIssued;
         $assetsActive = $totalSerialIssued - $totalSerialUsed;
         $efficiency = $totalIssued > 0 && $unusedBalance > 0 ? round(($totalUsed / $totalIssued) * 100, 1) : 0;
-         $chartData = $materialWiseData;
-        if (count($chartData) > 8) {
-            $chartData = array_slice($chartData, 0, 8);
-        }
+        $chartData = $materialWiseData;
+         
+        // if (count($chartData) > 8) {
+        //     $chartData = array_slice($chartData, 0, 8);
+        // }
         return view('admin.dashboard.material-usage', [
             'districts' => $districts,
                 'employees' => $emp,
@@ -1362,13 +1365,13 @@ public function employeeStockReport(Request $request)
                 'serialAssets' => $serialAssets,
                 'assetsActive' => $assetsActive,
                 'efficiency' => $efficiency,
-                'chartData' => $chartData,
-                 'materialWiseData' => $materialWiseData,
 
-            ]
+            ],
+           'chartData' => $chartData,
+            'materialWiseData' => $materialWiseData,
+
         ]);
     }
-
 
 
 
