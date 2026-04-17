@@ -26,6 +26,8 @@ use App\Material_serial_Allocations;
 use App\Services\StockIssueService;
 use App\EmpStockTransaction;
 use App\EmployeeMaterialLedger;
+use Excel;
+
 
 
 
@@ -1007,7 +1009,7 @@ public function employeeStockReport(Request $request)
         }
 
         /* ===========SERIAL MATERIAL=============================== */
-        if ($row->has_serial && $row->serial_number) {
+        if ($row->has_serial ) {
 
             $serialKey = $row->serial_number;
 
@@ -1116,6 +1118,58 @@ public function employeeStockReport(Request $request)
 
     /* ============ PAGINATION =============================== */
     $reportArray = array_values($report);
+
+        if ($request->get('export') == 1) {
+        $filename = 'employee_stock_report_' . date('Ymd_His') . '.xlsx';
+        $excelContent = Excel::create('stock_report', function($excel) use ($reportArray) {
+            $excel->sheet('Stock Report', function($sheet) use ($reportArray) {
+                $sheet->appendRow([
+                    'Employee Name',
+                    'District',
+                    'Material Name',
+                    'Material Code',
+                    'Type',
+                    'Issued',
+                    'Used',
+                    'Balance',
+                    'Unit',
+                    'Status'
+                ]);
+
+                foreach ($reportArray as $item) {
+                    $balancePct = $item['issued'] > 0 ? ($item['balance'] / $item['issued']) * 100 : 0;
+                    
+                    if ($item['used'] == 0) {
+                        $status = 'IDLE STOCK';
+                    } elseif ($balancePct <= 10) {
+                        $status = 'LOW STOCK';
+                    } else {
+                        $status = 'HEALTHY';
+                    }
+
+                    $sheet->appendRow([
+                        $item['employee'],
+                        $item['district'],
+                        $item['material'],
+                        $item['material_code'],
+                        $item['is_serial'] ? 'Serial' : 'Non-Serial',
+                        number_format($item['issued'], 2),
+                        number_format($item['used'], 2),
+                        number_format($item['balance'], 2),
+                        $item['baseunit'],
+                        $status
+                    ]);
+                }
+            });
+        })->string('xlsx');
+
+        return response($excelContent, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+
     $total       = count($reportArray);
     $items       = array_slice($reportArray, ($page - 1) * $perPage, $perPage);
 
@@ -1147,10 +1201,24 @@ public function employeeStockReport(Request $request)
     $totalIssued = array_sum(array_column($reportArray, 'issued'));
     $totalUsed = array_sum(array_column($reportArray, 'used'));
     $totalBalance = array_sum(array_column($reportArray, 'balance'));
+    $emp = Provider::where([
+                    'state_id' => $user->state_id,
+                    'type' => 2
+                ])
+                ->when($request->district, function ($q) use ($request) {
+                    return $q->where('district_id', $request->district);
+                }, function ($q) use ($user) {
+                    if (!empty($user->district_id)) {
+                        $q->where('district_id', $user->district_id);
+                    }
+                    return $q;
+                })
+                ->select('id', 'first_name', 'last_name')
+                ->get();
 
     return view('admin.stock-issue.stockreport', [
         'report'    => $paginated,
-        'employees' => Provider::all(),
+       'employees' => $emp,
         'materials' => Material::all(),
         'districts' => $districts,
         'statCards'  => [
@@ -1164,6 +1232,107 @@ public function employeeStockReport(Request $request)
 }
 
 
+
+   public function materialUsageDashboard(Request $request)
+    {
+        $user = Auth::user();
+
+        $districtQuery = DB::table('districts')->where('state_id', $user->state_id);
+
+        if (!empty($user->district_id)) {
+            $districtQuery->where('id', $user->district_id);
+        }
+
+        if ($request->district) {
+            $districtQuery->where('id', $request->district);
+        }
+
+        $districts = $districtQuery->get();
+        $emp = Provider::where([
+                    'state_id' => $user->state_id,
+                    'type' => 2
+                ])
+                ->when($request->district, function ($q) use ($request) {
+                    return $q->where('district_id', $request->district);
+                }, function ($q) use ($user) {
+                    if (!empty($user->district_id)) {
+                        $q->where('district_id', $user->district_id);
+                    }
+                    return $q;
+                })
+                ->select('id', 'first_name', 'last_name')
+                ->get();
+
+        $ledgerQuery = EmployeeMaterialLedger::with(['material', 'employee', 'district'])
+            ->where('state_id', $user->state_id);
+
+        if (!empty($user->district_id)) {
+            $ledgerQuery->where('district_id', $user->district_id);
+        }
+
+        if ($request->district) {
+            $ledgerQuery->where('district_id', $request->district);
+        }
+
+        if ($request->employee_id) {
+            $ledgerQuery->where('employee_id', $request->employee_id);
+        }
+
+        if ($request->material_id) {
+            $ledgerQuery->where('material_id', $request->material_id);
+        }
+
+        if ($request->from_date) {
+            $ledgerQuery->whereDate('created_at', '>=', $request->from_date);
+        }
+
+        if ($request->to_date) {
+            $ledgerQuery->whereDate('created_at', '<=', $request->to_date);
+        }
+
+        $ledgerRows = $ledgerQuery->get();
+
+        $totalIssued = 0;
+        $totalUsed = 0;
+        $totalSerialIssued = 0;
+        $totalSerialUsed = 0;
+
+        foreach ($ledgerRows as $row) {
+            if ($row->transaction_type === 'ISSUE') {
+                $totalIssued += $row->quantity;
+                if ($row->has_serial && $row->serial_number) {
+                    $totalSerialIssued += $row->quantity;
+                }
+            }
+
+            if ($row->transaction_type === 'USED') {
+                $totalUsed += $row->quantity;
+                if ($row->has_serial && $row->serial_number) {
+                    $totalSerialUsed += $row->quantity;
+                }
+            }
+
+        }
+
+        $unusedBalance = $totalIssued - $totalUsed;
+        $serialAssets = $totalSerialIssued;
+        $assetsActive = $totalSerialIssued - $totalSerialUsed;
+        $efficiency = $totalIssued > 0 && $unusedBalance > 0 ? round(($totalUsed / $totalIssued) * 100, 1) : 0;
+
+        return view('admin.dashboard.material-usage', [
+            'districts' => $districts,
+                'employees' => $emp,
+            'materials' => Material::all(),
+            'statCards' => [
+                'totalIssued' => $totalIssued,
+                'totalUsed' => $totalUsed,
+                'unusedBalance' => $unusedBalance,
+                'serialAssets' => $serialAssets,
+                'assetsActive' => $assetsActive,
+                'efficiency' => $efficiency
+            ]
+        ]);
+    }
 
 
 

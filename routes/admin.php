@@ -9,6 +9,7 @@
 Route::get('/', 'AdminController@dashboard')->name('index');
 Route::get('/dashboard', 'AdminController@dashboard')->name('dashboard');
 Route::get('/inventorydashboard', 'AdminController@inventorydashboard')->name('inventorydashboard');
+Route::get('/material-usage-dashboard', 'InventoryMng\StockIssueControlle@materialUsageDashboard')->name('material-usage-dashboard');
 Route::get('/viewmaps', 'AdminController@viewmaps')->name('viewmaps');
 Route::get('/tickets1', 'AdminController@tickets')->name('tickets');
 Route::get('/tickets', 'AdminController@tickets1')->name('tickets1');

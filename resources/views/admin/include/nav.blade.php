@@ -54,6 +54,7 @@
                     @endif
                     @if(auth()->user()->role == 'inventory')
                     <li><a href="{{ route('admin.inventorydashboard') }}" ><i class="ti-anchor"></i> @lang('admin.include.inventory_dashboard')</a></li>
+                    <li><a href="{{ route('admin.material-usage-dashboard') }}" ><i class="ti-pie-chart"></i> Material Usage</a></li>
                     <li><a href="{{ route('admin.viewmaps') }}" ><i class="ti-pie-chart"></i> Maps</a></li>
                     @endif
                 </ul>
