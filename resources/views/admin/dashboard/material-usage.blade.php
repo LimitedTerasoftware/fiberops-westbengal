@@ -786,7 +786,7 @@
     <div class="dashboard-header-actions">
       <div class="date-range-picker">
         <i class="fa fa-calendar"></i>
-        <span>{{ request('from_date') }} - {{ request('to_date') }}</span>
+        <span>{{ request('from_date', 'All Time') }} - {{ request('to_date', '') }}</span>
       </div>
       <button class="btn-refresh" title="Refresh">
         <i class="fa fa-refresh"></i>
@@ -910,41 +910,35 @@
     <!-- Issue vs Used Chart -->
     <div class="chart-card">
       <div class="chart-title">Issue vs Used Overview</div>
-      <div class="chart-subtitle">Material flow volume by weekly distribution</div>
+      <div class="chart-subtitle">Material-wise Issued vs Used volume</div>
       <div class="chart-tabs">
-        <div class="chart-tab active">TIME</div>
+        <div class="chart-tab active">MATERIAL</div>
         <div class="chart-tab">CATEGORY</div>
-        <div class="chart-tab">MATERIAL</div>
+        <div class="chart-tab">TIME</div>
       </div>
-      <div class="chart-bar-container">
-        <div class="chart-bar-group">
-          <div class="chart-bar-pair">
-            <div class="chart-bar issued" style="height: 40%;"></div>
-            <div class="chart-bar used" style="height: 50%;"></div>
+      @if(!empty($chartData) && count($chartData) > 0)
+      <div class="chart-bar-container" id="materialChartContainer">
+        @php
+          $maxValue = 0;
+          foreach($chartData as $item) {
+            $maxValue = max($maxValue, $item['issued'], $item['used']);
+          }
+          $maxValue = $maxValue > 0 ? $maxValue : 1;
+        @endphp
+        @foreach($chartData as $index => $item)
+          @php
+            $issuedHeight = ($item['issued'] / $maxValue) * 100;
+            $usedHeight = ($item['used'] / $maxValue) * 100;
+            $shortName = strlen($item['material_name']) > 12 ? substr($item['material_name'], 0, 10) . '..' : $item['material_name'];
+          @endphp
+          <div class="chart-bar-group">
+            <div class="chart-bar-pair">
+              <div class="chart-bar issued" style="height: {{ sprintf('%.1f', $issuedHeight) }}%" data-value="{{ $item['issued'] }}" title="{{ $item['material_name'] }} - Issued: {{ $item['issued'] }}"></div>
+              <div class="chart-bar used" style="height: {{ sprintf('%.1f', $usedHeight) }}%" data-value="{{ $item['used'] }}" title="{{ $item['material_name'] }} - Used: {{ $item['used'] }}"></div>
+            </div>
+            <div class="chart-bar-label" title="{{ $item['material_name'] }}">{{ $shortName }}</div>
           </div>
-          <div class="chart-bar-label">W1</div>
-        </div>
-        <div class="chart-bar-group">
-          <div class="chart-bar-pair">
-            <div class="chart-bar issued" style="height: 55%;"></div>
-            <div class="chart-bar used" style="height: 85%;"></div>
-          </div>
-          <div class="chart-bar-label">W2</div>
-        </div>
-        <div class="chart-bar-group">
-          <div class="chart-bar-pair">
-            <div class="chart-bar issued" style="height: 45%;"></div>
-            <div class="chart-bar used" style="height: 40%;"></div>
-          </div>
-          <div class="chart-bar-label">W3</div>
-        </div>
-        <div class="chart-bar-group">
-          <div class="chart-bar-pair">
-            <div class="chart-bar issued" style="height: 65%;"></div>
-            <div class="chart-bar used" style="height: 70%;"></div>
-          </div>
-          <div class="chart-bar-label">W4</div>
-        </div>
+        @endforeach
       </div>
       <div class="chart-legend">
         <div class="chart-legend-item">
@@ -956,6 +950,12 @@
           <span>Used Qty</span>
         </div>
       </div>
+      @else
+      <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+        <i class="fa fa-chart-bar" style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;"></i>
+        <p>No data available for the selected filters</p>
+      </div>
+      @endif
     </div>
 
     <!-- Category Consumption Chart -->
@@ -1002,9 +1002,9 @@
   <!-- High Consumption Materials Table -->
   <div class="table-card">
     <div class="table-header">
-      <div class="table-title">High Consumption Materials</div>
+      <div class="table-title">Material-wise Usage Summary</div>
       <div class="table-header-actions">
-        <button class="table-filter-btn">↓ Filter Log</button>
+        <span style="font-size: 11px; color: var(--text-muted);">@if(isset($materialWiseData)){{ count($materialWiseData) }} materials @endif</span>
       </div>
     </div>
     <table>
@@ -1014,31 +1014,55 @@
           <th>Material Name</th>
           <th>Issued</th>
           <th>Used</th>
-          <th>Trend</th>
+          <th>Balance</th>
+          <th>Usage %</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td><strong>MAT-FO-48C</strong></td>
-          <td>Fiber Optic Cable G657A Core</td>
-          <td>4,200 m</td>
-          <td>3,850 m</td>
-          <td><svg class="trending-chart" viewBox="0 0 40 24" style="fill: none; stroke: var(--success); stroke-width: 2;"><polyline points="2,20 8,15 14,18 20,8 26,12 32,6 38,10"/></svg></td>
-        </tr>
-        <tr>
-          <td><strong>MAT-SP-18</strong></td>
-          <td>Optical Splitter 1:8 Ratio</td>
-          <td>850 pcs</td>
-          <td>720 pcs</td>
-          <td><svg class="trending-chart" viewBox="0 0 40 24" style="fill: none; stroke: var(--success); stroke-width: 2;"><polyline points="2,15 8,12 14,10 20,8 26,6 32,4 38,2"/></svg></td>
-        </tr>
-        <tr>
-          <td><strong>MAT-PVC-25</strong></td>
-          <td>PVC Pipe 25mm Heavy Duty</td>
-          <td>1,200 pcs</td>
-          <td>450 pcs</td>
-          <td><svg class="trending-chart" viewBox="0 0 40 24" style="fill: none; stroke: var(--danger); stroke-width: 2;"><polyline points="2,10 8,8 14,12 20,6 26,15 32,18 38,20"/></svg></td>
-        </tr>
+        @if(!empty($materialWiseData) && count($materialWiseData) > 0)
+          @foreach($materialWiseData as $item)
+            @php
+              $balance = $item['issued'] - $item['used'];
+              $usagePct = $item['issued'] > 0 ? round(($item['used'] / $item['issued']) * 100, 1) : 0;
+              if ($usagePct >= 80) {
+                $statusClass = 'badge-optimal';
+                $statusText = 'OPTIMAL';
+              } elseif ($usagePct >= 50) {
+                $statusClass = 'badge-stocked';
+                $statusText = 'STOCKED';
+              } elseif ($usagePct > 0) {
+                $statusClass = 'badge-critical';
+                $statusText = 'LOW USAGE';
+              } else {
+                $statusClass = 'badge-idle';
+                $statusText = 'IDLE';
+              }
+            @endphp
+            <tr>
+              <td><strong>{{ $item['material_code'] ?: 'N/A' }}</strong></td>
+              <td>{{ $item['material_name'] }}</td>
+              <td>{{ number_format($item['issued']) }}</td>
+              <td style="color: var(--success); font-weight: 600;">{{ number_format($item['used']) }}</td>
+              <td style="color: @if($balance > 0) #E91E63 @else var(--text-muted) @endif; font-weight: 600;">{{ number_format($balance) }}</td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 60px; height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden;">
+                    <div style="width: {{ sprintf('%.1f', $usagePct) }}%; height: 100%; background: @if($usagePct >= 50) var(--success) @else var(--warning) @endif;"></div>
+                  </div>
+                  <span style="font-size: 11px; font-weight: 600;">{{ $usagePct }}%</span>
+                </div>
+              </td>
+              <td><span class="badge {{ $statusClass }}">{{ $statusText }}</span></td>
+            </tr>
+          @endforeach
+        @else
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+              No material usage data available for the selected filters
+            </td>
+          </tr>
+        @endif
       </tbody>
     </table>
   </div>
