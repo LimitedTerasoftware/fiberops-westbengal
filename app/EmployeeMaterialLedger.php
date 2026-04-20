@@ -115,4 +115,8 @@ class EmployeeMaterialLedger extends Model
     {
         return $query->where('has_serial', 0);
     }
+    public function ticket()
+    {
+        return $this->belongsTo(\App\SubmitFile::class, 'ticket_id', 'ticket_id');
+    }
 }

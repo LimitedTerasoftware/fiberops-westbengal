@@ -1263,7 +1263,7 @@ public function employeeStockReport(Request $request)
                 ->select('id', 'first_name', 'last_name')
                 ->get();
 
-        $ledgerQuery = EmployeeMaterialLedger::with(['material', 'employee', 'district'])
+        $ledgerQuery = EmployeeMaterialLedger::with(['material', 'employee', 'district','ticket'])
             ->where('state_id', $user->state_id);
 
         if (!empty($user->district_id)) {
@@ -1283,11 +1283,11 @@ public function employeeStockReport(Request $request)
         }
 
         if ($request->from_date) {
-            $ledgerQuery->whereDate('created_at', '>=', $request->from_date);
+            $ledgerQuery->whereDate('issue_date', '>=', $request->from_date);
         }
 
         if ($request->to_date) {
-            $ledgerQuery->whereDate('created_at', '<=', $request->to_date);
+            $ledgerQuery->whereDate('issue_date', '<=', $request->to_date);
         }
 
         $ledgerRows = $ledgerQuery->get();
@@ -1296,6 +1296,9 @@ public function employeeStockReport(Request $request)
         $totalUsed = 0;
         $totalSerialIssued = 0;
         $totalSerialUsed = 0;
+        $materialWiseData = [];
+        $categoryData = [];
+
 
         foreach ($ledgerRows as $row) {
             if ($row->transaction_type === 'ISSUE') {
@@ -1303,6 +1306,18 @@ public function employeeStockReport(Request $request)
                 if ($row->has_serial && $row->serial_number) {
                     $totalSerialIssued += $row->quantity;
                 }
+                $matKey = $row->material_id;
+                if (!isset($materialWiseData[$matKey])) {
+                    $materialWiseData[$matKey] = [
+                        'material_id' => $row->material_id,
+                        'material_name' => $row->material->name ?? 'Unknown',
+                        'material_code' => $row->material_code ?? '',
+                        'base_unit' => $row->material->base_unit ?? '',
+                        'issued' => 0,
+                        'used' => 0,
+                    ];
+                }
+                $materialWiseData[$matKey]['issued'] += $row->quantity;
             }
 
             if ($row->transaction_type === 'USED') {
@@ -1310,15 +1325,53 @@ public function employeeStockReport(Request $request)
                 if ($row->has_serial && $row->serial_number) {
                     $totalSerialUsed += $row->quantity;
                 }
+                   $matKey = $row->material_id;
+                if (!isset($materialWiseData[$matKey])) {
+                    $materialWiseData[$matKey] = [
+                        'material_id' => $row->material_id,
+                        'material_name' => $row->material->name ?? 'Unknown',
+                        'material_code' => $row->material_code ?? '',
+                        'base_unit' => $row->material->base_unit ?? '',
+                        'issued' => 0,
+                        'used' => 0,
+                    ];
+                }
+                $materialWiseData[$matKey]['used'] += $row->quantity;
+                if (!$row->ticket_id || !$row->ticket) continue;
+
+                   $categoryName = $row->ticket->category ?? 'Unknown';
+
+                    if (!isset($categoryData[$categoryName])) {
+                        $categoryData[$categoryName] = 0;
+                    }
+
+                    $categoryData[$categoryName] += $row->quantity;
+
             }
 
+        }
+        $materialWiseData = array_values($materialWiseData);
+        usort($materialWiseData, function($a, $b) {
+            return ($b['issued'] + $b['used']) <=> ($a['issued'] + $a['used']);
+        });
+        $categoryChartData = [];
+
+        foreach ($categoryData as $name => $qty) {
+            $categoryChartData[] = [
+                'category' => $name,
+                'value' => $qty
+            ];
         }
 
         $unusedBalance = $totalIssued - $totalUsed;
         $serialAssets = $totalSerialIssued;
         $assetsActive = $totalSerialIssued - $totalSerialUsed;
         $efficiency = $totalIssued > 0 && $unusedBalance > 0 ? round(($totalUsed / $totalIssued) * 100, 1) : 0;
-
+        $chartData = $materialWiseData;
+         
+        // if (count($chartData) > 8) {
+        //     $chartData = array_slice($chartData, 0, 8);
+        // }
         return view('admin.dashboard.material-usage', [
             'districts' => $districts,
                 'employees' => $emp,
@@ -1329,8 +1382,13 @@ public function employeeStockReport(Request $request)
                 'unusedBalance' => $unusedBalance,
                 'serialAssets' => $serialAssets,
                 'assetsActive' => $assetsActive,
-                'efficiency' => $efficiency
-            ]
+                'efficiency' => $efficiency,
+
+            ],
+           'chartData' => $chartData,
+            'materialWiseData' => $materialWiseData,
+            'categoryChartData' => $categoryChartData,
+
         ]);
     }
 

@@ -42,4 +42,13 @@ class SubmitFile extends Model
         'created_at','updated_at'
     ];
 
+    public function materials()
+    {
+        return $this->hasMany(
+            \App\EmployeeMaterialLedger::class,
+            'ticket_id',   
+            'ticket_id'   
+        );
+    }
+
 }

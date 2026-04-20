@@ -1233,7 +1233,7 @@ public function employeeStockReport(Request $request)
 
 
 
-   public function materialUsageDashboard(Request $request)
+    public function materialUsageDashboard(Request $request)
     {
         $user = Auth::user();
 
@@ -1263,7 +1263,7 @@ public function employeeStockReport(Request $request)
                 ->select('id', 'first_name', 'last_name')
                 ->get();
 
-        $ledgerQuery = EmployeeMaterialLedger::with(['material', 'employee', 'district'])
+        $ledgerQuery = EmployeeMaterialLedger::with(['material', 'employee', 'district','ticket'])
             ->where('state_id', $user->state_id);
 
         if (!empty($user->district_id)) {
@@ -1297,6 +1297,7 @@ public function employeeStockReport(Request $request)
         $totalSerialIssued = 0;
         $totalSerialUsed = 0;
         $materialWiseData = [];
+        $categoryData = [];
 
 
         foreach ($ledgerRows as $row) {
@@ -1336,6 +1337,16 @@ public function employeeStockReport(Request $request)
                     ];
                 }
                 $materialWiseData[$matKey]['used'] += $row->quantity;
+                if (!$row->ticket_id || !$row->ticket) continue;
+
+                   $categoryName = optional($row->ticket)->category ?? 'Unknown';
+
+                    if (!isset($categoryData[$categoryName])) {
+                        $categoryData[$categoryName] = 0;
+                    }
+
+                    $categoryData[$categoryName] += $row->quantity;
+
             }
 
         }
@@ -1343,6 +1354,14 @@ public function employeeStockReport(Request $request)
         usort($materialWiseData, function($a, $b) {
             return ($b['issued'] + $b['used']) <=> ($a['issued'] + $a['used']);
         });
+        $categoryChartData = [];
+
+        foreach ($categoryData as $name => $qty) {
+            $categoryChartData[] = [
+                'category' => $name,
+                'value' => $qty
+            ];
+        }
 
 
         $unusedBalance = $totalIssued - $totalUsed;
@@ -1369,10 +1388,10 @@ public function employeeStockReport(Request $request)
             ],
            'chartData' => $chartData,
             'materialWiseData' => $materialWiseData,
+            'categoryChartData' => $categoryChartData,
 
         ]);
     }
-
 
 
   

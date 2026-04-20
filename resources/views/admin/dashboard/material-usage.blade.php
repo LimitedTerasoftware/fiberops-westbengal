@@ -948,9 +948,31 @@
     <div class="chart-card">
       <div class="chart-title">Issue vs Used Overview</div>
       <div class="chart-subtitle">Material-wise Issued vs Used volume</div>
+      
+      <!-- Unit Tabs -->
+      <div class="chart-tabs" id="unitTabs" style="display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+        <button class="chart-tab active" data-unit="all" onclick="filterChartByUnit('all')" style="padding: 6px 16px; border-radius: 4px; border: 1px solid #ddd; background: #2196F3; color: white; font-size: 11px; font-weight: 600; cursor: pointer;">ALL</button>
+        @php
+          $uniqueUnits = collect($chartData ?? [])->pluck('base_unit')->filter()->unique()->values();
+        @endphp
+        @foreach($uniqueUnits as $unit)
+          <button class="chart-tab" data-unit="{{ $unit }}" onclick="filterChartByUnit('{{ $unit }}')" style="padding: 6px 16px; border-radius: 4px; border: 1px solid #ddd; background: white; color: #666; font-size: 11px; font-weight: 600; cursor: pointer;">{{ $unit }}</button>
+        @endforeach
+      </div>
+      
       @if(!empty($chartData) && count($chartData) > 0)
       <div class="chart-scroll-container" style="min-height: 400px;">
         <canvas id="barChart" style="max-width: 100%; min-width: 600px; max-height: 350px;"></canvas>
+      </div>
+      <div class="chart-legend" style="margin-top: 15px; display: flex; gap: 20px;">
+        <div class="chart-legend-item">
+          <div class="chart-legend-dot" style="background: #2196F3;"></div>
+          <span>Issued Qty</span>
+        </div>
+        <div class="chart-legend-item">
+          <div class="chart-legend-dot" style="background: #4CAF50;"></div>
+          <span>Used Qty</span>
+        </div>
       </div>
       @else
       <div style="text-align: center; padding: 40px; color: var(--text-muted);">
@@ -963,42 +985,38 @@
     <!-- Category Consumption Chart -->
     <div class="chart-card">
       <div class="chart-title">Category-wise Consumption</div>
-      <div class="chart-subtitle">Asset distribution by primary group</div>
-      <div class="chart-scroll-container">
-        <div class="donut-container" style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
-          <svg width="160" height="160" style="transform: rotate(-90deg); flex-shrink: 0;">
-            <circle cx="80" cy="80" r="50" fill="none" stroke="#2196F3" stroke-width="20" stroke-dasharray="80 314" />
-            <circle cx="80" cy="80" r="50" fill="none" stroke="#4CAF50" stroke-width="20" stroke-dasharray="120 314" stroke-dashoffset="-80" />
-            <circle cx="80" cy="80" r="50" fill="none" stroke="#9C27B0" stroke-width="20" stroke-dasharray="58 314" stroke-dashoffset="-200" />
-            <circle cx="80" cy="80" r="50" fill="none" stroke="#d0d0d0" stroke-width="20" stroke-dasharray="56 314" stroke-dashoffset="-258" />
-          </svg>
-          <div class="donut-center" style="position: relative; transform: none; text-align: center;">
-            <div class="donut-value">12.4k</div>
-            <div class="donut-label">PARTS TOTAL</div>
+      <div class="chart-subtitle">Material consumption by category from tickets</div>
+      <div class="chart-scroll-container" style="min-height: 280px; display: flex; justify-content: center;">
+        @if(!empty($categoryChartData) && count($categoryChartData) > 0)
+          <canvas id="categoryPieChart" style="max-width: 280px; max-height: 260px;"></canvas>
+        @else
+          <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <i class="fa fa-chart-pie" style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;"></i>
+            <p>No category data available</p>
           </div>
-        </div>
+        @endif
       </div>
-      <div class="donut-legend">
-        <div class="donut-legend-item">
-          <div class="donut-legend-dot" style="background: var(--primary);"></div>
-          <span>Active Equipment</span>
-          <span class="donut-legend-pct">24%</span>
-        </div>
-        <div class="donut-legend-item">
-          <div class="donut-legend-dot" style="background: var(--success);"></div>
-          <span>Passive Fiber</span>
-          <span class="donut-legend-pct">38%</span>
-        </div>
-        <div class="donut-legend-item">
-          <div class="donut-legend-dot" style="background: var(--purple);"></div>
-          <span>Power/Solar</span>
-          <span class="donut-legend-pct">15%</span>
-        </div>
-        <div class="donut-legend-item">
-          <div class="donut-legend-dot" style="background: #d0d0d0;"></div>
-          <span>Others</span>
-          <span class="donut-legend-pct">23%</span>
-        </div>
+      <div class="donut-legend" id="categoryLegend">
+    @if(!empty($categoryChartData) && count($categoryChartData) > 0)
+        @php
+        $colors = ['#2196F3', '#4CAF50', '#9C27B0', '#FF9800', '#E91E63', '#00BCD4', '#795548', '#607D8B'];
+        $sorted = collect($categoryChartData)->sortByDesc('value');
+        @endphp
+
+        @foreach($sorted as $index => $cat)
+            @php
+                $color = $colors[$index % count($colors)];
+            @endphp
+
+            <div class="donut-legend-item">
+                <div class="donut-legend-dot" style="background: {{ $color }};"></div>
+                <span>{{ $cat['category'] ?: 'Unknown' }}</span>
+                <span class="donut-legend-pct">
+                    {{ number_format($cat['value'], 2) }}
+                </span>
+            </div>
+        @endforeach
+    @endif
       </div>
     </div>
   </div>
@@ -1252,6 +1270,206 @@
 </div>
 
 <script>
+  // Chart.js Bar Chart - Global scope functions
+  function formatQuantity(val) {
+    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+    if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
+    return val.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  }
+  
+  let barChart = null;
+  const allChartData = {!! json_encode($chartData ?? []) !!};
+  const categoryChartData = {!! json_encode($categoryChartData ?? []) !!};
+
+
+  function filterChartByUnit(unit) {
+    // Update tab buttons
+    document.querySelectorAll('#unitTabs .chart-tab').forEach(btn => {
+      if (btn.dataset.unit === unit) {
+        btn.style.background = '#2196F3';
+        btn.style.color = 'white';
+        btn.classList.add('active');
+      } else {
+        btn.style.background = 'white';
+        btn.style.color = '#666';
+        btn.classList.remove('active');
+      }
+    });
+    
+    // Filter data by unit
+    let filteredData = allChartData;
+    if (unit !== 'all') {
+      filteredData = allChartData.filter(d => d.base_unit === unit);
+    }
+    
+    renderBarChartWithData(filteredData);
+  }
+  
+  function renderBarChartWithData(chartData) {
+    const ctx = document.getElementById('barChart');
+    if (!ctx) return;
+    
+    // Destroy existing chart
+    if (barChart) {
+      barChart.destroy();
+    }
+    
+    if (!chartData || chartData.length === 0) {
+      ctx.parentElement.innerHTML = '<div style="text-align: center; padding: 60px; color: #999;">No data available for this unit</div>';
+      return;
+    }
+    
+    const labels = chartData.map(d => d.material_name.length > 20 ? d.material_name.substring(0, 17) + '...' : d.material_name);
+    const issuedData = chartData.map(d => d.issued);
+    const usedData = chartData.map(d => d.used);
+    
+    // Get unique units in filtered data
+    const units = [...new Set(chartData.map(d => d.base_unit))];
+    const unitLabel = units.length === 1 ? units[0] : 'Units';
+    
+    barChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Issued (' + unitLabel + ')',
+            data: issuedData,
+            backgroundColor: 'rgba(33, 150, 243, 0.8)',
+            borderColor: 'rgba(25, 118, 210, 1)',
+            borderWidth: 1,
+            borderRadius: 4,
+            barPercentage: 0.6,
+            categoryPercentage: 0.7
+          },
+          {
+            label: 'Used (' + unitLabel + ')',
+            data: usedData,
+            backgroundColor: 'rgba(76, 175, 80, 0.8)',
+            borderColor: 'rgba(56, 142, 60, 1)',
+            borderWidth: 1,
+            borderRadius: 4,
+            barPercentage: 0.6,
+            categoryPercentage: 0.7
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 20,
+              font: { size: 12 }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                let label = context.dataset.label || '';
+                let value = context.parsed.y;
+                if (label) {
+                  label += ': ';
+                }
+                label += formatQuantity(value);
+                return label;
+              },
+              title: function(context) {
+                const item = chartData[context[0].dataIndex];
+                return item.material_name + ' (' + (item.base_unit || '') + ')';
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return formatQuantity(value);
+              },
+              font: { size: 11 }
+            },
+            grid: {
+              color: 'rgba(0,0,0,0.05)'
+            }
+          },
+          x: {
+            ticks: {
+              autoSkip: false,
+              maxRotation: 45,
+              minRotation: 0,
+              font: { size: 10 }
+            },
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+  }
+  
+  function renderChartJSBarChart() {
+    renderBarChartWithData(allChartData);
+  }
+  
+ let categoryChartInstance = null;
+
+function renderCategoryPieChart() {
+  const ctx = document.getElementById('categoryPieChart');
+  if (!ctx) return;
+
+  if (!categoryChartData || categoryChartData.length === 0) return;
+
+  if (categoryChartInstance) {
+    categoryChartInstance.destroy();
+  }
+
+  const labels = categoryChartData.map(d => d.category);
+  const data = categoryChartData.map(d => d.value);
+
+  const colors = [
+    '#2196F3', '#4CAF50', '#9C27B0', '#FF9800', 
+    '#E91E63', '#00BCD4', '#795548', '#607D8B'
+  ];
+
+  const backgroundColors = categoryChartData.map((_, i) => colors[i % colors.length]);
+
+  categoryChartInstance = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: backgroundColors,
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const value = context.parsed;
+              return context.label + ': ' + value.toLocaleString(); 
+            }
+          }
+        }
+      }
+    }
+  });
+}
+  // Initialize chart when DOM is ready
   document.addEventListener('DOMContentLoaded', function() {
     // Filter close buttons
     document.querySelectorAll('.filter-item-close').forEach(btn => {
@@ -1288,7 +1506,7 @@
         const districtId = this.value;
         const empSelect = document.getElementById('emp');
 
-        fetch(`{{ route('admin.get-employees') }}?district_id=${districtId}`)
+        fetch(`/admin/get-employees?district_id=${districtId}`)
           .then(res => res.json())
           .then(data => {
             if (data.success) {
@@ -1301,116 +1519,9 @@
       });
     }
     
-    // Chart.js Bar Chart
-    function formatQuantity(val) {
-      if (val >= 1000000) return (val / 1000000).toFixed(1);
-      if (val >= 1000) return (val / 1000).toFixed(1);
-      return val.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-    }
-    
-    function renderChartJSBarChart() {
-    const chartData = {!! json_encode($chartData ?? []) !!};
-      const ctx = document.getElementById('barChart');
-      
-      if (!chartData || chartData.length === 0 || !ctx) return;
-      
-      const labels = chartData.map(d => d.material_name.length > 20 ? d.material_name.substring(0, 17) + '...' : d.material_name);
-      const issuedData = chartData.map(d => d.issued);
-      const usedData = chartData.map(d => d.used);
-      
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Issued Qty',
-              data: issuedData,
-              backgroundColor: 'rgba(33, 150, 243, 0.8)',
-              borderColor: 'rgba(25, 118, 210, 1)',
-              borderWidth: 1,
-              borderRadius: 4,
-              barPercentage: 0.6,
-              categoryPercentage: 0.7
-            },
-            {
-              label: 'Used Qty',
-              data: usedData,
-              backgroundColor: 'rgba(76, 175, 80, 0.8)',
-              borderColor: 'rgba(56, 142, 60, 1)',
-              borderWidth: 1,
-              borderRadius: 4,
-              barPercentage: 0.6,
-              categoryPercentage: 0.7
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'top',
-              labels: {
-                usePointStyle: true,
-                padding: 20,
-                font: { size: 12 }
-              }
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  let label = context.dataset.label || '';
-                  let value = context.parsed.y;
-                  const item = chartData[context.dataIndex];
-                  const unit = item.base_unit || '';
-                  if (label) {
-                    label += ': ';
-                  }
-                  label += formatQuantity(value) + ' ' + unit;
-                  return label;
-                },
-                title: function(context) {
-                  return chartData[context[0].dataIndex].material_name;
-                }
-              }
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                callback: function(value) {
-                  return formatQuantity(value);
-                },
-                font: { size: 11 }
-              },
-              grid: {
-                color: 'rgba(0,0,0,0.05)'
-              }
-            },
-            x: {
-              ticks: {
-                autoSkip: false,
-                maxRotation: 45,
-                minRotation: 0,
-                font: { size: 10 }
-              },
-              grid: {
-                display: false
-              }
-            }
-          }
-        }
-      });
-    }
-    
-    // Initialize chart when DOM is ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', renderChartJSBarChart);
-    } else {
-      renderChartJSBarChart();
-    }
+    // Render the chart
+    renderChartJSBarChart();
+    renderCategoryPieChart();
   });
 </script>
 
