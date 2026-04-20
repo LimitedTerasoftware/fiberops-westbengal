@@ -1298,6 +1298,7 @@ public function employeeStockReport(Request $request)
         $totalSerialUsed = 0;
         $materialWiseData = [];
         $categoryData = [];
+        $categoryByUnit = [];
 
 
         foreach ($ledgerRows as $row) {
@@ -1337,6 +1338,8 @@ public function employeeStockReport(Request $request)
                     ];
                 }
                 $materialWiseData[$matKey]['used'] += $row->quantity;
+                
+                $baseUnit = $row->material->base_unit ?? 'Unknown';
                 if (!$row->ticket_id || !$row->ticket) continue;
 
                    $categoryName = $row->ticket->category ?? 'Unknown';
@@ -1346,6 +1349,15 @@ public function employeeStockReport(Request $request)
                     }
 
                     $categoryData[$categoryName] += $row->quantity;
+
+                    $catKey = $baseUnit . '|' . $categoryName;
+                    if (!isset($categoryByUnit[$baseUnit])) {
+                        $categoryByUnit[$baseUnit] = [];
+                    }
+                    if (!isset($categoryByUnit[$baseUnit][$categoryName])) {
+                        $categoryByUnit[$baseUnit][$categoryName] = 0;
+                    }
+                    $categoryByUnit[$baseUnit][$categoryName] += $row->quantity;
 
             }
 
@@ -1359,8 +1371,20 @@ public function employeeStockReport(Request $request)
         foreach ($categoryData as $name => $qty) {
             $categoryChartData[] = [
                 'category' => $name,
-                'value' => $qty
+                'value' => $qty,
+                'unit' => 'all'
             ];
+        }
+
+        $categoryChartDataByUnit = [];
+        foreach ($categoryByUnit as $unit => $categories) {
+            foreach ($categories as $name => $qty) {
+                $categoryChartDataByUnit[$unit][] = [
+                    'category' => $name,
+                    'value' => $qty,
+                    'unit' => $unit
+                ];
+            }
         }
 
         $unusedBalance = $totalIssued - $totalUsed;
@@ -1388,6 +1412,7 @@ public function employeeStockReport(Request $request)
            'chartData' => $chartData,
             'materialWiseData' => $materialWiseData,
             'categoryChartData' => $categoryChartData,
+            'categoryChartDataByUnit' => $categoryChartDataByUnit,
 
         ]);
     }

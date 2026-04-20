@@ -986,6 +986,15 @@
     <div class="chart-card">
       <div class="chart-title">Category-wise Consumption</div>
       <div class="chart-subtitle">Material consumption by category from tickets</div>
+      <div class="chart-tabs" id="categoryUnitTabs" style="display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+        <button class="chart-tab active" data-unit="all" onclick="filterCategoryByUnit('all')" style="padding: 6px 16px; border-radius: 4px; border: 1px solid #ddd; background: #2196F3; color: white; font-size: 11px; font-weight: 600; cursor: pointer;">ALL</button>
+        @php
+          $uniqueUnits = collect($chartData ?? [])->pluck('base_unit')->filter()->unique()->values();
+        @endphp
+        @foreach($uniqueUnits as $unit)
+          <button class="chart-tab" data-unit="{{ $unit }}" onclick="filterCategoryByUnit('{{ $unit }}')" style="padding: 6px 16px; border-radius: 4px; border: 1px solid #ddd; background: white; color: #666; font-size: 11px; font-weight: 600; cursor: pointer;">{{ $unit }}</button>
+        @endforeach
+      </div>
       <div class="chart-scroll-container" style="min-height: 280px; display: flex; justify-content: center;">
         @if(!empty($categoryChartData) && count($categoryChartData) > 0)
           <canvas id="categoryPieChart" style="max-width: 280px; max-height: 260px;"></canvas>
@@ -997,26 +1006,7 @@
         @endif
       </div>
       <div class="donut-legend" id="categoryLegend">
-    @if(!empty($categoryChartData) && count($categoryChartData) > 0)
-        @php
-        $colors = ['#2196F3', '#4CAF50', '#9C27B0', '#FF9800', '#E91E63', '#00BCD4', '#795548', '#607D8B'];
-        $sorted = collect($categoryChartData)->sortByDesc('value');
-        @endphp
-
-        @foreach($sorted as $index => $cat)
-            @php
-                $color = $colors[$index % count($colors)];
-            @endphp
-
-            <div class="donut-legend-item">
-                <div class="donut-legend-dot" style="background: {{ $color }};"></div>
-                <span>{{ $cat['category'] ?: 'Unknown' }}</span>
-                <span class="donut-legend-pct">
-                    {{ number_format($cat['value'], 2) }}
-                </span>
-            </div>
-        @endforeach
-    @endif
+  
       </div>
     </div>
   </div>
@@ -1278,8 +1268,12 @@
   }
   
   let barChart = null;
+  let categoryPieChart = null;
+
   const allChartData = {!! json_encode($chartData ?? []) !!};
   const categoryChartData = {!! json_encode($categoryChartData ?? []) !!};
+  const allCategoryData = {!! json_encode($categoryChartData ?? []) !!};
+  const categoryDataByUnit = {!! json_encode($categoryChartDataByUnit ?? []) !!};
 
 
   function filterChartByUnit(unit) {
@@ -1419,56 +1413,110 @@
   
  let categoryChartInstance = null;
 
-function renderCategoryPieChart() {
-  const ctx = document.getElementById('categoryPieChart');
-  if (!ctx) return;
-
-  if (!categoryChartData || categoryChartData.length === 0) return;
-
-  if (categoryChartInstance) {
-    categoryChartInstance.destroy();
+ function renderCategoryPieChart() {
+    const ctx = document.getElementById('categoryPieChart');
+    if (!ctx) return;
+    
+    renderCategoryPieChartWithData(categoryChartData);
   }
-
-  const labels = categoryChartData.map(d => d.category);
-  const data = categoryChartData.map(d => d.value);
-
-  const colors = [
-    '#2196F3', '#4CAF50', '#9C27B0', '#FF9800', 
-    '#E91E63', '#00BCD4', '#795548', '#607D8B'
-  ];
-
-  const backgroundColors = categoryChartData.map((_, i) => colors[i % colors.length]);
-
-  categoryChartInstance = new Chart(ctx, {
-    type: 'pie',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: data,
-        backgroundColor: backgroundColors,
-        borderWidth: 2,
-        borderColor: '#fff'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              const value = context.parsed;
-              return context.label + ': ' + value.toLocaleString(); 
+    function renderCategoryPieChartWithData(catData) {
+    const ctx = document.getElementById('categoryPieChart');
+    if (!ctx) return;
+    
+    if (!catData || catData.length === 0) {
+      ctx.parentElement.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">No category data for this unit</div>';
+      return;
+    }
+    
+    if (categoryPieChart) {
+      categoryPieChart.destroy();
+    }
+    
+    const labels = catData.map(d => d.category || 'Unknown');
+    const data = catData.map(d => d.value);
+    const colors = [
+      '#2196F3', '#4CAF50', '#9C27B0', '#FF9800', 
+      '#E91E63', '#00BCD4', '#795548', '#607D8B'
+    ];
+    const backgroundColors = catData.map((_, i) => colors[i % colors.length]);
+    
+    categoryPieChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: backgroundColors,
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const value = context.parsed;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const pct = ((value / total) * 100).toFixed(1);
+                return context.label + ': ' + formatQuantity(value) + ' (' + pct + '%)';
+              }
             }
           }
         }
       }
+    });
+    
+    updateCategoryLegend(catData);
+  }
+   function updateCategoryLegend(catData) {
+    const legendContainer = document.getElementById('categoryLegend');
+    if (!legendContainer || !catData) return;
+    
+    const total = catData.reduce((sum, d) => sum + d.value, 0);
+    const colors = ['#2196F3', '#4CAF50', '#9C27B0', '#FF9800', '#E91E63', '#00BCD4', '#795548', '#607D8B'];
+    
+    let html = '';
+    catData.forEach((cat, i) => {
+      const pct = total > 0 ? ((cat.value / total) * 100).toFixed(1) : 0;
+      const color = colors[i % colors.length];
+      html += `
+        <div class="donut-legend-item">
+          <div class="donut-legend-dot" style="background: ${color};"></div>
+          <span>${cat.category || 'Unknown'}</span>
+          <span class="donut-legend-pct">${pct}%</span>
+        </div>
+      `;
+    });
+    legendContainer.innerHTML = html;
+  }
+  function filterCategoryByUnit(unit) {
+    document.querySelectorAll('#categoryUnitTabs .chart-tab').forEach(btn => {
+      if (btn.dataset.unit === unit) {
+        btn.style.background = '#2196F3';
+        btn.style.color = 'white';
+        btn.classList.add('active');
+      } else {
+        btn.style.background = 'white';
+        btn.style.color = '#666';
+        btn.classList.remove('active');
+      }
+    });
+    
+    let filteredData = allCategoryData;
+    if (unit !== 'all' && categoryDataByUnit[unit]) {
+      filteredData = categoryDataByUnit[unit];
     }
-  });
-}
+    
+    renderCategoryPieChartWithData(filteredData);
+  }
+
+
   // Initialize chart when DOM is ready
   document.addEventListener('DOMContentLoaded', function() {
     // Filter close buttons
