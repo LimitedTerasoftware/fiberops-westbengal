@@ -961,7 +961,7 @@
       </div>
       
       @if(!empty($chartData) && count($chartData) > 0)
-      <div class="chart-scroll-container" style="min-height: 400px;">
+      <div class="chart-scroll-container" style="min-height: 400px; display: flex; justify-content: center; align-items: center;">
         <canvas id="barChart" style="max-width: 100%; min-width: 600px; max-height: 350px;"></canvas>
       </div>
       <div class="chart-legend" style="margin-top: 15px; display: flex; gap: 20px;">
@@ -997,7 +997,7 @@
       </div>
       <div class="chart-scroll-container" style="min-height: 280px; display: flex; justify-content: center;">
         @if(!empty($categoryChartData) && count($categoryChartData) > 0)
-          <canvas id="categoryPieChart" style="max-width: 280px; max-height: 260px;"></canvas>
+          <canvas id="categoryPieChart" style="max-width: 320px; max-height: 450px; min-height: 355px;"></canvas>
         @else
           <div style="text-align: center; padding: 40px; color: var(--text-muted);">
             <i class="fa fa-chart-pie" style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;"></i>
@@ -1038,13 +1038,19 @@
             @php
               $balance = $item['issued'] - $item['used'];
               $usagePct = $item['issued'] > 0 ? round(($item['used'] / $item['issued']) * 100, 1) : 0;
-              if ($usagePct >= 80) {
+              if($balance < 0) {
+                $statusClass = 'badge-critical';
+                $statusText = 'NEGATIVE BALANCE';
+
+              }
+              elseif ($usagePct >= 80) {
                 $statusClass = 'badge-optimal';
                 $statusText = 'OPTIMAL';
               } elseif ($usagePct >= 50) {
                 $statusClass = 'badge-stocked';
                 $statusText = 'STOCKED';
-              } elseif ($usagePct > 0) {
+              }
+               elseif ($usagePct > 0) {
                 $statusClass = 'badge-critical';
                 $statusText = 'LOW USAGE';
               } else {
@@ -1082,7 +1088,7 @@
   </div>
 
   <!-- Alerts and Exceptions -->
-  <div class="table-card">
+  <!-- <div class="table-card">
     <div class="table-header">
       <div class="table-title">Critical Alerts & Exceptions</div>
       <span style="color: #f44336; font-weight: 700; font-size: 11px; text-transform: uppercase; background: #fef5f5; padding: 4px 8px; border-radius: 3px;">2 ACTIVE</span>
@@ -1122,14 +1128,14 @@
         <div class="alert-time">1d ago</div>
       </div>
     </div>
-  </div>
+  </div> -->
 
   <!-- District & Employee Usage -->
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
     <div class="table-card">
       <div class="table-header">
         <div class="table-title">District-wise Usage</div>
-        <a href="#" class="view-all-link">View All Reports →</a>
+        <!-- <a href="#" class="view-all-link">View All Reports →</a> -->
       </div>
       <table>
         <thead>
@@ -1166,16 +1172,12 @@
         </tbody>
       </table>
     </div>
-    <div class="table-card">
+    <!-- <div class="table-card">
       <div class="table-header">
         <div class="table-title">Employee-wise Usage</div>
       </div>
-      <div class="tab-nav">
-        <button class="active">District-wise Usage</button>
-        <button>Employee-wise Usage</button>
-      </div>
-    </div>
-  </div>
+    </div> -->
+
 
   <!-- Recent Transaction Logs -->
   <div class="table-card">
@@ -1257,6 +1259,7 @@
       </tbody>
     </table>
   </div>
+    </div>
 </div>
 
 <script>
