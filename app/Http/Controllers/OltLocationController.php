@@ -378,6 +378,7 @@ public function OltUpload(Request $request)
     ]);
 }
 
+
 public function GprouterUpload(Request $request)
 {
     $this->validate($request, [
@@ -477,8 +478,6 @@ public function BlockrouterUpload(Request $request)
         'records' => $records
     ]);
 }
-
-
 
 public function OntData(Request $request)
 {
@@ -938,8 +937,8 @@ public function BlockrouterData(Request $request)
 
     $query = BlockRouterUptime::query()
         ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
-        ->where('blocks.company_id', $company_id)
-        ->where('blocks.state_id', $state_id);
+        ->join('districts', 'blocks.district_id', '=', 'districts.id')
+        ->where('districts.state_id', $state_id);
 
     if (!empty($district_id)) {
         $query->where('blocks.district_id', $district_id);
@@ -999,9 +998,7 @@ public function BlockrouterDataList()
     $query = BlockRouterUptime::query()
         ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
         ->join('districts', 'blocks.district_id', '=', 'districts.id')
-        ->leftJoin('zonal_managers', 'blocks.zonal_id', '=', 'zonal_managers.id')
-        ->where('blocks.company_id', $company_id)
-        ->where('blocks.state_id', $state_id);
+        ->where('districts.state_id', $state_id);
 
     if (!empty($district_id)) {
         $query->where('blocks.district_id', $district_id);
@@ -1011,8 +1008,7 @@ public function BlockrouterDataList()
         ->select(
             'block_router_uptime.*',
             'districts.name as district_name',
-            'blocks.name as block_name',
-            'zonal_managers.name as zone_name'
+            'blocks.name as block_name'
         )->paginate(10);
 
     return response()->json([

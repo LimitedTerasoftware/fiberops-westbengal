@@ -53,6 +53,7 @@
                     <i class="ti-server"></i>
                     Block Router
                 </button>
+
             </div>
 
             {{-- ONT Dashboard Tab Content --}}
@@ -247,8 +248,7 @@
                     </div>
                 </div>
             </div>
-
-            {{-- GP Router Dashboard Tab Content --}}
+                        {{-- GP Router Dashboard Tab Content --}}
             <div class="terrasoft-tab-content" id="Gprouterdashboard-tab">
                 {{-- Date Filter Section --}}
                 <div class="terrasoft-filter-section">
@@ -361,6 +361,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
         <div class="canvas-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
@@ -1481,14 +1482,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('applySamriddhFilters').addEventListener('click', function() {
         loadDataTabData('Samriddhdashboard', 'samriddh-dashboard');
     });
-    
-    document.getElementById('applyGprouterFilters').addEventListener('click', function() {
+        document.getElementById('applyGprouterFilters').addEventListener('click', function() {
         loadDataTabData('Gprouterdashboard', 'gprouter-dashboard');
     });
     
     document.getElementById('applyBlockrouterFilters').addEventListener('click', function() {
         loadDataTabData('Blockrouterdashboard', 'blockrouter-dashboard');
     });
+
     
     // Load initial data
     loadMainTabData('Ontdashboard');
@@ -1508,11 +1509,12 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'Oltdashboard':
                 return 'olt-dashboard';
             case 'Samriddhdashboard':
-                return 'samriddh-dashboard';
+            return 'samriddh-dashboard';
             case 'Gprouterdashboard':
                 return 'gprouter-dashboard';
             case 'Blockrouterdashboard':
                 return 'blockrouter-dashboard';
+
             default:
                 return 'ont-data';
         }
@@ -1544,6 +1546,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'blockrouter-dashboard': 'loadingIndicatorBlockrouter',
                 'blockrouter-performance': 'loadingIndicatorBlockrouterPerf'
             }
+
         };
         return mapping[mainTab][dataTab];
     }
@@ -1570,6 +1573,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'blockrouter-dashboard': 'blockrouterTableContainer',
                 'blockrouter-performance': 'blockrouterPerfTableContainer'
             }
+
         };
         return mapping[mainTab][dataTab];
     }
@@ -1618,6 +1622,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     toDate: document.getElementById('blockrouter_to_date').value
                 };
                 break;
+
         }
         
         return filters;
@@ -1668,6 +1673,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'Samriddhdashboard': 'samriddh-analytics',
             'Gprouterdashboard': 'gprouter-performance',
             'Blockrouterdashboard': 'blockrouter-performance'
+
         };
         return secondTabFormats[mainTab] === dataTab;
     }
@@ -1841,6 +1847,7 @@ function generatePagination(data, mainTab, dataTab) {
                     { key: 'record_date', label: 'Record Date' }
                 ]
             }
+
         };
         
         // Get predefined columns or generate from sample data
@@ -1914,10 +1921,10 @@ function generatePagination(data, mainTab, dataTab) {
                 'blockrouter-dashboard': 'BLOCK ROUTER METRICS',
                 'blockrouter-performance': 'PERFORMANCE DATA'
             }
+
         };
         return headers[mainTab][dataTab] || 'METRICS';
     }
-
     function getCategories(mainTab) {
         const allCategories = [
             { key: 'gte98', label: 'GPs with (>=98) to 100%', color: 'text-green-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
@@ -1931,9 +1938,9 @@ function generatePagination(data, mainTab, dataTab) {
         ];
 
         const routerCategories = [
-            { key: 'total', label: 'Total Integration', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
             { key: 'gte98', label: '>98% Availability', color: 'text-green-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'lt98', label: '<98% Availability', color: 'text-red-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'total', label: 'Total Integration', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
             { key: 'pct_gte98', label: 'Availability %', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true }
         ];
 
@@ -1943,10 +1950,8 @@ function generatePagination(data, mainTab, dataTab) {
 
         return allCategories;
     }
-
     function generateTableRow(data,mainTab) {
-    const categories = getCategories(mainTab);
-
+     const categories = getCategories(mainTab);
     let html = '<tbody>';
     let slNo = 1;
 
@@ -1957,6 +1962,12 @@ function generatePagination(data, mainTab, dataTab) {
         html += `<td class="terrasoft-td-number">${cat.key !== 'total' && cat.key !== 'pct_gte98' ? slNo++ : ''}</td>`;
         html += `<td class="${cat.colClass || ''}">${cat.label}</td>`;
 
+        // date-wise values
+        // data.forEach(row => {
+        //     let value = row[cat.key] ?? 0;
+        //     if (cat.isPercent) value = `${value}%`;
+        //     html += `<td class="${cat.valClass || ''}">${value}</td>`;
+        // });
         data.forEach(row => {
             let value = row[cat.key] ?? 0;
             if (cat.isPercent) {
@@ -2117,6 +2128,7 @@ function closeCsvModal() {
         Oltdashboard: "{{ route('admin.olt-upload') }}",
         Gprouterdashboard: "{{ route('admin.gprouter-upload') }}",
         Blockrouterdashboard: "{{ route('admin.blockrouter-upload') }}",
+
     };
 
   function uploadCsv() {
