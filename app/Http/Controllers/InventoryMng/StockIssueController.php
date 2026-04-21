@@ -1299,10 +1299,22 @@ public function employeeStockReport(Request $request)
         $materialWiseData = [];
         $categoryData = [];
         $categoryByUnit = [];
-
+        $districtWiseData = [];
 
         foreach ($ledgerRows as $row) {
+            $districtKey = $row->district_id;
+            if (!isset($districtWiseData[$districtKey])) {
+                $districtWiseData[$districtKey] = [
+                    'district_name' => $row->district->name ?? 'Unknown',
+                    'issued' => 0,
+                    'used' => 0,
+                    'wastage' => 0,
+
+                ];
+            }
+
             if ($row->transaction_type === 'ISSUE') {
+                $districtWiseData[$districtKey]['issued'] += $row->quantity;
                 $totalIssued += $row->quantity;
                 if ($row->has_serial && $row->serial_number) {
                     $totalSerialIssued += $row->quantity;
@@ -1322,6 +1334,9 @@ public function employeeStockReport(Request $request)
             }
 
             if ($row->transaction_type === 'USED') {
+                $districtWiseData[$districtKey]['used'] += $row->quantity;
+                $districtWiseData[$districtKey]['wastage'] += $row->wastage ?? 0;
+
                 $totalUsed += $row->quantity;
                 if ($row->has_serial && $row->serial_number) {
                     $totalSerialUsed += $row->quantity;
@@ -1338,8 +1353,8 @@ public function employeeStockReport(Request $request)
                     ];
                 }
                 $materialWiseData[$matKey]['used'] += $row->quantity;
-                
                 $baseUnit = $row->material->base_unit ?? 'Unknown';
+
                 if (!$row->ticket_id || !$row->ticket) continue;
 
                    $categoryName = $row->ticket->category ?? 'Unknown';
@@ -1349,7 +1364,7 @@ public function employeeStockReport(Request $request)
                     }
 
                     $categoryData[$categoryName] += $row->quantity;
-
+                    
                     $catKey = $baseUnit . '|' . $categoryName;
                     if (!isset($categoryByUnit[$baseUnit])) {
                         $categoryByUnit[$baseUnit] = [];
@@ -1359,23 +1374,27 @@ public function employeeStockReport(Request $request)
                     }
                     $categoryByUnit[$baseUnit][$categoryName] += $row->quantity;
 
+
+
             }
+            
 
         }
         $materialWiseData = array_values($materialWiseData);
         usort($materialWiseData, function($a, $b) {
             return ($b['issued'] + $b['used']) <=> ($a['issued'] + $a['used']);
         });
+    
+        $districtWiseData = array_values($districtWiseData);
         $categoryChartData = [];
 
         foreach ($categoryData as $name => $qty) {
             $categoryChartData[] = [
                 'category' => $name,
                 'value' => $qty,
-                'unit' => 'all'
+                 'unit' => 'all'
             ];
         }
-
         $categoryChartDataByUnit = [];
         foreach ($categoryByUnit as $unit => $categories) {
             foreach ($categories as $name => $qty) {
@@ -1386,6 +1405,7 @@ public function employeeStockReport(Request $request)
                 ];
             }
         }
+
 
         $unusedBalance = $totalIssued - $totalUsed;
         $serialAssets = $totalSerialIssued;
@@ -1413,6 +1433,19 @@ public function employeeStockReport(Request $request)
             'materialWiseData' => $materialWiseData,
             'categoryChartData' => $categoryChartData,
             'categoryChartDataByUnit' => $categoryChartDataByUnit,
+            'districtWiseData' => $districtWiseData,
+            'transactionLogs' => collect($ledgerRows)->take(50)->map(function($row) {
+                return [
+                    'date' => $row->issue_date,
+                    'type' => $row->transaction_type,
+                    'material_name' => $row->material->name ?? 'Unknown',
+                    'quantity' => $row->quantity,
+                    'employee_name' => ($row->employee->first_name ?? '') . ' ' . ($row->employee->last_name ?? ''),
+                    'district_name' => $row->district->name ?? 'Unknown',
+                    'ticket_id' => $row->ticket_id
+                ];
+            })
+
 
         ]);
     }

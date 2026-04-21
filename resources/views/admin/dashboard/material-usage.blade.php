@@ -1135,132 +1135,124 @@
     <div class="table-card">
       <div class="table-header">
         <div class="table-title">District-wise Usage</div>
-        <!-- <a href="#" class="view-all-link">View All Reports →</a> -->
       </div>
+      <div style="overflow-x: auto; max-height: 300px; overflow-y: auto;">
       <table>
-        <thead>
+        <thead style="position: sticky; top: 0; z-index: 10; background: #f8f9fa;">
           <tr>
-            <th>District Name</th>
-            <th>Total Issued</th>
-            <th>Total Used</th>
-            <th>Scrap Rate</th>
-            <th>Status</th>
+            <th style="min-width: 150px;">District Name</th>
+            <th style="min-width: 100px;">Total Issued</th>
+            <th style="min-width: 100px;">Total Used</th>
+            <th style="min-width: 90px;">Scrap Rate</th>
+            <th style="min-width: 90px;">Status</th>
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td><strong>Kolkata Central</strong></td>
-            <td>5,100 units</td>
-            <td style="color: var(--success); font-weight: 600;">4,890 units</td>
-            <td>1.2%</td>
-            <td><span class="badge badge-optimal">OPTIMAL</span></td>
-          </tr>
-          <tr>
-            <td><strong>Nadia District</strong></td>
-            <td>2,850 units</td>
-            <td style="color: var(--success);">1,120 units</td>
-            <td style="color: var(--success); font-weight: 600;">0.8%</td>
-            <td><span class="badge badge-stocked">STOCKED</span></td>
-          </tr>
-          <tr>
-            <td><strong>Howrah</strong></td>
-            <td>1,940 units</td>
-            <td style="color: var(--danger); font-weight: 600;">1,870 units</td>
-            <td style="color: var(--danger); font-weight: 600;">4.5%</td>
-            <td><span class="badge badge-critical">CRITICAL</span></td>
-          </tr>
+          @if(!empty($districtWiseData) && count($districtWiseData) > 0)
+            @foreach($districtWiseData as $district)
+              @php
+                $usagePct = $district['issued'] > 0 ? round(($district['used'] / $district['issued']) * 100, 1) : 0;
+                $scrapRate = $district['issued'] > 0 ? round(($district['wastage'] / $district['issued']) * 100, 1) : 0;
+                if ($usagePct >= 80) {
+                  $statusClass = 'badge-optimal';
+                  $statusText = 'OPTIMAL';
+                } elseif ($usagePct >= 50) {
+                  $statusClass = 'badge-stocked';
+                  $statusText = 'STOCKED';
+                } elseif ($usagePct > 0) {
+                  $statusClass = 'badge-critical';
+                  $statusText = 'LOW USAGE';
+                }elseif($district['issued'] == 0 && $district['used'] > 0) {
+
+                  $statusClass = 'badge-critical';
+
+                  $statusText = 'USAGE WITHOUT ISSUE';
+
+                }
+                else {
+                  $statusClass = 'badge-idle';
+                  $statusText = 'IDLE';
+                }
+              @endphp
+              <tr>
+                <td><strong>{{ $district['district_name'] }}</strong></td>
+                <td>{{ number_format($district['issued']) }}</td>
+                <td style="color: var(--success); font-weight: 600;">{{ number_format($district['used']) }}</td>
+                <td>{{ $scrapRate }}%</td>
+                <td><span class="badge {{ $statusClass }}">{{ $statusText }}</span></td>
+              </tr>
+            @endforeach
+          @else
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-muted);">No district data available</td>
+            </tr>
+          @endif
         </tbody>
       </table>
-    </div>
-    <!-- <div class="table-card">
-      <div class="table-header">
-        <div class="table-title">Employee-wise Usage</div>
       </div>
-    </div> -->
-
+    </div>
 
   <!-- Recent Transaction Logs -->
   <div class="table-card">
     <div class="table-header">
       <div class="table-title">Recent Transaction Logs</div>
-      <div class="table-header-actions">
+      <!-- <div class="table-header-actions">
         <button class="table-filter-btn">↓ Filter Log</button>
-      </div>
+      </div> -->
     </div>
+    <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
     <table>
-      <thead>
+      <thead style="position: sticky; top: 0; z-index: 10; background: #f8f9fa;">
         <tr>
-          <th>Date & Time</th>
-          <th>Type</th>
-          <th>Material</th>
-          <th>Qty</th>
-          <th>Employee</th>
-          <th>District</th>
-          <th>Ticket ID</th>
+          <th style="min-width: 130px;">Date & Time</th>
+          <th style="min-width: 80px;">Type</th>
+          <th style="min-width: 180px;">Material</th>
+          <th style="min-width: 80px;">Qty</th>
+          <th style="min-width: 150px;">Employee</th>
+          <th style="min-width: 130px;">District</th>
+          <th style="min-width: 100px;">Ticket ID</th>
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td>Oct 24, 2023<br><span style="font-size: 11px; color: var(--text-muted);">10:32 PM</span></td>
-          <td><span class="badge badge-used">Used</span></td>
-          <td>Optical Fiber Cable 48C</td>
-          <td>120 m</td>
-          <td>
-            <span style="display: inline-flex; align-items: center; gap: 6px;">
-              <span style="width: 24px; height: 24px; background: #2196F3; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 700;">A.M</span>
-              A. Mukherjea EMP-1022
-            </span>
-          </td>
-          <td>South 24 Parganas</td>
-          <td>TKT-10293</td>
-        </tr>
-        <tr>
-          <td>Oct 24, 2023<br><span style="font-size: 11px; color: var(--text-muted);">08:15 AM</span></td>
-          <td><span class="badge badge-hold">HOLD</span></td>
-          <td>Huawei ONT Pro v2</td>
-          <td>15 pcs</td>
-          <td>
-            <span style="display: inline-flex; align-items: center; gap: 6px;">
-              <span style="width: 24px; height: 24px; background: #4CAF50; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 700;">R.V</span>
-              R. Verma EMP-8821
-            </span>
-          </td>
-          <td>Kolkata Central</td>
-          <td>TKT-10442</td>
-        </tr>
-        <tr>
-          <td>Oct 23, 2023<br><span style="font-size: 11px; color: var(--text-muted);">06:30 AM</span></td>
-          <td><span class="badge badge-sent">SENT</span></td>
-          <td>Portable Splicing Machine</td>
-          <td>1 unit</td>
-          <td>
-            <span style="display: inline-flex; align-items: center; gap: 6px;">
-              <span style="width: 24px; height: 24px; background: #9C27B0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 700;">S.D</span>
-              S. Das EMP-0921
-            </span>
-          </td>
-          <td>Burdhwan Hub</td>
-          <td>TKT-09822</td>
-        </tr>
-        <tr>
-          <td>Oct 23, 2023<br><span style="font-size: 11px; color: var(--text-muted);">09:10 AM</span></td>
-          <td><span class="badge badge-idle">IDLE</span></td>
-          <td>Outdoor Enclosure Case</td>
-          <td>4 pcs</td>
-          <td>
-            <span style="display: inline-flex; align-items: center; gap: 6px;">
-              <span style="width: 24px; height: 24px; background: #FF6F00; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 700;">M.K</span>
-              M. Khan EMP-2342
-            </span>
-          </td>
-          <td>Purulia District</td>
-          <td>TKT-11000</td>
-        </tr>
+        @if(!empty($transactionLogs) && count($transactionLogs) > 0)
+          @foreach($transactionLogs as $log)
+            @php
+              if ($log['type'] == 'ISSUE') {
+                $typeClass = 'badge-hold';
+              } elseif ($log['type'] == 'USED') {
+                $typeClass = 'badge-used';
+              } elseif ($log['type'] == 'RETURN') {
+                $typeClass = 'badge-sent';
+              } else {
+                $typeClass = 'badge-idle';
+              }
+              $initials = strtoupper(substr($log['employee_name'], 0, 1));
+              $date = \Carbon\Carbon::parse($log['date']);
+            @endphp
+            <tr>
+              <td>{{ $date->format('M d, Y') }}<br><span style="font-size: 11px; color: var(--text-muted);">{{ $date->format('h:i A') }}</span></td>
+              <td><span class="badge {{ $typeClass }}">{{ $log['type'] }}</span></td>
+              <td>{{ $log['material_name'] }} ({{ $log['material_code'] }})</td>
+              <td>{{ number_format($log['quantity']) }} {{ $log['base_unit'] }}</td>
+              <td>
+                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                  <span style="width: 24px; height: 24px; background: #2196F3; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 700;">{{ $initials }}</span>
+                  {{ $log['employee_name'] }}
+                </span>
+              </td>
+              <td>{{ $log['district_name'] }}</td>
+              <td>{{ $log['ticket_id'] ?: '-' }}</td>
+            </tr>
+          @endforeach
+        @else
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted);">No transaction logs available</td>
+          </tr>
+        @endif
       </tbody>
     </table>
-  </div>
     </div>
-</div>
+  </div>
 
 <script>
   // Chart.js Bar Chart - Global scope functions
