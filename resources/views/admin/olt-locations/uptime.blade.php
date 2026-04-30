@@ -1939,7 +1939,9 @@ function generatePagination(data, mainTab, dataTab) {
 
         const routerCategories = [
             { key: 'gte98', label: '>98% Availability', color: 'text-green-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
-            { key: 'lt98', label: '<98% Availability', color: 'text-red-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'integration', label: 'New Integration', color: 'text-blue-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value', isNewIntegration: true },
+            { key: 'lt98', label: '<98% (Excl. 0%) Availability', color: 'text-red-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
+            { key: 'zero_availability', label: '0% Availability', color: 'text-gray-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'total', label: 'Total Integration', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
             { key: 'pct_gte98', label: 'Availability %', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true }
         ];
@@ -1959,7 +1961,8 @@ function generatePagination(data, mainTab, dataTab) {
         html += `<tr class="${cat.rowClass || ''}">`;
 
         // serial and description
-        html += `<td class="terrasoft-td-number">${cat.key !== 'total' && cat.key !== 'pct_gte98' ? slNo++ : ''}</td>`;
+        const isCountableRow = cat.key !== 'total' && cat.key !== 'pct_gte98';
+        html += `<td class="terrasoft-td-number">${isCountableRow ? slNo++ : ''}</td>`;
         html += `<td class="${cat.colClass || ''}">${cat.label}</td>`;
 
         // date-wise values
@@ -1972,6 +1975,8 @@ function generatePagination(data, mainTab, dataTab) {
             let value = row[cat.key] ?? 0;
             if (cat.isPercent) {
                 value = `${value}%`;
+            } else if (cat.isNewIntegration && value > 0) {
+                value = `+${value}`;
             } else if (mainTab === 'Ontdashboard') {
                 // Add redirection for Ontdashboard counts
                 // Use row.day as from_date and to_date
