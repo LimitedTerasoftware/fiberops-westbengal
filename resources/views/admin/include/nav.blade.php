@@ -183,7 +183,7 @@
                 </div>
                 <ul class="terrasoft-nav-submenu" id="submenu-places">
                     @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
-
+                    
                     <li><a href="{{ route('admin.location.index') }}" ><i class="ti-map-alt"></i> @lang('admin.include.districts')</a></li>
                     <li><a href="{{ route('admin.location.block') }}" ><i class="ti-layout-menu-v"></i> @lang('admin.include.blocks')</a></li>
                     @endif
@@ -197,6 +197,22 @@
                     @endif
 
                 </ul>
+            </li>
+            @endif
+
+            {{-- Masters --}}
+            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
+            <li class="terrasoft-nav-group">
+                <div class="terrasoft-nav-header" data-submenu="masters">
+                    <i class="ti-settings"></i>
+                    <span>Masters</span>
+                    <i class="fa fa-angle-down terrasoft-nav-arrow"></i>
+                </div>
+                <ul class="terrasoft-nav-submenu" id="submenu-masters">
+                    <li><a href="{{ route('admin.holidays.index') }}" ><i class="ti-calendar"></i> Holidays</a></li>
+                </ul>
+            </li>
+            @endif
             </li>
             @endif
 

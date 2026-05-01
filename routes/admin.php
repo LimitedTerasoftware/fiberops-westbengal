@@ -304,6 +304,9 @@ Route::get('/district-heatmap', 'AdminController@districtHeatmap')->name('distri
 
 
 Route::resource('olt-locations', "OltLocationController");
+Route::resource('holidays', "HolidayController");
+Route::get('/holidays/get-districts', "HolidayController@getDistricts")->name('admin.holidays.get-districts');
+Route::get('/holidays/get-blocks', "HolidayController@getBlocks")->name('admin.holidays.get-blocks');
 Route::get('/uptime', "OltLocationController@UptimeMng")->name('uptime');
 Route::get('/ont_data', "OltLocationController@OntData")->name('ont_data');
 Route::get('/uptime_data', "OltLocationController@OntDataList")->name('uptime_data');
