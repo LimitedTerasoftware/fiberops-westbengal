@@ -1314,19 +1314,20 @@ public function gettodayFrtReport(Request $request)
 
     $fromDate = $inputFromDate !== null ? $inputFromDate : date('Y-m-d');
     $toDate   = $inputToDate !== null ? $inputToDate : date('Y-m-d');
-    // Pending tickets query
-    $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
-    if ($inputFromDate && $inputToDate) {
-        $pendingTicketsQuery .= ' AND DATE(master_tickets.downdate) BETWEEN "' . $fromDate . '" AND "' . $toDate . '"';
-    }
-    $pendingTicketsQuery .= ' THEN user_requests.id END) as pending_tickets';
+    // // Pending tickets query
+    // $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
+    // if ($inputFromDate && $inputToDate) {
+    //     $pendingTicketsQuery .= ' AND DATE(master_tickets.downdate) BETWEEN "' . $fromDate . '" AND "' . $toDate . '"';
+    // }
+    // $pendingTicketsQuery .= ' THEN user_requests.id END) as pending_tickets';
+    $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING" THEN user_requests.id END) as pending_tickets';
 
     // Pending > 24 hrs
     $pendingTicketsMorethen24 = 'COUNT(CASE WHEN user_requests.status = "INCOMING" AND ';
     $pendingTicketsMorethen24 .= 'STR_TO_DATE(CONCAT(master_tickets.downdate, " ", master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p") < DATE_SUB(NOW(), INTERVAL 24 HOUR)';
-    if ($inputFromDate && $inputToDate) {
-        $pendingTicketsMorethen24 .= ' AND DATE(master_tickets.downdate) BETWEEN "' . $fromDate . '" AND "' . $toDate . '"';
-    }
+    // if ($inputFromDate && $inputToDate) {
+    //     $pendingTicketsMorethen24 .= ' AND DATE(master_tickets.downdate) BETWEEN "' . $fromDate . '" AND "' . $toDate . '"';
+    // }
     $pendingTicketsMorethen24 .= ' THEN user_requests.id END) as pending_tickets_morethen_24';
 
    //dd($pendingTicketsQuery);
@@ -1370,14 +1371,14 @@ public function gettodayFrtReport(Request $request)
       //dd($providers);
     // --- Get today's attendance ---
     $attendance = DB::table('attendance')
-        ->whereDate('created_at', $today)
+        ->whereDate('created_at', $fromDate)
         ->whereIn('provider_id', $providers->pluck('provider_id'))
         ->get()
         ->keyBy('provider_id');
     $leaves = Leave::whereIn('provider_id', $providers->pluck('provider_id'))
         ->where('type', 'leave')
-        ->whereDate('start_date', '<=', $today)
-        ->whereDate('end_date', '>=', $today)
+        ->whereDate('start_date', '<=', $fromDate)
+        ->whereDate('end_date', '>=', $fromDate)
         ->get()
         ->keyBy('provider_id');
 
@@ -1440,7 +1441,7 @@ public function gettodayFrtReport(Request $request)
                     $summary['not_started']++;
                 }
 
-                if ($prov->completed_tickets > 0 && $prov->pickup_tickets == 0) {
+                if ($prov->completed_tickets > 0 && $prov->pickup_tickets == 0 && $prov->pending_tickets == 0) {
                     $summary['completed']++;
                 }
 
@@ -1467,32 +1468,23 @@ public function gettodayFrtReport(Request $request)
                 ) {
                     $summary['available']++;
                 }
-
-            } else {
-
-                //Not in attendance -check leave
-                $isOnLeave = Leave::where('provider_id', $prov->provider_id)
-                    ->where('type', 'leave')
-                    ->whereDate('start_date', '<=', $today)
-                    ->whereDate('end_date', '>=', $today)
-                    ->exists();
-
-                if ($isOnLeave) {
-                    $summary['leave']++;
-                } else {
-                    $summary['not_logged_in']++; // absent
-                }
-            }
-        }
-        foreach ($list as $prov) {
-                $summary['completed_0_4'] += $prov->completed_0_4 ?? 0;
+             $summary['completed_0_4'] += $prov->completed_0_4 ?? 0;
                 $summary['completed_4_10'] += $prov->completed_4_10 ?? 0;
                 $summary['completed_10_24'] += $prov->completed_10_24 ?? 0;
                 $summary['completed_24_48'] += $prov->completed_24_48 ?? 0;
                 $summary['completed_gt_48'] += $prov->completed_gt_48 ?? 0;
 
-            }
 
+            } else {
+
+                 if (isset($leaves[$prov->provider_id])) {
+                    $summary['leave']++;
+                } else {
+                    $summary['not_logged_in']++;
+                }
+            }
+        }
+      
         return $summary;
     }
 
@@ -1550,11 +1542,12 @@ public function getDiMisReport(Request $request)
     $fromDate = $inputFromDate !== null ? $inputFromDate : date('Y-m-d');
     $toDate   = $inputToDate !== null ? $inputToDate : date('Y-m-d');
 
-    $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
-    if ($inputFromDate && $inputToDate) {
-        $pendingTicketsQuery .= ' AND DATE(master_tickets.downdate) BETWEEN "' . $fromDate . '" AND "' . $toDate . '"';
-    }
-    $pendingTicketsQuery .= ' THEN user_requests.id END) as pending_tickets';
+    // $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
+    // if ($inputFromDate && $inputToDate) {
+    //     $pendingTicketsQuery .= ' AND DATE(master_tickets.downdate) BETWEEN "' . $fromDate . '" AND "' . $toDate . '"';
+    // }
+    // $pendingTicketsQuery .= ' THEN user_requests.id END) as pending_tickets';
+    $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING" THEN user_requests.id END) as pending_tickets';
 
     $today = date('Y-m-d');
 
@@ -1590,15 +1583,15 @@ public function getDiMisReport(Request $request)
         ->get();
 
     $attendance = DB::table('attendance')
-        ->whereDate('created_at', $today)
+        ->whereDate('created_at', $fromDate)
         ->whereIn('provider_id', $providers->pluck('provider_id'))
         ->get()
         ->keyBy('provider_id');
 
     $leaves = Leave::whereIn('provider_id', $providers->pluck('provider_id'))
         ->where('type', 'leave')
-        ->whereDate('start_date', '<=', $today)
-        ->whereDate('end_date', '>=', $today)
+        ->whereDate('start_date', '<=', $fromDate)
+        ->whereDate('end_date', '>=', $fromDate)
         ->get()
         ->keyBy('provider_id');
 
@@ -1656,13 +1649,7 @@ public function getDiMisReport(Request $request)
                 }
 
             } else {
-                $isOnLeave = Leave::where('provider_id', $prov->provider_id)
-                    ->where('type', 'leave')
-                    ->whereDate('start_date', '<=', $today)
-                    ->whereDate('end_date', '>=', $today)
-                    ->exists();
-
-                if ($isOnLeave) {
+                 if (isset($leaves[$prov->provider_id])) {
                     $summary['leave']++;
                 } else {
                     $summary['not_logged_in']++;
@@ -1775,7 +1762,7 @@ private function getProviderStage($prov, $attendance,$leaves)
         $prov->pickup_tickets == 0 &&
         $prov->completed_tickets == 0
     ) return 'only_hold';
-    if ($prov->completed_tickets > 0 && $prov->pickup_tickets == 0) return 'completed';
+    if ($prov->completed_tickets > 0 && $prov->pickup_tickets == 0 && $prov->pending_tickets == 0) return 'completed';
 
     if (
         $prov->pending_tickets == 0 &&

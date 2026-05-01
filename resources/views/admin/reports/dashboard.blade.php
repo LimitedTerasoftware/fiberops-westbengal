@@ -155,31 +155,67 @@
   </div>
 
   <div class="col-md-6 mb-2">
-     <div class="canvas-card mt-4">
-        <h6 class="mb-3 fw-bold">Zone Vs FRT</h6>
-        <div id="frtHeatmap" class="heatmap"></div>
-      </div>
-  </div>
+      <div class="canvas-card mt-4">
+         <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h6 class="fw-bold mb-0">Zone Vs FRT</h6>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+               <label class="small fw-bold me-1">From:</label>
+               <input type="date" id="frt_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <label class="small fw-bold me-1">To:</label>
+               <input type="date" id="frt_zone_to_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-frt-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
+            </div>
+         </div>
+         <div id="frtHeatmap" class="heatmap"></div>
+       </div>
+   </div>
    
   <div class="col-md-6 mb-2">
-      <div class="canvas-card mt-4">
-         <h6 class="mb-3 fw-bold">Zone Vs Patrollers</h6>
-        <div id="patHeatmap" class="heatmap"></div>
-     </div>
-   </div>
-     <div class="col-md-6 mb-2">
-      <div class="canvas-card mt-4">
-         <h6 class="mb-3 fw-bold">Zone Vs District Incharge</h6>
-         <div id="diHeatmap" class="heatmap"></div>
-      </div>
-   </div>
-
-   <div class="col-md-6 mb-2">
        <div class="canvas-card mt-4">
-          <h6 class="mb-3 fw-bold">Zone Vs MIS</h6>
-         <div id="misHeatmap" class="heatmap"></div>
+          <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h6 class="fw-bold mb-0">Zone Vs Patrollers</h6>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+               <label class="small fw-bold me-1">From:</label>
+               <input type="date" id="pat_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <label class="small fw-bold me-1">To:</label>
+               <input type="date" id="pat_zone_to_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-pat-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
+            </div>
+         </div>
+         <div id="patHeatmap" class="heatmap"></div>
       </div>
     </div>
+  <div class="col-md-6 mb-2">
+       <div class="canvas-card mt-4">
+          <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h6 class="fw-bold mb-0">Zone Vs District Incharge</h6>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+               <label class="small fw-bold me-1">From:</label>
+               <input type="date" id="di_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <label class="small fw-bold me-1">To:</label>
+               <input type="date" id="di_zone_to_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-di-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
+            </div>
+         </div>
+          <div id="diHeatmap" class="heatmap"></div>
+       </div>
+    </div>
+
+  <div class="col-md-6 mb-2">
+        <div class="canvas-card mt-4">
+           <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h6 class="fw-bold mb-0">Zone Vs MIS</h6>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+               <label class="small fw-bold me-1">From:</label>
+               <input type="date" id="mis_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <label class="small fw-bold me-1">To:</label>
+               <input type="date" id="mis_zone_to_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-mis-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
+            </div>
+         </div>
+          <div id="misHeatmap" class="heatmap"></div>
+       </div>
+     </div>
 
 
 <div class="col-md-6 mb-2">
@@ -611,7 +647,7 @@ $(document).ready(function() {
 
 
 // ===== Enhanced Heatmap Function =====
-function renderpatHeatmap(data) {
+function renderpatHeatmap(data, fromDate=null, toDate=null) {
   const heatmapContainer = $('#patHeatmap');
   heatmapContainer.empty();
 
@@ -636,7 +672,7 @@ function renderpatHeatmap(data) {
 
     let row = `<div class="heatmap-row">
       <div class="zone-name">${zoneName} (${pat.total})</div>`;
-       
+     
 
     stages.forEach((stage, i) => {
       const value = pat[stage] ?? 0;
@@ -672,7 +708,12 @@ function renderpatHeatmap(data) {
           riskClass = 'neutral';
       }
 
- const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=patroller`;
+     let dateParams = '';
+     if (fromDate && toDate) {
+         dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
+     }
+   
+      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=patroller${dateParams}`;
 
       row += `<a href="${url}" class="cell ${riskClass}" 
      title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
@@ -763,7 +804,7 @@ function renderCompletionHeatmap(data, type,fromDate=null,toDate=null) {
 
 
 
-function renderHeatmap(data) {
+function renderHeatmap(data, fromDate=null, toDate=null) {
   const heatmapContainer = $('#frtHeatmap');
   heatmapContainer.empty();
 
@@ -822,9 +863,12 @@ function renderHeatmap(data) {
           riskClass = 'neutral';
       }
 
-     
-
-     const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=frt`;
+     let dateParams = '';
+     if (fromDate && toDate) {
+         dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
+     }
+   
+      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=frt${dateParams}`;
 
       row += `<a href="${url}" class="cell ${riskClass}" 
      title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
@@ -848,7 +892,7 @@ function renderHeatmap(data) {
 }
 	
 
-function renderDiHeatmap(data) {
+function renderDiHeatmap(data, fromDate=null, toDate=null) {
   const heatmapContainer = $('#diHeatmap');
   heatmapContainer.empty();
 
@@ -896,7 +940,12 @@ function renderDiHeatmap(data) {
           riskClass = 'neutral';
       }
 
-      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=di`;
+     let dateParams = '';
+     if (fromDate && toDate) {
+         dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
+     }
+
+      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=di${dateParams}`;
       row += `<a href="${url}" class="cell ${riskClass}" 
      title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
     ${value}
@@ -917,7 +966,7 @@ function renderDiHeatmap(data) {
   heatmapContainer.append(legend);
 }
 
-function renderMisHeatmap(data) {
+function renderMisHeatmap(data, fromDate=null, toDate=null) {
   const heatmapContainer = $('#misHeatmap');
   heatmapContainer.empty();
 
@@ -965,7 +1014,12 @@ function renderMisHeatmap(data) {
           riskClass = 'neutral';
       }
 
-      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=mis`;
+     let dateParams = '';
+     if (fromDate && toDate) {
+         dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
+     }
+
+      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=mis${dateParams}`;
       row += `<a href="${url}" class="cell ${riskClass}" 
      title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
     ${value}
@@ -1468,7 +1522,7 @@ function loadHeatmapWithFilter(filterType) {
                 });
             });
 
-        function loadCompletionData(fromDate, toDate, type) {
+            function loadCompletionData(fromDate, toDate, type) {
 
                 $.ajax({
                     url: "{{ route('admin.get_todayfrtreport') }}",
@@ -1483,6 +1537,83 @@ function loadHeatmapWithFilter(filterType) {
                         console.error("Error loading completion data:", err);
                     }
                 });
+            }
+
+            // Zone Heatmap Filter Handlers
+            $('#btn-frt-zone-filter').on('click', function () {
+                const fromDate = $('#frt_zone_from_date').val();
+                const toDate = $('#frt_zone_to_date').val();
+                if (fromDate && toDate) {
+                    loadZoneHeatmapData(fromDate, toDate, 'frt');
+                } else {
+                    alert('Please select both From and To dates');
+                }
+            });
+
+            $('#btn-pat-zone-filter').on('click', function () {
+                const fromDate = $('#pat_zone_from_date').val();
+                const toDate = $('#pat_zone_to_date').val();
+                if (fromDate && toDate) {
+                    loadZoneHeatmapData(fromDate, toDate, 'pat');
+                } else {
+                    alert('Please select both From and To dates');
+                }
+            });
+
+            $('#btn-di-zone-filter').on('click', function () {
+                const fromDate = $('#di_zone_from_date').val();
+                const toDate = $('#di_zone_to_date').val();
+                if (fromDate && toDate) {
+                    loadZoneHeatmapData(fromDate, toDate, 'di');
+                } else {
+                    alert('Please select both From and To dates');
+                }
+            });
+
+            $('#btn-mis-zone-filter').on('click', function () {
+                const fromDate = $('#mis_zone_from_date').val();
+                const toDate = $('#mis_zone_to_date').val();
+                if (fromDate && toDate) {
+                    loadZoneHeatmapData(fromDate, toDate, 'mis');
+                } else {
+                    alert('Please select both From and To dates');
+                }
+            });
+
+            function loadZoneHeatmapData(fromDate, toDate, type) {
+                if (type === 'frt' || type === 'pat') {
+                    $.ajax({
+                        url: "{{ route('admin.get_todayfrtreport') }}",
+                        method: "GET",
+                        data: { from_date: fromDate, to_date: toDate },
+                        success: function (response) {
+                            if (type === 'frt') {
+                                renderHeatmap(response);
+                            } else if (type === 'pat') {
+                                renderpatHeatmap(response);
+                            }
+                        },
+                        error: function (err) {
+                            console.error("Error loading zone heatmap data:", err);
+                        }
+                    });
+                } else if (type === 'di' || type === 'mis') {
+                    $.ajax({
+                        url: "{{ url('/admin/get_dimis_report') }}",
+                        method: "GET",
+                        data: { from_date: fromDate, to_date: toDate },
+                        success: function (response) {
+                            if (type === 'di') {
+                                renderDiHeatmap(response);
+                            } else if (type === 'mis') {
+                                renderMisHeatmap(response);
+                            }
+                        },
+                        error: function (err) {
+                            console.error("Error loading DI/MIS heatmap data:", err);
+                        }
+                    });
+                }
             }
 
 
