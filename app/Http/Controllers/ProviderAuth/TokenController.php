@@ -26,6 +26,7 @@ use App\District;
 use App\Helpers\Helper;
 use Mail;
 use App\Leave;
+use App\Holiday;
 use Carbon\Carbon;
 
 
@@ -137,6 +138,14 @@ class TokenController extends Controller
 
             return response()->json([
                 'error' => 'You are currently on approved leave. Login is not allowed.'
+            ], 403);
+        }
+
+        if (Holiday::isHolidayForProvider(Carbon::today(), $User)) {
+            JWTAuth::invalidate($token);
+
+            return response()->json([
+                'error' => 'Login is not allowed on holidays.'
             ], 403);
         }
 
