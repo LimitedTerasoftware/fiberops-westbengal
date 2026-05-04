@@ -1376,7 +1376,7 @@ public function gettodayFrtReport(Request $request)
         ->get()
         ->keyBy('provider_id');
     $leaves = Leave::whereIn('provider_id', $providers->pluck('provider_id'))
-        ->where('type', 'leave')
+        ->whereIn('type', ['leave', 'holiday'])
         ->whereDate('start_date', '<=', $fromDate)
         ->whereDate('end_date', '>=', $fromDate)
         ->get()
@@ -1416,9 +1416,7 @@ public function gettodayFrtReport(Request $request)
             }
 
 
-            if (isset($attendance[$prov->provider_id])) {
-
-                // Logged in
+          if (isset($attendance[$prov->provider_id])) {
                 $summary['logged_in']++;
 
                 if ($attendance[$prov->provider_id]->status === 'active') {
@@ -1427,55 +1425,46 @@ public function gettodayFrtReport(Request $request)
                     $summary['offline']++;
                 }
 
-                //  Ticket stats ONLY for present providers
                 if ($prov->pickup_tickets > 0) {
                     $summary['working']++;
-                }
 
-                if (
+                } elseif (
                     $prov->pending_tickets > 0 &&
-                    $prov->pickup_tickets == 0 &&
                     $prov->hold_tickets == 0 &&
                     $prov->completed_tickets == 0
                 ) {
                     $summary['not_started']++;
-                }
 
-                if ($prov->completed_tickets > 0 && $prov->pickup_tickets == 0 && $prov->pending_tickets == 0) {
+                } elseif (
+                    $prov->hold_tickets > 0 &&
+                    $prov->completed_tickets == 0
+                ) {
+                    $summary['only_hold']++;
+
+                } elseif ($prov->completed_tickets > 0) {
                     $summary['completed']++;
-                }
 
-                if (
+                } elseif (
                     $prov->pending_tickets == 0 &&
                     $prov->pickup_tickets == 0 &&
                     $prov->hold_tickets == 0 &&
                     $prov->completed_tickets == 0
                 ) {
                     $summary['no_ticket']++;
-                }
 
-                if (
-                    $prov->hold_tickets > 0 &&
-                    $prov->pickup_tickets == 0 &&
-                    $prov->completed_tickets == 0
-                ) {
-                    $summary['only_hold']++;
-                }
-                if (
-                    $prov->pending_tickets == 0 &&
-                    $prov->pickup_tickets == 0 &&
-                    $prov->hold_tickets == 0
-                ) {
+                } else {
+                    // has some mix — treat as available
                     $summary['available']++;
                 }
-             $summary['completed_0_4'] += $prov->completed_0_4 ?? 0;
+
+                // Bucket counts — always add for logged-in non-leave providers
+                $summary['completed_0_4']  += $prov->completed_0_4 ?? 0;
                 $summary['completed_4_10'] += $prov->completed_4_10 ?? 0;
-                $summary['completed_10_24'] += $prov->completed_10_24 ?? 0;
-                $summary['completed_24_48'] += $prov->completed_24_48 ?? 0;
-                $summary['completed_gt_48'] += $prov->completed_gt_48 ?? 0;
-
-
-            } else {
+                $summary['completed_10_24']+= $prov->completed_10_24 ?? 0;
+                $summary['completed_24_48']+= $prov->completed_24_48 ?? 0;
+                $summary['completed_gt_48']+= $prov->completed_gt_48 ?? 0;
+            }
+            else {
 
                  if (isset($leaves[$prov->provider_id])) {
                     $summary['leave']++;
@@ -1630,22 +1619,34 @@ public function getDiMisReport(Request $request)
 
                 if ($prov->pickup_tickets > 0) {
                     $summary['working']++;
-                }
 
-                if ($prov->pending_tickets > 0 && $prov->pickup_tickets == 0 && $prov->hold_tickets == 0 && $prov->completed_tickets == 0) {
+                } elseif (
+                    $prov->pending_tickets > 0 &&
+                    $prov->hold_tickets == 0 &&
+                    $prov->completed_tickets == 0
+                ) {
                     $summary['not_started']++;
-                }
 
-                if ($prov->completed_tickets > 0 && $prov->pickup_tickets == 0) {
-                    $summary['completed']++;
-                }
-
-                if ($prov->hold_tickets > 0 && $prov->pickup_tickets == 0 && $prov->completed_tickets == 0) {
+                } elseif (
+                    $prov->hold_tickets > 0 &&
+                    $prov->completed_tickets == 0
+                ) {
                     $summary['only_hold']++;
-                }
 
-                if ($prov->pending_tickets == 0 && $prov->pickup_tickets == 0 && $prov->hold_tickets == 0 && $prov->completed_tickets == 0) {
+                } elseif ($prov->completed_tickets > 0) {
+                    $summary['completed']++;
+
+                } elseif (
+                    $prov->pending_tickets == 0 &&
+                    $prov->pickup_tickets == 0 &&
+                    $prov->hold_tickets == 0 &&
+                    $prov->completed_tickets == 0
+                ) {
                     $summary['no_ticket']++;
+
+                } else {
+                    // has some mix — treat as available
+                    $summary['available']++;
                 }
 
             } else {
@@ -1720,49 +1721,26 @@ public function getDiMisReport(Request $request)
 
 //     return 'not_logged_in';
 // }
-private function getProviderStage($prov, $attendance,$leaves)
+private function getProviderStage($prov, $attendance, $leaves)
 {
-    $today = date('Y-m-d');
+    if (isset($leaves[$prov->provider_id])) return 'leave';
 
-    if (isset($leaves[$prov->provider_id])) {
-            return 'leave';
-    }
+    if (!isset($attendance[$prov->provider_id])) return 'not_logged_in';
 
-    if (!isset($attendance[$prov->provider_id])) {
-
-        // $isOnLeave = Leave::where('provider_id', $prov->provider_id)
-        //     ->where('type', 'leave')
-        //     ->whereDate('start_date', '<=', $today)
-        //     ->whereDate('end_date', '>=', $today)
-        //     ->exists();
-
-        // return $isOnLeave ? 'leave' : 'not_logged_in';
-         return 'not_logged_in';
-    }
-
-    /* -------- Attendance status -------- */
-    if ($attendance[$prov->provider_id]->status === 'active') {
-        $attendanceStage = 'online';
-    } elseif ($attendance[$prov->provider_id]->status === 'offline') {
-        $attendanceStage = 'offline';
-    } else {
-        $attendanceStage = 'logged_in';
-    }
-
-    /* -------- Ticket based stages (ONLY for present providers) -------- */
     if ($prov->pickup_tickets > 0) return 'working';
-     if (
+
+    if (
         $prov->pending_tickets > 0 &&
-        $prov->pickup_tickets == 0 &&
         $prov->hold_tickets == 0 &&
         $prov->completed_tickets == 0
     ) return 'not_started';
-      if (
+
+    if (
         $prov->hold_tickets > 0 &&
-        $prov->pickup_tickets == 0 &&
         $prov->completed_tickets == 0
     ) return 'only_hold';
-    if ($prov->completed_tickets > 0 && $prov->pickup_tickets == 0 && $prov->pending_tickets == 0) return 'completed';
+
+    if ($prov->completed_tickets > 0) return 'completed';
 
     if (
         $prov->pending_tickets == 0 &&
@@ -1770,19 +1748,82 @@ private function getProviderStage($prov, $attendance,$leaves)
         $prov->hold_tickets == 0 &&
         $prov->completed_tickets == 0
     ) return 'no_ticket';
-    if (
-        $prov->pending_tickets == 0 &&
-        $prov->pickup_tickets == 0 &&
-        $prov->hold_tickets == 0 
-    ) return 'available';
+
+   
+
+//    if ($prov->pending_tickets > 2) return 'open_morethen2';
+
+//      if ($prov->old_ongoing > 0) return 'old_ongoing';
+      // attendance-based fallback
+    $status = $attendance[$prov->provider_id]->status;
+    if ($status === 'active') return 'online';
+    if ($status === 'offline') return 'offline';
+
+    return 'available';
+}
+// private function getProviderStage($prov, $attendance,$leaves)
+// {
+//     $today = date('Y-m-d');
+
+//     if (isset($leaves[$prov->provider_id])) {
+//             return 'leave';
+//     }
+
+//     if (!isset($attendance[$prov->provider_id])) {
+
+//         // $isOnLeave = Leave::where('provider_id', $prov->provider_id)
+//         //     ->where('type', 'leave')
+//         //     ->whereDate('start_date', '<=', $today)
+//         //     ->whereDate('end_date', '>=', $today)
+//         //     ->exists();
+
+//         // return $isOnLeave ? 'leave' : 'not_logged_in';
+//          return 'not_logged_in';
+//     }
+
+//     /* -------- Attendance status -------- */
+//     if ($attendance[$prov->provider_id]->status === 'active') {
+//         $attendanceStage = 'online';
+//     } elseif ($attendance[$prov->provider_id]->status === 'offline') {
+//         $attendanceStage = 'offline';
+//     } else {
+//         $attendanceStage = 'logged_in';
+//     }
+
+//     /* -------- Ticket based stages (ONLY for present providers) -------- */
+//     if ($prov->pickup_tickets > 0) return 'working';
+//      if (
+//         $prov->pending_tickets > 0 &&
+//         $prov->pickup_tickets == 0 &&
+//         $prov->hold_tickets == 0 &&
+//         $prov->completed_tickets == 0
+//     ) return 'not_started';
+//       if (
+//         $prov->hold_tickets > 0 &&
+//         $prov->pickup_tickets == 0 &&
+//         $prov->completed_tickets == 0
+//     ) return 'only_hold';
+//     if ($prov->completed_tickets > 0 && $prov->pickup_tickets == 0 && $prov->pending_tickets == 0) return 'completed';
+
+//     if (
+//         $prov->pending_tickets == 0 &&
+//         $prov->pickup_tickets == 0 &&
+//         $prov->hold_tickets == 0 &&
+//         $prov->completed_tickets == 0
+//     ) return 'no_ticket';
+//     if (
+//         $prov->pending_tickets == 0 &&
+//         $prov->pickup_tickets == 0 &&
+//         $prov->hold_tickets == 0 
+//     ) return 'available';
   
  
-   if ($prov->pending_tickets > 2) return 'open_morethen2';
+//    if ($prov->pending_tickets > 2) return 'open_morethen2';
 
-    if ($prov->old_ongoing > 0) return 'old_ongoing';
+//     if ($prov->old_ongoing > 0) return 'old_ongoing';
 
-    return $attendanceStage;
-}
+//     return $attendanceStage;
+// }
 
 
     // --- Helper: Filter providers by stage ---

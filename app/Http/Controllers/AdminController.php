@@ -1907,7 +1907,7 @@ public function patrollertickets(Request $request)
       $leaveRecords = DB::table('leaves')
         ->where('provider_id', $provider->id)
         ->where('status', 'approved')
-        ->where('type', 'leave')
+        ->whereIn('type', ['leave','holiday'])
         ->where(function($q) use ($workingStart, $actualTo) {
             $q->whereBetween('start_date', [$workingStart->format('Y-m-d'), $actualTo->format('Y-m-d')])
             ->orWhereBetween('end_date', [$workingStart->format('Y-m-d'), $actualTo->format('Y-m-d')])
@@ -7275,6 +7275,8 @@ public function dashboardMap(Request $request)
 public function dashboard_workforce(Request $request)
 {
 return view('admin.reports.dashboard');
+
+
 }
 
 

@@ -365,8 +365,9 @@
                         </label>
                         <select id="type" name="type" class="terrasoft-form-select">
                             <option value="leave" selected>On Leave (Today)</option>
-                            @if(auth()->user()->role == 'admin' || auth()->user()->name == 'zonal manager')
+                            @if(auth()->user()->role == 'admin' || auth()->user()->name == 'zonal manager' || auth()->user()->role == 'district_incharge')
                             <option value="late_login">Late Login (Today)</option>
+                            <option value="holiday">Holiday (Today)</option>
                             @endif
                         </select>
                     </div>

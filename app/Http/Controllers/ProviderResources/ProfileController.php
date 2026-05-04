@@ -559,7 +559,7 @@ class ProfileController extends Controller
                 if ($this->isOnLeave($provider_id)) {
                     return response()->json([
                         'status' => false,
-                        'message' => 'You are on leave today. Attendance cannot be marked.',
+                        'message' => 'You are on leave/holiday today. Attendance cannot be marked.',
                          'Provider'=>$Provider
                     ], 200);
                 }
@@ -659,7 +659,7 @@ class ProfileController extends Controller
         return Leave::where('provider_id', $provider_id)
             ->where('start_date', '<=', Carbon::today())
             ->where('end_date', '>=', Carbon::today())
-            ->where('type','leave')
+            ->whereIn('type', ['leave', 'holiday'])
             ->where('status', 'approved')
             ->exists();
     }

@@ -645,7 +645,7 @@ public function exportProviders(Request $request)
        
          $validator = Validator::make($request->all(),[
             'provider_id' => 'required|exists:providers,id',
-            'type' =>'required|in:leave,late_login',
+            'type' =>'required|in:leave,late_login,holiday',
             'start_date'  => 'required_if:type,leave|date',
             'end_date'    => 'required_if:type,leave|date|after_or_equal:start_date',
             'reason'=>'nullable|string',
@@ -674,7 +674,7 @@ public function exportProviders(Request $request)
             $already = Leave::where('provider_id', $request->provider_id)
                             ->where('start_date', '<=', $request->start_date)
                             ->where('end_date', '>=', $request->end_date)
-                            ->whereIn('type', ['leave', 'late_login'])
+                            ->whereIn('type', ['leave', 'late_login', 'holiday'])
                             ->first();
 
             if ($already) {
