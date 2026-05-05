@@ -7,7 +7,7 @@
         <div class="container-fluid">
             <div class="row header-row mb-1">
                 <div class="col-md-12">
-                    
+
                     <h4 class="mb-0">
                         @if(isset($is_uptime_report) && $is_uptime_report)
                             GP Uptime Report
@@ -18,9 +18,26 @@
                 </div>
             </div>
 
+            {{-- ONT/Router Tabs --}}
+            <ul class="nav nav-tabs mb-3" id="ticketTypeTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {{ (!request('ticket_type') || request('ticket_type') == 'ont') ? 'active' : '' }}"
+                       href="{{ route('admin.frequently_down_gps', array_merge(request()->except('ticket_type'), ['ticket_type' => 'ont'])) }}">
+                        <i class="bi bi-pc-display-horizontal me-1"></i> ONT Tickets
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {{ request('ticket_type') == 'router' ? 'active' : '' }}"
+                       href="{{ route('admin.frequently_down_gps', array_merge(request()->except('ticket_type'), ['ticket_type' => 'router'])) }}">
+                        <i class="bi bi-router me-1"></i> Router Tickets
+                    </a>
+                </li>
+            </ul>
+
             <!-- Filters -->
             <div class="filter-card">
                 <form action="{{ route('admin.frequently_down_gps') }}" method="GET">
+                    <input type="hidden" name="ticket_type" value="{{ request('ticket_type', 'ont') }}">
 
                     <div class="filter-row">
                        

@@ -365,10 +365,11 @@
         </div>
         <div class="canvas-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-                <h6 class="fw-bold mb-0">Recurring GP Issue Trends   <span id="recurringGpCount" style="color:red;font-weight:bold;cursor:pointer">0</span></h6>  
+                <h6 class="fw-bold mb-0">Recurring GP Issue Trends 
+                    <span id="recurringGpCount" style="color:red;font-weight:bold;cursor:pointer">0</span>
+                </h6>
 
                 <div class="gap-1" style="display:flex; justify-content:space-between; align-items:center;">
-                
                     <label class="small fw-bold me-1">From:</label>
                     <input type="date" id="recurring_from_date" class="form-control form-control-sm px-1"
                         style="width: 105px; font-size: 12px; border-radius: 4px;">
@@ -379,13 +380,18 @@
                         style="font-size: 12px; border-radius: 4px;">Go</button>
                 </div>
             </div>
-            
+
+            {{-- ONT / Router toggle buttons --}}
+            <div class="mb-2">
+                <button id="btn-ont" class="btn btn-sm btn-primary me-1" onclick="switchRecurringType('ont')">ONT</button>
+                <button id="btn-router" class="btn btn-sm btn-outline-primary" onclick="switchRecurringType('router')">Router</button>
+            </div>
+
             <div id="recurringChartWrapper" style="overflow-x:auto; width:100%;">
                 <div id="recurringChartInner" style="position: relative; height: 420px;">
                     <canvas id="recurringGpTrendsChart"></canvas>
                 </div>
             </div>
-
         </div>
        
     </div>
@@ -1337,6 +1343,7 @@
      let currentMainTab = 'Ontdashboard';
     let currentDataTab = 'ont-data';
     let recurringGpsChartInstance = null;
+    let activeRecurringType = 'ont';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Global variables
@@ -1466,7 +1473,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const fromDate = $('#recurring_from_date').val();
         const toDate = $('#recurring_to_date').val();
         let url = "{{ route('admin.frequently_down_gps') }}";
-        url += `?from_date=${fromDate}&to_date=${toDate}`;
+        url += `?from_date=${fromDate}&to_date=${toDate}&ticket_type=${activeRecurringType}`;
         window.open(url, '_blank');
     });
               
@@ -1938,12 +1945,13 @@ function generatePagination(data, mainTab, dataTab) {
         ];
 
         const routerCategories = [
-            { key: 'gte98', label: '>98% Availability', color: 'text-green-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'integration', label: 'New Integration', color: 'text-blue-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value', isNewIntegration: true },
+
+            { key: 'gte98', label: '>98% Availability', color: 'text-green-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'lt98', label: '<98% (Excl. 0%) Availability', color: 'text-red-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'zero_availability', label: '0% Availability', color: 'text-gray-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
-            { key: 'total', label: 'Total Integration', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
-            { key: 'pct_gte98', label: 'Availability %', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true }
+            { key: 'total', label: 'Total', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
+            { key: 'pct_gte98', label: 'Overall Availability %', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true }
         ];
 
         if (mainTab === 'Gprouterdashboard' || mainTab === 'Blockrouterdashboard') {
@@ -1976,11 +1984,11 @@ function generatePagination(data, mainTab, dataTab) {
             if (cat.isPercent) {
                 value = `${value}%`;
             } else if (cat.isNewIntegration && value > 0) {
-                value = `+${value}`;
+                value = `${value}`;
             } else if (mainTab === 'Ontdashboard') {
                 // Add redirection for Ontdashboard counts
                 // Use row.day as from_date and to_date
-                const url = `{{ route('admin.frequently_down_gps') }}?from_date=${row.day}&to_date=${row.day}&uptime_category=${cat.key}`;
+                const url = `{{ route('admin.frequently_down_gps') }}?from_date=${row.day}&to_date=${row.day}&uptime_category=${cat.key}&ticket_type=ont`;
                 value = `<a href="${url}" target="_blank" style="text-decoration: underline; color: inherit;">${value}</a>`;
             }
             html += `<td class="${cat.valClass || ''}">${value}</td>`;
@@ -2177,112 +2185,98 @@ function closeCsvModal() {
 
 </script>
 <script>
-    function fetchRecurringGpTrends() 
-    {
-            const fromDate = $('#recurring_from_date').val();
-            const toDate = $('#recurring_to_date').val();
 
-            $.ajax({
-                url: "{{ route('admin.get_recurring_gp_trends') }}",
-                method: "GET",
-                data: {
-                    from_date: fromDate,
-                    to_date: toDate,
-                },
-                success: function (response) {
-                    console.log("Recurring GP API Response:", response);
-                    if (!response || !response.labels || response.labels.length === 0) {
-                        console.warn("No recurring GP data found for selected date range");
-                        $('#recurringGpCount').text('0');
-                        const ctx = document.getElementById('recurringGpTrendsChart').getContext('2d');
-                        if (recurringGpsChartInstance) {
-                            recurringGpsChartInstance.destroy();
-                        }
-                        recurringGpsChartInstance = new Chart(ctx, {
-                            type: 'bar',
-                            data: { labels: ['No Data'], datasets: [{ label: 'No recurring GP data', data: [0], backgroundColor: '#ccc' }] },
-                            options: { responsive: false, maintainAspectRatio: false }
-                        });
-                        return;
-                    }
-                    renderRecurringGpsChart(response);
-                },
-                error: function (err) {
-                    console.error("Error fetching recurring GP data:", err);
-                }
-            });
+function switchRecurringType(type) {
+    activeRecurringType = type;
+
+    // Toggle button styles
+    if (type === 'ont') {
+        $('#btn-ont').removeClass('btn-outline-primary').addClass('btn-primary');
+        $('#btn-router').removeClass('btn-primary').addClass('btn-outline-primary');
+    } else {
+        $('#btn-router').removeClass('btn-outline-primary').addClass('btn-primary');
+        $('#btn-ont').removeClass('btn-primary').addClass('btn-outline-primary');
     }
-    function renderRecurringGpsChart(data) 
-       {
-                const gpCount = data.labels.length;
 
-                const barWidth = 60; 
-                const minWidth = 1200;
-                const chartWidth = Math.max(gpCount * barWidth, minWidth);
+    fetchRecurringGpTrends();
+}
 
-                const chartInner = document.getElementById('recurringChartInner');
-                const canvas = document.getElementById('recurringGpTrendsChart');
+function fetchRecurringGpTrends() {
+    const fromDate = $('#recurring_from_date').val();
+    const toDate   = $('#recurring_to_date').val();
 
-                chartInner.style.width = chartWidth + 'px';
-                canvas.width = chartWidth;
-                canvas.height = 400;
-
-                document.getElementById('recurringGpCount').innerText = gpCount;
-
-                const ctx = canvas.getContext('2d');
-
-                if (recurringGpsChartInstance) {
-                    recurringGpsChartInstance.destroy();
-                }
-
+    $.ajax({
+        url: "{{ route('admin.get_recurring_gp_trends') }}",
+        method: "GET",
+        data: {
+            from_date:   fromDate,
+            to_date:     toDate,
+            ticket_type: activeRecurringType   // <-- only change to API call
+        },
+        success: function (response) {
+            console.log("Recurring GP API Response:", response);
+            if (!response || !response.labels || response.labels.length === 0) {
+                console.warn("No recurring GP data found");
+                $('#recurringGpCount').text('0');
+                const ctx = document.getElementById('recurringGpTrendsChart').getContext('2d');
+                if (recurringGpsChartInstance) recurringGpsChartInstance.destroy();
                 recurringGpsChartInstance = new Chart(ctx, {
                     type: 'bar',
-                    data: {
-                        labels: data.labels,
-                        datasets: data.datasets
-                    },
-                    options: {
-                        responsive: false,            
-                        maintainAspectRatio: false,
-                        plugins: {
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                                filter: item => item.raw > 0
-                            },
-                            legend: {
-                                position: 'top',
-                                 align: 'start',    
-                                labels: {
-                                    boxWidth: 12,
-                                    padding: 10
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                stacked: true,
-                                ticks: {
-                                    autoSkip: false,
-                                    maxRotation: 60,
-                                    minRotation: 45
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Regularly Down GPs'
-                                }
-                            },
-                            y: {
-                                stacked: true,
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Down Count'
-                                }
-                            }
-                        }
-                    }
+                    data: { labels: ['No Data'], datasets: [{ label: 'No recurring GP data', data: [0], backgroundColor: '#ccc' }] },
+                    options: { responsive: false, maintainAspectRatio: false }
                 });
+                return;
+            }
+            renderRecurringGpsChart(response);
+        },
+        error: function (err) {
+            console.error("Error fetching recurring GP data:", err);
         }
+    });
+}
+
+function renderRecurringGpsChart(data) {
+    const gpCount    = data.labels.length;
+    const chartWidth = Math.max(gpCount * 60, 1200);
+
+    const chartInner = document.getElementById('recurringChartInner');
+    const canvas     = document.getElementById('recurringGpTrendsChart');
+
+    chartInner.style.width = chartWidth + 'px';
+    canvas.width  = chartWidth;
+    canvas.height = 400;
+
+    document.getElementById('recurringGpCount').innerText = gpCount;
+
+    const ctx = canvas.getContext('2d');
+    if (recurringGpsChartInstance) recurringGpsChartInstance.destroy();
+
+    recurringGpsChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: data.labels, datasets: data.datasets },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: { mode: 'index', intersect: false, filter: item => item.raw > 0 },
+                legend:  { position: 'top', align: 'start', labels: { boxWidth: 12, padding: 10 } }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    ticks: { autoSkip: false, maxRotation: 60, minRotation: 45 },
+                    title: { display: true, text: 'Regularly Down GPs' }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    title: { display: true, text: 'Down Count' }
+                }
+            }
+        }
+    });
+}
+
+
 </script>
 @endsection

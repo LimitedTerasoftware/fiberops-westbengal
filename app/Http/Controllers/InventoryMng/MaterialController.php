@@ -272,7 +272,7 @@ class MaterialController extends Controller
         $block_id    = $request->get('block_id');
         $issue_filter = $request->get('issue_filter');
         $uptime_category = $request->get('uptime_category');
-
+        $ticket_type = $request->get('ticket_type', 'ont'); // 'ont' or 'router'
         $districts = DB::table('districts')
             ->where('state_id', $state_id)
             ->get();
@@ -281,13 +281,29 @@ class MaterialController extends Controller
             ? DB::table('blocks')->where('district_id', $district_id)->get()
             : [];
 
-        $allIssues = DB::table('master_tickets')
-            ->whereNotNull('downreason')
-            ->where('ticketid', 'NOT LIKE', 'INC%')
-             ->whereBetween('downdate', [$from_date, $to_date])
-            ->distinct()
-            ->orderBy('downreason')
-            ->pluck('downreason');
+        // $allIssues = DB::table('master_tickets')
+        //     ->whereNotNull('downreason')
+        //     ->where('ticketid', 'NOT LIKE', 'INC%')
+        //      ->whereBetween('downdate', [$from_date, $to_date])
+        //     ->distinct()
+        //     ->orderBy('downreason')
+        //     ->pluck('downreason');
+          // Filter issues based on ticket type
+            $allIssuesQuery = DB::table('master_tickets')
+                ->whereNotNull('downreason')
+                ->whereBetween('downdate', [$from_date, $to_date]);
+
+            if ($ticket_type === 'router') {
+                $allIssuesQuery->where('ticketid', 'LIKE', 'INC%');
+            } else {
+                $allIssuesQuery->where('ticketid', 'NOT LIKE', 'INC%');
+            }
+
+            $allIssues = $allIssuesQuery->distinct()
+                ->orderBy('downreason')
+                ->pluck('downreason');
+        
+
 
          if ($uptime_category) {
                 $query = DB::table('ont_uptime')
@@ -309,8 +325,6 @@ class MaterialController extends Controller
                 }
 
                 switch ($uptime_category) {
-                     case 'total':
-                     break;
                     case 'gte98':
                         $query->where('ont_uptime.uptime_percent', '>=', 98);
                         break;
@@ -350,6 +364,15 @@ class MaterialController extends Controller
                         ->where('master_tickets.lgd_code', $row->lgd_code)
                         ->whereNotNull('master_tickets.downreason')
                         ->where('user_requests.state_id', $state_id);
+                          // Filter by ticket type
+                    if ($ticket_type === 'router') {
+                        $breakdownQuery->where('user_requests.booking_id', 'like', 'INC%');
+                    } else {
+                        $breakdownQuery->where(function($q) {
+                            $q->where('user_requests.booking_id', 'not like', 'INC%')
+                              ->orWhereNull('user_requests.booking_id');
+                        });
+                    }
 
                     // Use the record_date from the row for filtering tickets
                     if ($row->record_date) {
@@ -393,7 +416,15 @@ class MaterialController extends Controller
             ->whereNotNull('master_tickets.lgd_code')
             ->whereBetween('master_tickets.downdate', [$from_date, $to_date]);
 
-  
+
+                    if ($ticket_type === 'router') {
+                        $query->where('user_requests.booking_id', 'like', 'INC%');
+                    } else {
+                        $query->where(function($q) {
+                            $q->where('user_requests.booking_id', 'not like', 'INC%')
+                              ->orWhereNull('user_requests.booking_id');
+                        });
+                    }
 
         if ($district_id) {
 
@@ -539,21 +570,30 @@ class MaterialController extends Controller
 
             $fromDate = $request->get('from_date');
             $toDate = $request->get('to_date');
+            $ticketType = $request->get('ticket_type', 'ont'); // 'ont' or 'router'
             $query = DB::table('master_tickets')
                 ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
                 ->where('user_requests.state_id', $state_id)
                 ->whereNotNull('master_tickets.lgd_code');
-
+            
+          // Filter by ticket type based on booking_id
+            if ($ticketType === 'router') {
+                // Router tickets: booking_id LIKE 'INC%'
+                $query->where('user_requests.booking_id', 'like', 'INC%');
+            } else {
+                // ONT tickets: booking_id NOT LIKE 'INC%'
+                $query->where(function($q) {
+                    $q->where('user_requests.booking_id', 'not like', 'INC%')
+                      ->orWhereNull('user_requests.booking_id');
+                });
+            }
             if ($fromDate && $toDate) {
                 $query->whereBetween('master_tickets.downdate', [$fromDate, $toDate]);
             }
                
                 $expectedWeeks = DB::table('master_tickets')
-                ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
-                ->where('user_requests.state_id', $state_id)
-                ->whereNotNull('master_tickets.lgd_code')
-                ->whereBetween('master_tickets.downdate', [$fromDate, $toDate])
-                ->select(DB::raw('COUNT(DISTINCT YEARWEEK(master_tickets.downdate, 1)) as weeks'))
+                ->whereBetween('downdate', [$fromDate, $toDate])
+                ->select(DB::raw('COUNT(DISTINCT YEARWEEK(downdate, 1)) as weeks'))
                 ->value('weeks');
 
                 $recurringGps = $query->select(
@@ -661,6 +701,7 @@ class MaterialController extends Controller
         $block_id    = $request->get('block_id');
         $issue_filter = $request->get('issue_filter');
         $uptime_category = $request->get('uptime_category');
+        $ticket_type = $request->get('ticket_type', 'ont'); // 'ont' or 'router'
 
         $data = [];
 
@@ -728,6 +769,15 @@ class MaterialController extends Controller
                     ->where('master_tickets.lgd_code', $row->lgd_code)
                     ->whereNotNull('master_tickets.downreason')
                     ->where('user_requests.state_id', $state_id);
+                           // Filter by ticket type
+                    if ($ticket_type === 'router') {
+                        $breakdownQuery->where('user_requests.booking_id', 'like', 'INC%');
+                    } else {
+                        $breakdownQuery->where(function($q) {
+                            $q->where('user_requests.booking_id', 'not like', 'INC%')
+                              ->orWhereNull('user_requests.booking_id');
+                        });
+                    }
 
                 if ($row->record_date) {
                     $breakdownQuery->whereDate('master_tickets.downdate', $row->record_date);
@@ -791,6 +841,15 @@ class MaterialController extends Controller
             ->where('user_requests.state_id', $state_id)
             ->whereNotNull('master_tickets.lgd_code')
             ->whereBetween('master_tickets.downdate', [$from_date, $to_date]);
+            
+                    if ($ticket_type === 'router') {
+                        $query->where('user_requests.booking_id', 'like', 'INC%');
+                    } else {
+                        $query->where(function($q) {
+                            $q->where('user_requests.booking_id', 'not like', 'INC%')
+                              ->orWhereNull('user_requests.booking_id');
+                        });
+                    }
                 if ($district_id) {
 
                     $query->where('user_requests.district_id', $district_id);
