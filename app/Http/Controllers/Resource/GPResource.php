@@ -1117,6 +1117,15 @@ public function getFrtReport(Request $request)
             ->get()
             ->groupBy('provider_id');
 
+    // ================= ROUTE PATROLLING =================
+    $routePatrolling = DB::table('raise_tickets')
+        ->where('issue_sub_type', 'Route Patrolling')
+        ->whereBetween(DB::raw('DATE(created_at)'), [$fromDate, $toDate])
+        ->select('patroller_id', DB::raw('COUNT(*) as route_patrolling_count'))
+        ->groupBy('patroller_id')
+        ->get()
+        ->keyBy('patroller_id');
+
     // ================= TRACKING (SAFE MODE) =================
     $calculateDistance = $startDate->diffInDays($endDate) <= 31;
     $trackingByProvider = collect();
@@ -1136,6 +1145,7 @@ public function getFrtReport(Request $request)
 
         $att   = isset($attendance[$p->id]) ? $attendance[$p->id] : null;
         $stat  = isset($requests[$p->id]) ? $requests[$p->id] : null;
+        $rp = isset($routePatrolling[$p->id]) ? $routePatrolling[$p->id] : null;
 
         $isOnLeave = isset($leaves[$p->id]);
         if ($isOnLeave && $fromDate === $toDate) {
@@ -1189,6 +1199,7 @@ public function getFrtReport(Request $request)
             'tickets_manual_onhold' => $stat ? $stat->tickets_manual_onhold : 0,
 
             'distance' => round($distance, 2),
+            'route_patrolling' => $rp ? $rp->route_patrolling_count : 0,
             'provider_id' => $p->id,
             'fromDate' => $fromDate,
             'toDate' => $toDate

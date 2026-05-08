@@ -161,6 +161,7 @@
                         <th>Auto Completed</th>
                         <th>Ongoing</th>
                         <th>ON HOLD</th>
+                        <th>Route Patrolling</th>
                         <th>Selfie Captured (Y/N)</th>
                         <!--<th>Avg TAT (hrs)</th>
                         <th>SLA Breaches</th>-->
@@ -182,7 +183,7 @@
 
 @section('scripts')
 
-<script>
+<!-- <script>
 document.getElementById('resetFilters').addEventListener('click', function() {
     // Reset all filters
     document.getElementById('searchzonelist').value = "";
@@ -193,10 +194,10 @@ document.getElementById('resetFilters').addEventListener('click', function() {
     document.getElementById('generated_type').value = "";
 
 
-    // Reload the page without filters
-    //window.location.href = "{{ route('admin.reports') }}";
+    Reload the page without filters
+    window.location.href = "{{ route('admin.reports') }}";
 });
-</script>
+</script> -->
 
 <script>
 $(document).ready(function() {
@@ -511,6 +512,7 @@ $(document).ready(function () {
                 }
 
             },
+            {data:'route_patrolling',name:"route_patrolling"},
             { data: 'selfie', name: 'selfie' },
         ],
         scrollX: true,
