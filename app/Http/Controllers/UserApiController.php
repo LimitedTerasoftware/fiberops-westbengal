@@ -4186,7 +4186,7 @@ public function get_employee_list(Request $request)
                 'p.first_name',
                 'p.last_name',
                 'p.mobile as phone_number'
-            )->where('p.type',2)->where('p.status','approved');
+            )->where('p.status','approved');
 
         if (!empty($district_code)) {
             $query->where('d.district_code', $district_code);
@@ -4311,6 +4311,40 @@ private function processTicketData(array $jsonData)
     DB::beginTransaction();
 
     try {
+        $districtMap = DB::table('districts')
+            ->pluck('id', 'name')
+            ->mapWithKeys(function ($v, $k) {
+                return [strtolower(trim($k)) => $v];
+            });
+
+        $blockMap = DB::table('blocks')
+            ->get()
+            ->groupBy('district_id')
+            ->map(function ($blocks) {
+                return $blocks->pluck('id', 'name')
+                    ->mapWithKeys(function ($v, $k) {
+                        return [strtolower(trim($k)) => $v];
+                    });
+            });
+
+        $gpMap = DB::table('gp_list')
+                ->get()
+                ->groupBy(function ($item) {
+                    return $item->district_id . '_' . $item->block_id;
+                })
+                ->map(function ($gps) {
+                    return $gps->mapWithKeys(function ($gp) {
+                        return [
+                            strtolower(trim($gp->gp_name)) => [
+                                'lgd_code' => $gp->lgd_code,
+                                'state_id' => $gp->state_id,
+                                'district_id' => $gp->district_id,
+                                'block_id' => $gp->block_id,
+                            ]
+                        ];
+                    });
+                });
+
 
         foreach ($jsonData as $index => $keyvalue) {
 
@@ -4353,12 +4387,92 @@ private function processTicketData(array $jsonData)
                 ];
                 continue;
             }
+            $districtName = strtolower(trim($keyvalue['district'] ?? ''));
+            $blockName    = strtolower(trim($keyvalue['mandal'] ?? ''));
+            $gpname       = strtolower(trim($keyvalue['gname'] ?? ''));
+
+            $districtDisplayName = $keyvalue['district'] ?? null;
+            $blockDisplayName    = $keyvalue['mandal'] ?? null;
+            $gpDisplayName       = $keyvalue['gname'] ?? null;
+
+            $district_id = null;
+            $block_id    = null;
+            $lgd_code    = null;
+            $stateId = null;
+
+            if ($districtName && isset($districtMap[$districtName])) {
+                $district_id = $districtMap[$districtName];
+            }
+
+            if ($district_id && $blockName && isset($blockMap[$district_id][$blockName])) {
+                $block_id = $blockMap[$district_id][$blockName];
+            }
+
+            if ($district_id && $block_id && $gpname) {
+                $key = $district_id . '_' . $block_id;
+
+               
+                if (isset($gpMap[$key][$gpname])) {
+                    $gpData = $gpMap[$key][$gpname];
+
+                    $lgd_code = $gpData['lgd_code'];
+                    $stateId  = $gpData['state_id'];
+                }
+
+            }
+            if (!$lgd_code) {
+                $popKey = $keyvalue['pop_map_key'] ?? '';
+
+                if (preg_match('/-(B?\d+)-/', $popKey, $matches)) {
+                    $lgd_code = $matches[1];
+
+                    $gpData = DB::table('gp_list')
+                        ->leftJoin('districts', 'districts.id', '=', 'gp_list.district_id')
+                        ->leftJoin('blocks', 'blocks.id', '=', 'gp_list.block_id')
+                        ->where('gp_list.lgd_code', $lgd_code)
+                        ->select(
+                            'gp_list.district_id',
+                            'gp_list.block_id',
+                            'gp_list.state_id',
+                            'gp_list.gp_name',
+                            'districts.name as district_name',
+                            'blocks.name as block_name'
+                        )
+                        ->first();
+
+                    if ($gpData) {
+                        $district_id = $gpData->district_id;
+                        $block_id    = $gpData->block_id;
+                        $stateId     = $gpData->state_id;
+
+                        $districtDisplayName = $gpData->district_name;
+                        $blockDisplayName    = $gpData->block_name;
+                        $gpDisplayName       = $gpData->gp_name;
+
+                        $districtName = strtolower(trim($gpData->district_name));
+                        $blockName    = strtolower(trim($gpData->block_name));
+                        $gpname       = strtolower(trim($gpData->gp_name));
+                    }
+                }
+            }
+
+
+
+            if (!$lgd_code) {
+                Log::warning('LGD not found', [
+                    'district' => $districtName,
+                    'block'    => $blockName,
+                    'gp'       => $gpname,
+                    'pop_key'  => $keyvalue['pop_map_key'] ?? null
+                ]);
+            }
 
             //  Prepare master ticket data
             $data = [
-                'district' => $keyvalue['district'],
-                'mandal' => $keyvalue['mandal'],
-                'gpname' => $keyvalue['gname'],
+                'district' => $districtDisplayName,
+                'mandal' => $blockDisplayName,
+                'gpname' => $gpDisplayName,
+                'lgd_code' => $lgd_code,
                 'lat' => $keyvalue['lat'],
                 'log' => $keyvalue['log'],
                 'downtime' => $keyvalue['downtime'],
@@ -4420,9 +4534,11 @@ private function processTicketData(array $jsonData)
 
             $UserRequest = new UserRequests;
             $UserRequest->booking_id = $ticketId;
-            $UserRequest->gpname = $keyvalue['gname'];
+            $UserRequest->gpname = $gpDisplayName;
             $UserRequest->downreason = $keyvalue['downreasonindetailed'];
             $UserRequest->downreasonindetailed = $keyvalue['downreasonindetailed'];
+            $UserRequest->district_id = $district_id;
+            $UserRequest->state_id= $stateId;
             $UserRequest->user_id = 45;
             $UserRequest->provider_id = $provider->id;
             $UserRequest->current_provider_id = $provider->id;
@@ -4662,7 +4778,7 @@ public function getticketstatus(Request $request)
    private function mapStatus($status)
 {
     return [
-        1 => 'ACCEPTED',
+        1 => 'PICKEDUP',
         2 => 'ONHOLD',
         3 => 'PICKEDUP',
         4 => 'INCOMING',
