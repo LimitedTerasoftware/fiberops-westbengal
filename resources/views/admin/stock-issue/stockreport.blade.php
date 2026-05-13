@@ -903,7 +903,13 @@
             <div class="sr-filter-group">
                 <label>Employee</label>
                 <select name="employee_id" id="emp">
-                    <option value="">Search employee...</option>
+                    <option value="">Select Employee...</option>
+                    @foreach($employees ?? [] as $employee)
+                        <option value="{{ $employee->id }}"
+                            {{ request('employee_id') == $employee->id ? 'selected' : '' }}>
+                            {{ $employee->first_name }} {{ $employee->last_name }}
+                        </option>
+                    @endforeach
                 </select>
             </div>
 
@@ -1135,7 +1141,7 @@ document.getElementById('district_id').addEventListener('change', function () {
         .then(data => {
             if (data.success) {
                 empSelect.innerHTML = '<option value="">All Employees</option>';
-                data.employees.forEach(emp => {
+                data.employees.filter(emp=>emp.type === 2).forEach(emp => {
                     empSelect.innerHTML += `<option value="${emp.id}">${emp.first_name} ${emp.last_name}</option>`;
                 });
             } else {
@@ -1185,7 +1191,9 @@ function loadSerialDetails(itemJson) {
             if (serial.issued_indents && serial.issued_indents.length > 0) {
                 html += `<div class="sr-ticket-list"><span class="sr-ticket-label">Issued (Indent-wise)</span>`;
                 serial.issued_indents.forEach(ind => {
-                    html += `<div class="sr-ticket-item"><i class="fa fa-file-text"></i>Indent ${ind.indent_no}: <strong>${Number(ind.qty).toFixed(2)}</strong></div>`;
+                    html += `<div class="sr-ticket-item"><i class="fa fa-file-text"></i>Indent ${ind.indent_no}: <strong>${Number(ind.qty).toFixed(2)}</strong> <strong>
+                (${new Date(ind.issue_date).toLocaleDateString('en-GB')})
+                </strong></div>`;
                 });
                 html += `</div>`;
             }
@@ -1193,7 +1201,9 @@ function loadSerialDetails(itemJson) {
             if (serial.tickets && serial.tickets.length > 0) {
                 html += `<div class="sr-ticket-list"><span class="sr-ticket-label">Usage by Ticket</span>`;
                 serial.tickets.forEach(ticket => {
-                    html += `<div class="sr-ticket-item"><i class="fa fa-ticket"></i><strong>Ticket ${ticket.ticket_id || 'N/A'}</strong>: <span style="color:var(--danger);font-weight:600;">${parseFloat(ticket.used).toFixed(2)}</span></div>`;
+                    html += `<div class="sr-ticket-item"><i class="fa fa-ticket"></i><strong>Ticket ${ticket.ticket_id || 'N/A'}</strong>: <span style="color:var(--danger);font-weight:600;">${parseFloat(ticket.used).toFixed(2)}</span>  <strong>
+                (${new Date(ticket.issue_date).toLocaleDateString('en-GB')})
+                </strong></div>`;
                 });
                 html += `</div>`;
             }
@@ -1221,7 +1231,9 @@ function loadSerialDetails(itemJson) {
         if (item.issued_indents && item.issued_indents.length > 0) {
             html += `<div class="sr-ticket-list"><span class="sr-ticket-label">Issued (Indent-wise)</span>`;
             item.issued_indents.forEach(ind => {
-                html += `<div class="sr-ticket-item"><i class="fa fa-file-text"></i>Indent ${ind.indent_no}: <strong>${Number(ind.qty).toFixed(2)}</strong></div>`;
+                html += `<div class="sr-ticket-item"><i class="fa fa-file-text"></i>Indent ${ind.indent_no}: <strong>${Number(ind.qty).toFixed(2)}</strong> <strong>
+                (${new Date(ind.issue_date).toLocaleDateString('en-GB')})
+                </strong></div>`;
             });
             html += `</div>`;
         }
@@ -1229,7 +1241,9 @@ function loadSerialDetails(itemJson) {
         if (item.tickets && item.tickets.length > 0) {
             html += `<div class="sr-ticket-list"><span class="sr-ticket-label">Usage by Ticket</span>`;
             item.tickets.forEach(ticket => {
-                html += `<div class="sr-ticket-item"><i class="fa fa-ticket"></i><strong>Ticket ${ticket.ticket_id || 'N/A'}</strong>: <span style="color:var(--danger);font-weight:600;">${parseFloat(ticket.used).toFixed(2)}</span></div>`;
+                html += `<div class="sr-ticket-item"><i class="fa fa-ticket"></i><strong>Ticket ${ticket.ticket_id || 'N/A'}</strong>: <span style="color:var(--danger);font-weight:600;">${parseFloat(ticket.used).toFixed(2)}</span>  <strong>
+                (${new Date(ticket.issue_date).toLocaleDateString('en-GB')})
+                </strong></div>`;
             });
             html += `</div>`;
         } else {

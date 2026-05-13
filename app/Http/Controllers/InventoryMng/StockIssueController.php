@@ -958,6 +958,10 @@ public function employeeStockReport(Request $request)
     foreach ($ledgerRows as $row) {
 
         $key = $row->employee_id . '_' . $row->material_id;
+        $ledgerDate = $row->issue_date
+                        ? \Carbon\Carbon::parse($row->issue_date)->format('Y-m-d')
+                        : ($row->created_at ? \Carbon\Carbon::parse($row->created_at)->format('Y-m-d') : null);
+
 
         if (!isset($report[$key])) {
             $report[$key] = [
@@ -984,18 +988,35 @@ public function employeeStockReport(Request $request)
 
             if ($row->transaction_type === 'ISSUE') {
                 $report[$key]['issued'] += $row->quantity;
-                $indent = $row->indent_no ? : '-';
-                $report[$key]['issued_indents'][$indent]=
-                 ($report[$key]['issued_indents'][$indent] ?? 0)  + $row->quantity;
+
+                 $indent = $row->indent_no ?: '-';
+
+                if (!isset($report[$key]['issued_indents'][$indent])) {
+                    $report[$key]['issued_indents'][$indent] = [
+                        'qty' => 0,
+                        'issue_date' => $ledgerDate
+                    ];
+                }
+
+                $report[$key]['issued_indents'][$indent]['qty'] += $row->quantity;
+
             }
 
             if ($row->transaction_type === 'USED') {
                 $report[$key]['used'] += $row->quantity;
 
+              
                 if ($row->ticket_id) {
-                    $report[$key]['tickets'][$row->ticket_id] =
-                        ($report[$key]['tickets'][$row->ticket_id] ?? 0) + $row->quantity;
+                    if (!isset($report[$key]['tickets'][$row->ticket_id])) {
+                        $report[$key]['tickets'][$row->ticket_id] = [
+                            'used' => 0,
+                            'issue_date' => $ledgerDate
+                        ];
+                    }
+
+                    $report[$key]['tickets'][$row->ticket_id]['used'] += $row->quantity;
                 }
+
                 if (!empty($row->created_at)) {
                     if (
                         !$report[$key]['last_used'] ||
@@ -1029,9 +1050,15 @@ public function employeeStockReport(Request $request)
                 $report[$key]['issued'] += $row->quantity;
                 $indent = $row->indent_no ?: 'N/A';
 
-                $report[$key]['serials'][$serialKey]['issued_indents'][$indent] =
-                    ($report[$key]['serials'][$serialKey]['issued_indents'][$indent] ?? 0)
-                    + $row->quantity;
+                    if (!isset($report[$key]['serials'][$serialKey]['issued_indents'][$indent])) {
+                        $report[$key]['serials'][$serialKey]['issued_indents'][$indent] = [
+                            'qty' => 0,
+                            'issue_date' => $ledgerDate
+                        ];
+                    }
+
+                    $report[$key]['serials'][$serialKey]['issued_indents'][$indent]['qty'] += $row->quantity;
+
 
             }
 
@@ -1039,11 +1066,18 @@ public function employeeStockReport(Request $request)
                 $report[$key]['serials'][$serialKey]['used'] += $row->quantity;
                 $report[$key]['used'] += $row->quantity;
 
+            
                 if ($row->ticket_id) {
-                    $report[$key]['serials'][$serialKey]['tickets'][$row->ticket_id] =
-                        ($report[$key]['serials'][$serialKey]['tickets'][$row->ticket_id] ?? 0)
-                        + $row->quantity;
+                    if (!isset($report[$key]['serials'][$serialKey]['tickets'][$row->ticket_id])) {
+                        $report[$key]['serials'][$serialKey]['tickets'][$row->ticket_id] = [
+                            'used' => 0,
+                            'issue_date' => $ledgerDate
+                        ];
+                    }
+
+                    $report[$key]['serials'][$serialKey]['tickets'][$row->ticket_id]['used'] += $row->quantity;
                 }
+
                 if (!empty($row->created_at)) {
                     if (
                         !$report[$key]['last_used'] ||
@@ -1065,34 +1099,45 @@ public function employeeStockReport(Request $request)
     foreach ($report as &$row) {
         // ---- issued_indents (non-serial)
         $issuedIndents = [];
-        foreach ($row['issued_indents'] as $indent => $qty) {
+
+        foreach ($row['issued_indents'] as $indent => $data) {
             $issuedIndents[] = [
-                'indent_no' => $indent,
-                'qty'       => $qty
+                'indent_no'  => $indent,
+                'qty'        => $data['qty'],
+                'issue_date' => $data['issue_date']
             ];
         }
+
         $row['issued_indents'] = $issuedIndents;
+
         // ---- serials normalize
         foreach ($row['serials'] as &$s) {
-
             $indents = [];
-            foreach ($s['issued_indents'] as $indent => $qty) {
-                $indents[] = [
-                    'indent_no' => $indent,
-                    'qty'       => $qty
-                ];
-            }
-            $s['issued_indents'] = $indents;
 
-            // tickets normalize (already grouped)
-            $tickets = [];
-            foreach ($s['tickets'] as $ticketId => $qty) {
-                $tickets[] = [
-                    'ticket_id' => $ticketId,
-                    'used'      => $qty
+            foreach ($s['issued_indents'] as $indent => $data) {
+                $indents[] = [
+                    'indent_no'  => $indent,
+                    'qty'        => $data['qty'],
+                    'issue_date' => $data['issue_date']
                 ];
             }
+
+            $s['issued_indents'] = $indents;
+            // tickets normalize (already grouped)
+
+            $tickets = [];
+
+            foreach ($s['tickets'] as $ticketId => $data) {
+                $tickets[] = [
+                    'ticket_id'  => $ticketId,
+                    'used'       => $data['used'],
+                    'issue_date' => $data['issue_date']
+                ];
+            }
+
             $s['tickets'] = $tickets;
+
+      
         }
 
 
@@ -1100,14 +1145,19 @@ public function employeeStockReport(Request $request)
         $row['balance'] = $row['issued'] - $row['used'];
 
         // tickets ,indexed array
+
         $tickets = [];
-        foreach ($row['tickets'] as $ticketId => $qty) {
+
+        foreach ($row['tickets'] as $ticketId => $data) {
             $tickets[] = [
-                'ticket_id' => $ticketId,
-                'used'      => $qty
+                'ticket_id'  => $ticketId,
+                'used'       => $data['used'],
+                'issue_date' => $data['issue_date']
             ];
         }
+
         $row['tickets'] = $tickets;
+
 
         // serials,indexed
         $row['serials'] = array_values($row['serials']);
