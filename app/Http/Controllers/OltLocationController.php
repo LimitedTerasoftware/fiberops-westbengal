@@ -871,10 +871,11 @@ public function GprouterData(Request $request)
         ->selectRaw('SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
         ->selectRaw('SUM(CASE WHEN uptime_percent > 0 AND uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
         ->selectRaw('SUM(CASE WHEN uptime_percent = 0 THEN 1 ELSE 0 END) as zero_availability')
-        ->selectRaw('ROUND(SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN uptime_percent > 0 THEN 1 ELSE 0 END), 0) * 100, 2) as pct_gte98')
+        ->selectRaw('ROUND(AVG(uptime_percent), 2) as pct_gte98')
         ->groupBy('day')
         ->orderBy('day', 'asc')
         ->get();
+
 
     $lgdCodesByDay = GpRouterUptime::query()
         ->join('gp_list', 'gp_list.lgd_code', '=', 'gp_router_uptime.lgd_code')
@@ -930,17 +931,23 @@ public function GprouterData(Request $request)
 
     $data = collect($dataArray);
 
+
+
     $averages = [
-        'total'            => round($data->avg('total'), 2),
-        'gte98'           => round($data->avg('gte98'), 2),
-        'lt98'            => round($data->avg('lt98'), 2),
+        'total'     => round($data->avg('total'), 2),
+        'gte98'     => round($data->avg('gte98'), 2),
+        'lt98'      => round($data->avg('lt98'), 2),
         'zero_availability' => round($data->avg('zero_availability'), 2),
-        'pct_gte98'       => round($data->avg('pct_gte98'), 2),
+        'pct_gte98' => round($data->avg('pct_gte98'), 2),
     ];
+       
 
     return response()->json([
         'data' => $data,
         'averages' => $averages,
+             
+        
+
     ]);
 }
 
@@ -1026,11 +1033,10 @@ public function BlockrouterData(Request $request)
         ->selectRaw('SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
         ->selectRaw('SUM(CASE WHEN uptime_percent > 0 AND uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
         ->selectRaw('SUM(CASE WHEN uptime_percent = 0 THEN 1 ELSE 0 END) as zero_availability')
-        ->selectRaw('ROUND(SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN uptime_percent > 0 THEN 1 ELSE 0 END), 0) * 100, 2) as pct_gte98')
-        ->groupBy('day')
+        ->selectRaw('ROUND(AVG(uptime_percent), 2) as pct_gte98')
+         ->groupBy('day')
         ->orderBy('day', 'asc')
         ->get();
-
     $lgdCodesByDay = BlockRouterUptime::query()
         ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
         ->join('districts', 'blocks.district_id', '=', 'districts.id')
@@ -1085,14 +1091,15 @@ public function BlockrouterData(Request $request)
 
     $data = collect($dataArray);
 
-    $averages = [
-        'total'              => round($data->avg('total'), 2),
-        'gte98'              => round($data->avg('gte98'), 2),
-        'lt98'               => round($data->avg('lt98'), 2),
-        'zero_availability'  => round($data->avg('zero_availability'), 2),
-        'pct_gte98'          => round($data->avg('pct_gte98'), 2),
-    ];
 
+    $averages = [
+        'total'     => round($data->avg('total'), 2),
+        'gte98'     => round($data->avg('gte98'), 2),
+        'lt98'      => round($data->avg('lt98'), 2),
+        'pct_gte98' => round($data->avg('pct_gte98'), 2),
+        'zero_availability'  => round($data->avg('zero_availability'), 2),
+
+    ];
     return response()->json([
         'data' => $data,
         'averages' => $averages
