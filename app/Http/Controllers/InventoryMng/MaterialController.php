@@ -10,6 +10,9 @@ use Session;
 use DB;
 use Excel;
 use Carbon\Carbon;
+use App\GpRouterUptime;
+use App\BlockRouterUptime;
+use App\OltUptime;
 
 class MaterialController extends Controller
 {
@@ -259,6 +262,90 @@ class MaterialController extends Controller
             ], 500);
         }
     }
+private function applyIntegrationFilter($query, string $table)
+{
+    return $query->whereNotExists(function ($sub) use ($table) {
+        $sub->select(DB::raw(1))
+            ->from($table . ' as prev')
+            ->whereColumn('prev.lgd_code', $table . '.lgd_code')
+            ->whereRaw("prev.record_date >= DATE_SUB(DATE({$table}.record_date), INTERVAL 1 DAY)")
+            ->whereRaw("prev.record_date < DATE({$table}.record_date)");
+    });
+}
+private function attachTicketBreakdowns($results, $state_id, $ticket_type = 'router')
+{
+    $items = method_exists($results, 'getCollection')
+        ? $results->getCollection()
+        : collect($results);
+
+    if ($items->isEmpty()) {
+        return $results;
+    }
+
+    $lgdCodes = $items->pluck('lgd_code')->unique()->values();
+
+  $dates = $items->pluck('record_date')
+            ->map(function ($date) {
+                return Carbon::parse($date)->toDateString();
+            })
+            ->unique()
+            ->values();
+
+
+    $breakdownRows = DB::table('master_tickets')
+        ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
+        ->select(
+            'master_tickets.lgd_code',
+            DB::raw('DATE(master_tickets.downdate) as day'),
+            'master_tickets.downreason',
+            DB::raw('COUNT(*) as count')
+        )
+        ->where('user_requests.state_id', $state_id)
+        ->whereIn('master_tickets.lgd_code', $lgdCodes)
+        ->whereBetween('master_tickets.downdate', [
+            $dates->min() . ' 00:00:00',
+            $dates->max() . ' 23:59:59',
+        ])
+        ->whereNotNull('master_tickets.downreason');
+
+    if ($ticket_type === 'router') {
+        $breakdownRows->where('user_requests.booking_id', 'like', 'INC%');
+    } else {
+        $breakdownRows->where('user_requests.booking_id', 'not like', 'INC%');
+    }
+
+    $breakdownRows = $breakdownRows
+        ->groupBy(
+            'master_tickets.lgd_code',
+            DB::raw('DATE(master_tickets.downdate)'),
+            'master_tickets.downreason'
+        )
+        ->orderBy('count', 'desc')
+        ->get()
+       ->groupBy(function ($row) {
+                return $row->lgd_code . '|' . $row->day;
+            });
+
+
+    $items->transform(function ($row) use ($breakdownRows) {
+        $day = Carbon::parse($row->record_date)->toDateString();
+        $key = $row->lgd_code . '|' . $day;
+
+        $row->breakdown = $breakdownRows->get($key, collect());
+        $row->ticket_count = $row->breakdown->sum('count');
+
+        return $row;
+    });
+
+    if (method_exists($results, 'setCollection')) {
+        $results->setCollection($items);
+        return $results;
+    }
+
+    return $items;
+}
+
+
 
  public function getFrequentlyDownGps(Request $request)
 {
@@ -272,7 +359,11 @@ class MaterialController extends Controller
         $block_id    = $request->get('block_id');
         $issue_filter = $request->get('issue_filter');
         $uptime_category = $request->get('uptime_category');
-        $ticket_type = $request->get('ticket_type', 'ont'); // 'ont' or 'router'
+        $ticket_type = $request->get('ticket_type', 'ont'); // 'ont',gprouter or 'router'
+        $sammriddh = $request->get('samriddh', false);
+        $router_category = $request->get('router_category', null);
+        $Blockrouter_category = $request->get('Blockrouter_category', null);
+        $OLT_category = $request->get('OLT_category', null);
         $districts = DB::table('districts')
             ->where('state_id', $state_id)
             ->get();
@@ -280,23 +371,125 @@ class MaterialController extends Controller
         $blocks = $district_id
             ? DB::table('blocks')->where('district_id', $district_id)->get()
             : [];
+        if($Blockrouter_category){
+              $query = BlockRouterUptime::query()
+                        ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
+                        ->join('districts', 'blocks.district_id', '=', 'districts.id')
+                        ->where('districts.state_id', $state_id);
+               if ($from_date && $to_date) {
+                    $query->whereBetween('block_router_uptime.record_date', [$from_date, $to_date]);
+                }
 
-        // $allIssues = DB::table('master_tickets')
-        //     ->whereNotNull('downreason')
-        //     ->where('ticketid', 'NOT LIKE', 'INC%')
-        //      ->whereBetween('downdate', [$from_date, $to_date])
-        //     ->distinct()
-        //     ->orderBy('downreason')
-        //     ->pluck('downreason');
+                if ($district_id) {
+                    $query->where('blocks.district_id', $district_id);
+                }
+
+                if ($block_id) {
+                    $query->where('blocks.id', $block_id);
+                }
+
+                switch ($Blockrouter_category) {
+                    case 'gte98':
+                        $query->where('block_router_uptime.uptime_percent', '>=', 98);
+                        break;
+                    case 'lt98':
+                        $query->where('block_router_uptime.uptime_percent', '>', 0)->where('block_router_uptime.uptime_percent', '<', 98);
+                        break;
+                    case 'zero_availability':
+                        $query->where('block_router_uptime.uptime_percent', '=', 0);
+                        break;
+                   case 'integration':
+                    $this->applyIntegrationFilter($query, 'block_router_uptime');
+                    break;
+
+                 }
+                $results = $query->select(
+                    'block_router_uptime.lgd_code',
+                    'districts.name as district',
+                    'blocks.name as mandal',
+                    'blocks.name as gpname',
+                    'block_router_uptime.uptime_percent',
+                    'block_router_uptime.record_date'
+                )
+                ->orderBy('block_router_uptime.uptime_percent', 'asc')
+                ->paginate(15);
+
+                $is_uptime_report = true;
+                $allIssues = [];
+
+                return view('admin.reports.frequently_down_gps', compact('results', 'districts', 'blocks', 'from_date', 'to_date', 'district_id', 'block_id',  'issue_filter', 'allIssues', 'is_uptime_report', 'Blockrouter_category','ticket_type', 'sammriddh'));
+
+
+        }
+        if($OLT_category){
+                $query = OltUptime::query()
+                        ->join('olt_locations', 'olt_locations.lgd_code', '=', 'olt_uptime.lgd_code')
+                        ->join('districts','olt_locations.district_id','=','districts.id')
+                        ->join('blocks','olt_locations.block_id','=','blocks.id')
+                        ->where('olt_locations.state_id', $state_id);
+                       
+               if ($from_date && $to_date) {
+                    $query->whereBetween('olt_uptime.record_date', [$from_date, $to_date]);
+                }
+
+                if ($district_id) {
+                    $query->where('olt_locations.district_id', $district_id);
+                }
+
+                if ($block_id) {
+                    $query->where('blocks.id', $block_id);
+                }
+
+                switch ($OLT_category) {
+                       case 'gte98':
+                        $query->where('olt_uptime.uptime_percent', '>=', 98);
+                        break;
+                    case 'gte90':
+                        $query->where('olt_uptime.uptime_percent', '>=', 90)->where('olt_uptime.uptime_percent', '<', 98);
+                        break;
+                    case 'gte75':
+                        $query->where('olt_uptime.uptime_percent', '>=', 75)->where('olt_uptime.uptime_percent', '<', 90);
+                        break;
+                    case 'gte50':
+                        $query->where('olt_uptime.uptime_percent', '>=', 50)->where('olt_uptime.uptime_percent', '<', 75);
+                        break;
+                    case 'gte20':
+                        $query->where('olt_uptime.uptime_percent', '>=', 20)->where('olt_uptime.uptime_percent', '<', 50);
+                        break;
+                    case 'lt20':
+                        $query->where('olt_uptime.uptime_percent', '<', 20);
+                        break;
+                 }
+                $results = $query->select(
+                    'olt_uptime.lgd_code',
+                    'olt_locations.olt_location as gpname',
+                    'districts.name as district',
+                    'blocks.name as mandal',
+                    'olt_uptime.uptime_percent',
+                    'olt_uptime.record_date'
+                )
+                ->orderBy('olt_uptime.uptime_percent', 'asc')
+                ->paginate(15);
+
+                $is_uptime_report = true;
+                $allIssues = [];
+
+                return view('admin.reports.frequently_down_gps', compact('results', 'districts', 'blocks', 'from_date', 'to_date', 'district_id', 'block_id',  'issue_filter', 'allIssues', 'is_uptime_report', 'OLT_category','ticket_type', 'sammriddh'));
+
+
+        }
+
+     
           // Filter issues based on ticket type
             $allIssuesQuery = DB::table('master_tickets')
                 ->whereNotNull('downreason')
                 ->whereBetween('downdate', [$from_date, $to_date]);
 
-            if ($ticket_type === 'router') {
-                $allIssuesQuery->where('ticketid', 'LIKE', 'INC%');
-            } else {
+            if ($ticket_type === 'ont') {
                 $allIssuesQuery->where('ticketid', 'NOT LIKE', 'INC%');
+            } else {
+                $allIssuesQuery->where('ticketid', 'LIKE', 'INC%');
+
             }
 
             $allIssues = $allIssuesQuery->distinct()
@@ -305,12 +498,15 @@ class MaterialController extends Controller
         
 
 
-         if ($uptime_category) {
+        if ($uptime_category) {
                 $query = DB::table('ont_uptime')
                     ->join('gp_list', 'ont_uptime.lgd_code', '=', 'gp_list.lgd_code')
                     ->join('districts', 'gp_list.district_id', '=', 'districts.id')
                     ->join('blocks', 'gp_list.block_id', '=', 'blocks.id')
                     ->where('gp_list.state_id', $state_id);
+                if ($sammriddh) {
+                    $query->where('gp_list.samridh_stat', 1);
+                }
 
                 if ($from_date && $to_date) {
                     $query->whereBetween('ont_uptime.record_date', [$from_date, $to_date]);
@@ -344,6 +540,24 @@ class MaterialController extends Controller
                         $query->where('ont_uptime.uptime_percent', '<', 20);
                         break;
                 }
+                if ($issue_filter) {
+                    $query->whereExists(function ($sub) use ($issue_filter, $state_id, $ticket_type) {
+                        $sub->select(DB::raw(1))
+                            ->from('master_tickets as mt')
+                            ->join('user_requests as ur', 'mt.ticketid', '=', 'ur.booking_id')
+                            ->whereColumn('mt.lgd_code', 'gp_list.lgd_code')
+                            ->where('mt.downreason', $issue_filter)
+                            ->where('ur.state_id', $state_id)
+                            ->whereRaw('DATE(mt.downdate) = ont_uptime.record_date');
+
+                        if ($ticket_type === 'router') {
+                            $sub->where('ur.booking_id', 'like', 'INC%');
+                        } else {
+                            $sub->where('ur.booking_id', 'not like', 'INC%');
+                        }
+                    });
+                }
+
 
                 $results = $query->select(
                     'gp_list.lgd_code',
@@ -356,44 +570,82 @@ class MaterialController extends Controller
                     ->orderBy('ont_uptime.uptime_percent', 'asc')
                     ->paginate(15);
 
-                // Populate Breakdown for Uptime Report
-                foreach ($results as $row) {
-                    $breakdownQuery = DB::table('master_tickets')
-                        ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
-                        ->select('master_tickets.downreason', DB::raw('COUNT(*) as count'))
-                        ->where('master_tickets.lgd_code', $row->lgd_code)
-                        ->whereNotNull('master_tickets.downreason')
-                        ->where('user_requests.state_id', $state_id);
-                          // Filter by ticket type
-                    if ($ticket_type === 'router') {
-                        $breakdownQuery->where('user_requests.booking_id', 'like', 'INC%');
-                    } else {
-                        $breakdownQuery->where(function($q) {
-                            $q->where('user_requests.booking_id', 'not like', 'INC%')
-                              ->orWhereNull('user_requests.booking_id');
-                        });
-                    }
-
-                    // Use the record_date from the row for filtering tickets
-                    if ($row->record_date) {
-                        $breakdownQuery->whereDate('master_tickets.downdate', $row->record_date);
-                    } elseif ($from_date && $to_date) {
-                        $breakdownQuery->whereBetween('master_tickets.downdate', [$from_date, $to_date]);
-                    }
-
-                    $breakdown = $breakdownQuery->groupBy('master_tickets.downreason')
-                        ->orderBy('count', 'desc')
-                        ->get();
-
-                    $row->breakdown = $breakdown;
-                    $row->ticket_count = $breakdown->sum('count');
-                }
+               $results = $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
 
                 $is_uptime_report = true;
 
-                return view('admin.reports.frequently_down_gps', compact('results', 'districts', 'blocks', 'from_date', 'to_date', 'district_id', 'block_id',  'issue_filter', 'allIssues', 'is_uptime_report', 'uptime_category'));
+                return view('admin.reports.frequently_down_gps', compact('results', 'districts', 'blocks', 'from_date', 'to_date', 'district_id', 'block_id',  'issue_filter', 'allIssues', 'is_uptime_report', 'router_category','ticket_type', 'sammriddh'));
 
-            }
+        }
+        if($router_category){
+              $query = GpRouterUptime::query()
+                        ->join('gp_list', 'gp_list.lgd_code', '=', 'gp_router_uptime.lgd_code')
+                        ->join('districts', 'gp_list.district_id', '=', 'districts.id')
+                        ->join('blocks', 'gp_list.block_id', '=', 'blocks.id')
+                        ->where('gp_list.state_id', $state_id);
+               if ($from_date && $to_date) {
+                    $query->whereBetween('gp_router_uptime.record_date', [$from_date, $to_date]);
+                }
+
+                if ($district_id) {
+                    $query->where('gp_list.district_id', $district_id);
+                }
+
+                if ($block_id) {
+                    $query->where('gp_list.block_id', $block_id);
+                }
+
+                switch ($router_category) {
+                    case 'gte98':
+                        $query->where('gp_router_uptime.uptime_percent', '>=', 98);
+                        break;
+                    case 'lt98':
+                        $query->where('gp_router_uptime.uptime_percent', '>', 0)->where('gp_router_uptime.uptime_percent', '<', 98);
+                        break;
+                    case 'zero_availability':
+                        $query->where('gp_router_uptime.uptime_percent', '=', 0);
+                        break;
+                   case 'integration':
+                    $this->applyIntegrationFilter($query, 'gp_router_uptime');
+                    break;
+                 }
+            
+
+                if ($issue_filter) {
+                    $query->whereExists(function ($sub) use ($issue_filter, $state_id) {
+                        $sub->select(DB::raw(1))
+                            ->from('master_tickets as mt')
+                            ->join('user_requests as ur', 'mt.ticketid', '=', 'ur.booking_id')
+                            ->whereColumn('mt.lgd_code', 'gp_list.lgd_code')
+                            ->where('mt.downreason', $issue_filter)
+                            ->where('ur.state_id', $state_id)
+                            ->whereRaw('DATE(mt.downdate) = gp_router_uptime.record_date')
+                            ->where('ur.booking_id', 'like', 'INC%');
+                        });
+                }
+
+
+                $results = $query->select(
+                    'gp_list.lgd_code',
+                    'gp_list.gp_name as gpname',
+                    'districts.name as district',
+                    'blocks.name as mandal',
+                    'gp_router_uptime.uptime_percent',
+                    'gp_router_uptime.record_date'
+                )
+                    ->orderBy('gp_router_uptime.uptime_percent', 'asc')
+                    ->paginate(15);
+
+                $results = $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
+
+
+                $is_uptime_report = true;
+
+                return view('admin.reports.frequently_down_gps', compact('results', 'districts', 'blocks', 'from_date', 'to_date', 'district_id', 'block_id',  'issue_filter', 'allIssues', 'is_uptime_report', 'Blockrouter_category','ticket_type', 'sammriddh'));
+
+
+        }
+       
         $expectedWeeks = DB::table('master_tickets')
             ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
             ->where('user_requests.state_id', $state_id)
@@ -702,6 +954,10 @@ class MaterialController extends Controller
         $issue_filter = $request->get('issue_filter');
         $uptime_category = $request->get('uptime_category');
         $ticket_type = $request->get('ticket_type', 'ont'); // 'ont' or 'router'
+        $sammriddh = $request->get('samriddh', false);
+        $router_category = $request->get('router_category', null);
+        $Blockrouter_category = $request->get('Blockrouter_category', null);
+        $OLT_category = $request->get('OLT_category', null);
 
         $data = [];
 
@@ -712,6 +968,9 @@ class MaterialController extends Controller
                     ->join('districts', 'gp_list.district_id', '=', 'districts.id')
                     ->join('blocks', 'gp_list.block_id', '=', 'blocks.id')
                     ->where('gp_list.state_id', $state_id);
+                if ($sammriddh) {
+                    $query->where('gp_list.samridh_stat', 1);
+                }
                 if ($from_date && $to_date) {
                     $query->whereBetween('ont_uptime.record_date', [$from_date, $to_date]);
                 }
@@ -745,6 +1004,24 @@ class MaterialController extends Controller
                         $query->where('ont_uptime.uptime_percent', '<', 20);
                         break;
                 }
+            if ($issue_filter) {
+                $query->whereExists(function ($sub) use ($issue_filter, $state_id, $ticket_type) {
+                    $sub->select(DB::raw(1))
+                        ->from('master_tickets as mt')
+                        ->join('user_requests as ur', 'mt.ticketid', '=', 'ur.booking_id')
+                        ->whereColumn('mt.lgd_code', 'gp_list.lgd_code')
+                        ->where('mt.downreason', $issue_filter)
+                        ->where('ur.state_id', $state_id)
+                        ->whereRaw('DATE(mt.downdate) = ont_uptime.record_date');
+
+                    if ($ticket_type === 'router') {
+                        $sub->where('ur.booking_id', 'like', 'INC%');
+                    } else {
+                        $sub->where('ur.booking_id', 'not like', 'INC%');
+                    }
+                });
+            }
+
 
 
             $results = $query->select(
@@ -784,6 +1061,7 @@ class MaterialController extends Controller
                 } elseif ($from_date && $to_date) {
                     $breakdownQuery->whereBetween('master_tickets.downdate', [$from_date, $to_date]);
                 }
+                
 
                 $breakdown = $breakdownQuery->groupBy('master_tickets.downreason')
                     ->orderBy('count', 'desc')
@@ -820,7 +1098,261 @@ class MaterialController extends Controller
             }
             $filename = 'Uptime_Report_' . ($uptime_category) . '_' . date('Ymd_His');
 
-        } else {
+        } else if($router_category){
+              $query = GpRouterUptime::query()
+                        ->join('gp_list', 'gp_list.lgd_code', '=', 'gp_router_uptime.lgd_code')
+                        ->join('districts', 'gp_list.district_id', '=', 'districts.id')
+                        ->join('blocks', 'gp_list.block_id', '=', 'blocks.id')
+                        ->where('gp_list.state_id', $state_id);
+               if ($from_date && $to_date) {
+                    $query->whereBetween('gp_router_uptime.record_date', [$from_date, $to_date]);
+                }
+
+                if ($district_id) {
+                    $query->where('gp_list.district_id', $district_id);
+                }
+
+                if ($block_id) {
+                    $query->where('gp_list.block_id', $block_id);
+                }
+
+                switch ($router_category) {
+                    case 'gte98':
+                        $query->where('gp_router_uptime.uptime_percent', '>=', 98);
+                        break;
+                    case 'lt98':
+                        $query->where('gp_router_uptime.uptime_percent', '>', 0)->where('gp_router_uptime.uptime_percent', '<', 98);
+                        break;
+                    case 'zero_availability':
+                        $query->where('gp_router_uptime.uptime_percent', '=', 0);
+                        break;
+                   case 'integration':
+                    $this->applyIntegrationFilter($query, 'gp_router_uptime');
+                    break;
+                 }
+            
+
+                if ($issue_filter) {
+                    $query->whereExists(function ($sub) use ($issue_filter, $state_id) {
+                        $sub->select(DB::raw(1))
+                            ->from('master_tickets as mt')
+                            ->join('user_requests as ur', 'mt.ticketid', '=', 'ur.booking_id')
+                            ->whereColumn('mt.lgd_code', 'gp_list.lgd_code')
+                            ->where('mt.downreason', $issue_filter)
+                            ->where('ur.state_id', $state_id)
+                            ->whereRaw('DATE(mt.downdate) = gp_router_uptime.record_date')
+                            ->where('ur.booking_id', 'like', 'INC%');
+                        });
+                }
+
+
+                $results = $query->select(
+                    'gp_list.lgd_code',
+                    'gp_list.gp_name as gpname',
+                    'districts.name as district',
+                    'blocks.name as mandal',
+                    'gp_router_uptime.uptime_percent',
+                    'gp_router_uptime.record_date'
+                )
+                    ->orderBy('gp_router_uptime.uptime_percent', 'asc')
+                    ->get();
+            $data[] = ['District', 'Block', 'GP Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
+
+
+                foreach ($results as $row) {
+                    $breakdownQuery = DB::table('master_tickets')
+                        ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
+                        ->select('master_tickets.downreason', DB::raw('COUNT(*) as count'))
+                        ->where('master_tickets.lgd_code', $row->lgd_code)
+                        ->whereNotNull('master_tickets.downreason')
+                        ->where('user_requests.state_id', $state_id)
+                         ->where('user_requests.booking_id', 'like', 'INC%');
+
+                    // Use the record_date from the row for filtering tickets
+                    if ($row->record_date) {
+                        $breakdownQuery->whereDate('master_tickets.downdate', $row->record_date);
+                    } elseif ($from_date && $to_date) {
+                        $breakdownQuery->whereBetween('master_tickets.downdate', [$from_date, $to_date]);
+                    }
+                    $breakdown = $breakdownQuery->groupBy('master_tickets.downreason')
+                        ->orderBy('count', 'desc')
+                        ->get();
+
+                    $row->breakdown = $breakdown;
+                    $ticket_count = $breakdown->sum('count');
+                     // Format breakdown string
+                $breakdownStr = '';
+                $issuePctStr = '';
+                if ($ticket_count > 0) {
+                    foreach ($breakdown as $bd) {
+                        $breakdownStr .= $bd->downreason . ': ' . $bd->count . "\n";
+                        $pct = round(($bd->count / $ticket_count) * 100, 1);
+                        $issuePctStr .= $bd->downreason . ': ' . $pct . "%\n";
+                    }
+                } else {
+                    $breakdownStr = '-';
+                    $issuePctStr = '-';
+                }
+
+
+                $data[] = [
+                    $row->district,
+                    $row->mandal,
+                    $row->gpname,
+                    $row->lgd_code,
+                    $row->uptime_percent . '%',
+                    Carbon::parse($row->record_date)->format('d-m-Y'),
+                    $ticket_count,
+                    trim($breakdownStr),
+                    trim($issuePctStr)
+                ];
+                $filename = 'Router_Uptime_Report_' . ($router_category) . '_' . date('Ymd_His');
+                }
+
+
+
+        }else if($Blockrouter_category){
+              $query = BlockRouterUptime::query()
+                        ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
+                        ->join('districts', 'blocks.district_id', '=', 'districts.id')
+                        ->where('districts.state_id', $state_id);
+               if ($from_date && $to_date) {
+                    $query->whereBetween('block_router_uptime.record_date', [$from_date, $to_date]);
+                }
+
+                if ($district_id) {
+                    $query->where('blocks.district_id', $district_id);
+                }
+
+                if ($block_id) {
+                    $query->where('blocks.id', $block_id);
+                }
+
+                switch ($Blockrouter_category) {
+                    case 'gte98':
+                        $query->where('block_router_uptime.uptime_percent', '>=', 98);
+                        break;
+                    case 'lt98':
+                        $query->where('block_router_uptime.uptime_percent', '>', 0)->where('block_router_uptime.uptime_percent', '<', 98);
+                        break;
+                    case 'zero_availability':
+                        $query->where('block_router_uptime.uptime_percent', '=', 0);
+                        break;
+                    case 'integration':
+                            $this->applyIntegrationFilter($query, 'block_router_uptime');
+                            break;
+                 }
+                $results = $query->select(
+                    'block_router_uptime.lgd_code',
+                    'districts.name as district',
+                    'blocks.name as mandal',
+                    'blocks.name as gpname',
+                    'block_router_uptime.uptime_percent',
+                    'block_router_uptime.record_date'
+                )
+                ->orderBy('block_router_uptime.uptime_percent', 'asc')
+                ->get();
+
+                 $data[] = ['District', 'Block', 'Block Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
+
+                foreach ($results as $row) {
+                    $ticket_count = 0;
+                    $breakdownStr = '';
+                    $issuePctStr = '';
+               
+
+                    $data[] = [
+                        $row->district,
+                        $row->mandal,
+                        $row->gpname,
+                        $row->lgd_code,
+                        $row->uptime_percent . '%',
+                        Carbon::parse($row->record_date)->format('d-m-Y'),
+                        $ticket_count,
+                        trim($breakdownStr),
+                        trim($issuePctStr)
+                    ];    
+               
+                    $filename = 'Block_Router_Uptime_Report_' . ($Blockrouter_category) . '_' . date('Ymd_His');
+                }
+
+        }else if($OLT_category){
+                $query = OltUptime::query()
+                        ->join('olt_locations', 'olt_locations.lgd_code', '=', 'olt_uptime.lgd_code')
+                        ->join('districts','olt_locations.district_id','=','districts.id')
+                        ->join('blocks','olt_locations.block_id','=','blocks.id')
+                        ->where('olt_locations.state_id', $state_id);
+                       
+               if ($from_date && $to_date) {
+                    $query->whereBetween('olt_uptime.record_date', [$from_date, $to_date]);
+                }
+
+                if ($district_id) {
+                    $query->where('olt_locations.district_id', $district_id);
+                }
+
+                if ($block_id) {
+                    $query->where('blocks.id', $block_id);
+                }
+
+                switch ($OLT_category) {
+                       case 'gte98':
+                        $query->where('olt_uptime.uptime_percent', '>=', 98);
+                        break;
+                    case 'gte90':
+                        $query->where('olt_uptime.uptime_percent', '>=', 90)->where('olt_uptime.uptime_percent', '<', 98);
+                        break;
+                    case 'gte75':
+                        $query->where('olt_uptime.uptime_percent', '>=', 75)->where('olt_uptime.uptime_percent', '<', 90);
+                        break;
+                    case 'gte50':
+                        $query->where('olt_uptime.uptime_percent', '>=', 50)->where('olt_uptime.uptime_percent', '<', 75);
+                        break;
+                    case 'gte20':
+                        $query->where('olt_uptime.uptime_percent', '>=', 20)->where('olt_uptime.uptime_percent', '<', 50);
+                        break;
+                    case 'lt20':
+                        $query->where('olt_uptime.uptime_percent', '<', 20);
+                        break;
+                 }
+                $results = $query->select(
+                    'olt_uptime.lgd_code',
+                    'olt_locations.olt_location as gpname',
+                    'districts.name as district',
+                    'blocks.name as mandal',
+                    'olt_uptime.uptime_percent',
+                    'olt_uptime.record_date'
+                )
+                ->orderBy('olt_uptime.uptime_percent', 'asc')
+                ->get();
+
+                 $data[] = ['District', 'Block', 'OLT Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
+
+                foreach ($results as $row) {
+                    $ticket_count = 0;
+                    $breakdownStr = '';
+                    $issuePctStr = '';
+               
+
+                    $data[] = [
+                        $row->district,
+                        $row->mandal,
+                        $row->gpname,
+                        $row->lgd_code,
+                        $row->uptime_percent . '%',
+                        Carbon::parse($row->record_date)->format('d-m-Y'),
+                        $ticket_count,
+                        trim($breakdownStr),
+                        trim($issuePctStr)
+                    ];    
+               
+                    $filename = 'OLT_Uptime_Report_' . ($OLT_category) . '_' . date('Ymd_His');
+                }
+
+
+        }
+
+        else {
             // --- Logic for Standard Frequently Down GPs Export ---
         $expectedWeeks = DB::table('master_tickets')
             ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')

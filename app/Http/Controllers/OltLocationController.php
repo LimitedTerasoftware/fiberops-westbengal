@@ -872,73 +872,32 @@ public function GprouterData(Request $request)
         ->selectRaw('SUM(CASE WHEN uptime_percent > 0 AND uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
         ->selectRaw('SUM(CASE WHEN uptime_percent = 0 THEN 1 ELSE 0 END) as zero_availability')
         ->selectRaw('ROUND(AVG(uptime_percent), 2) as pct_gte98')
+        ->selectRaw("
+                SUM(
+                    CASE
+                        WHEN NOT EXISTS (
+                            SELECT 1
+                            FROM gp_router_uptime as prev
+                            WHERE prev.lgd_code = gp_router_uptime.lgd_code
+                            AND DATE(prev.record_date) = DATE_SUB(DATE(gp_router_uptime.record_date), INTERVAL 1 DAY)
+                        )
+                        THEN 1
+                        ELSE 0
+                    END
+                ) as integration
+            ")
         ->groupBy('day')
         ->orderBy('day', 'asc')
         ->get();
 
-
-    $lgdCodesByDay = GpRouterUptime::query()
-        ->join('gp_list', 'gp_list.lgd_code', '=', 'gp_router_uptime.lgd_code')
-        ->where('gp_list.company_id', $company_id)
-        ->where('gp_list.state_id', $state_id);
-    
-    if (!empty($district_id)) {
-        $lgdCodesByDay->where('gp_list.district_id', $district_id);
-    }
-    
-    if (!empty($month)) {
-        try {
-            $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
-            $end   = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
-            $lgdCodesByDay->whereBetween('record_date', [$start, $end]);
-        } catch (\Exception $e) {
-            $lgdCodesByDay->whereBetween('record_date', [
-                Carbon::now()->subDays(6)->toDateString(),
-                Carbon::now()->toDateString()
-            ]);
-        }
-    } elseif (!empty($fromDate) && !empty($toDate)) {
-        $lgdCodesByDay->whereBetween('record_date', [$fromDate, $toDate]);
-    } else {
-        $lgdCodesByDay->whereBetween('record_date', [
-            Carbon::now()->subDays(6)->toDateString(),
-            Carbon::now()->toDateString()
-        ]);
-    }
-
-    $lgdCodesByDay = $lgdCodesByDay
-        ->selectRaw('DATE(record_date) as day')
-        ->selectRaw('GROUP_CONCAT(DISTINCT gp_router_uptime.lgd_code ORDER BY gp_router_uptime.lgd_code) as lgd_codes')
-        ->groupBy('day')
-        ->orderBy('day', 'asc')
-        ->get()
-        ->keyBy('day');
-
-    $prevDayLgdCodes = [];
-    $dataArray = $data->toArray();
-    foreach ($dataArray as $index => $row) {
-        $currentDay = $row['day'];
-        $currentCodes = isset($lgdCodesByDay[$currentDay]) 
-            ? array_flip(explode(',', $lgdCodesByDay[$currentDay]->lgd_codes))
-            : [];
-
-        $prevCodes = $prevDayLgdCodes;
-        $newIntegrations = array_diff_key($currentCodes, $prevCodes);
-        $dataArray[$index]['integration'] = count($newIntegrations);
-        
-        $prevDayLgdCodes = $currentCodes;
-    }
-
-    $data = collect($dataArray);
-
-
-
-    $averages = [
+     $averages = [
         'total'     => round($data->avg('total'), 2),
         'gte98'     => round($data->avg('gte98'), 2),
         'lt98'      => round($data->avg('lt98'), 2),
         'zero_availability' => round($data->avg('zero_availability'), 2),
         'pct_gte98' => round($data->avg('pct_gte98'), 2),
+        'integration' => round($data->avg('integration'), 2),
+
     ];
        
 
@@ -1034,63 +993,24 @@ public function BlockrouterData(Request $request)
         ->selectRaw('SUM(CASE WHEN uptime_percent > 0 AND uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
         ->selectRaw('SUM(CASE WHEN uptime_percent = 0 THEN 1 ELSE 0 END) as zero_availability')
         ->selectRaw('ROUND(AVG(uptime_percent), 2) as pct_gte98')
+         ->selectRaw("
+                SUM(
+                    CASE
+                        WHEN NOT EXISTS (
+                            SELECT 1
+                            FROM block_router_uptime as prev
+                            WHERE prev.lgd_code = block_router_uptime.lgd_code
+                            AND DATE(prev.record_date) = DATE_SUB(DATE(block_router_uptime.record_date), INTERVAL 1 DAY)
+                        )
+                        THEN 1
+                        ELSE 0
+                    END
+                ) as integration
+            ")
          ->groupBy('day')
         ->orderBy('day', 'asc')
         ->get();
-    $lgdCodesByDay = BlockRouterUptime::query()
-        ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
-        ->join('districts', 'blocks.district_id', '=', 'districts.id')
-        ->where('districts.state_id', $state_id);
-
-    if (!empty($district_id)) {
-        $lgdCodesByDay->where('blocks.district_id', $district_id);
-    }
-
-    if (!empty($month)) {
-        try {
-            $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
-            $end   = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
-            $lgdCodesByDay->whereBetween('record_date', [$start, $end]);
-        } catch (\Exception $e) {
-            $lgdCodesByDay->whereBetween('record_date', [
-                Carbon::now()->subDays(6)->toDateString(),
-                Carbon::now()->toDateString()
-            ]);
-        }
-    } elseif (!empty($fromDate) && !empty($toDate)) {
-        $lgdCodesByDay->whereBetween('record_date', [$fromDate, $toDate]);
-    } else {
-        $lgdCodesByDay->whereBetween('record_date', [
-            Carbon::now()->subDays(6)->toDateString(),
-            Carbon::now()->toDateString()
-        ]);
-    }
-
-    $lgdCodesByDay = $lgdCodesByDay
-        ->selectRaw('DATE(record_date) as day')
-        ->selectRaw('GROUP_CONCAT(DISTINCT block_router_uptime.lgd_code ORDER BY block_router_uptime.lgd_code) as lgd_codes')
-        ->groupBy('day')
-        ->orderBy('day', 'asc')
-        ->get()
-        ->keyBy('day');
-
-    $prevDayLgdCodes = [];
-    $dataArray = $data->toArray();
-    foreach ($dataArray as $index => $row) {
-        $currentDay = $row['day'];
-        $currentCodes = isset($lgdCodesByDay[$currentDay]) 
-            ? array_flip(explode(',', $lgdCodesByDay[$currentDay]->lgd_codes))
-            : [];
-
-        $prevCodes = $prevDayLgdCodes;
-        $newIntegrations = array_diff_key($currentCodes, $prevCodes);
-        $dataArray[$index]['integration'] = count($newIntegrations);
-        
-        $prevDayLgdCodes = $currentCodes;
-    }
-
-    $data = collect($dataArray);
-
+   
 
     $averages = [
         'total'     => round($data->avg('total'), 2),
@@ -1098,6 +1018,7 @@ public function BlockrouterData(Request $request)
         'lt98'      => round($data->avg('lt98'), 2),
         'pct_gte98' => round($data->avg('pct_gte98'), 2),
         'zero_availability'  => round($data->avg('zero_availability'), 2),
+        'integration' => round($data->avg('integration'), 2),
 
     ];
     return response()->json([

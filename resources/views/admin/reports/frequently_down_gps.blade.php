@@ -7,10 +7,10 @@
         <div class="container-fluid">
             <div class="row header-row mb-1">
                 <div class="col-md-12">
-
+                    
                     <h4 class="mb-0">
                         @if(isset($is_uptime_report) && $is_uptime_report)
-                            GP Uptime Report
+                             Uptime Report
                         @else
                             Frequently Down GPs
                         @endif
@@ -18,27 +18,15 @@
                 </div>
             </div>
 
-            {{-- ONT/Router Tabs --}}
-            <ul class="nav nav-tabs mb-3" id="ticketTypeTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <a class="nav-link {{ (!request('ticket_type') || request('ticket_type') == 'ont') ? 'active' : '' }}"
-                       href="{{ route('admin.frequently_down_gps', array_merge(request()->except('ticket_type'), ['ticket_type' => 'ont'])) }}">
-                        <i class="bi bi-pc-display-horizontal me-1"></i> ONT Tickets
-                    </a>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <a class="nav-link {{ request('ticket_type') == 'router' ? 'active' : '' }}"
-                       href="{{ route('admin.frequently_down_gps', array_merge(request()->except('ticket_type'), ['ticket_type' => 'router'])) }}">
-                        <i class="bi bi-router me-1"></i> Router Tickets
-                    </a>
-                </li>
-            </ul>
-
             <!-- Filters -->
             <div class="filter-card">
                 <form action="{{ route('admin.frequently_down_gps') }}" method="GET">
                     <input type="hidden" name="ticket_type" value="{{ request('ticket_type', 'ont') }}">
-
+                    <input type="hidden" name="samriddh" value="{{ request('samriddh', false) }}">
+                    <input type="hidden" name="uptime_category" value="{{ request('uptime_category','') }}">
+                    <input type="hidden" name="router_category" value="{{ request('router_category','') }}">
+                    <input type="hidden" name="Blockrouter_category" value="{{ request('Blockrouter_category','') }}">
+                    <input type="hidden" name="OLT_category" value="{{ request('OLT_category','') }}">
                     <div class="filter-row">
                        
                             <div class="badge bg-warning text-dark me-2">
@@ -107,7 +95,12 @@
                                 <th>SL No</th>
                                 <th>District</th>
                                 <th>Block (Mandal)</th>
+                                 @if(isset($is_uptime_report) && $is_uptime_report)
+                                <th>Name & LGD Code</th>                            
+                                @else
                                 <th>GP Name (LGD Code)</th>
+                                @endif
+
                                 @if(isset($is_uptime_report) && $is_uptime_report)
                                     <th>Uptime %</th>
                                     <th>Record Date</th>
