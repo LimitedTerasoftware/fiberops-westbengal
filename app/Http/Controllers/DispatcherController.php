@@ -356,6 +356,8 @@ class DispatcherController extends Controller
     public function sendassignrequest(Request $request)
     {
         try {
+            $user = Session::get('user');
+            $user_id = $user->id;
             $data=$request->all();
             $request_id = $data['request_id'];
             $provider_id = $data['provider_id'];
@@ -390,6 +392,7 @@ class DispatcherController extends Controller
             //$Request->d_latitude = $Provider->latitude;
             //$Request->d_longitude = $Provider->longitude;
             $Request->assigned_at= Carbon::now();
+            $Request->created_by = $user_id;
 
             $Request->save();
            

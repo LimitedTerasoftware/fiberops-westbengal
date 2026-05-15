@@ -701,7 +701,7 @@ $formattedTime = sprintf("%02d:%02d", $hours, $minutes);
                                     @endif
                               
                                                                      
-                                     @if(auth()->user()->role == 'admin' ||  auth()->user()->role == 'super_admin' || auth()->user()->name == 'KOL ZONE' )
+                                     @if(auth()->user()->role == 'admin' ||  auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin'  )
 
                                       <?php if($request->status == 'INCOMING' || $request->status == 'ONHOLD'){ ?>
                                      <li>
