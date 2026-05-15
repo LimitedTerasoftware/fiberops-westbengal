@@ -479,11 +479,45 @@ public function BlockrouterUpload(Request $request)
     ]);
 }
 
+private function getUptimePeriodSql($period, $dateColumn)
+{
+    switch ($period) {
+        case 'week':
+            return [
+                'group' => "YEARWEEK($dateColumn, 1)",
+                'label' => "CONCAT(FLOOR(YEARWEEK($dateColumn, 1) / 100), '-W', LPAD(MOD(YEARWEEK($dateColumn, 1), 100), 2, '0'))",
+                'sort' => "YEARWEEK($dateColumn, 1)"
+            ];
+
+        case 'month':
+            return [
+                'group' => "DATE_FORMAT($dateColumn, '%Y-%m')",
+                'label' => "DATE_FORMAT($dateColumn, '%Y-%m')",
+                'sort' => "DATE_FORMAT($dateColumn, '%Y-%m')"
+            ];
+
+        case 'year':
+            return [
+                'group' => "YEAR($dateColumn)",
+                'label' => "YEAR($dateColumn)",
+                'sort' => "YEAR($dateColumn)"
+            ];
+
+        default:
+            return [
+                'group' => "DATE($dateColumn)",
+                'label' => "DATE($dateColumn)",
+                'sort' => "DATE($dateColumn)"
+            ];
+    }
+}
+
 public function OntData(Request $request)
 {
     $month    = $request->get('month');
     $fromDate = $request->get('fromDate');
     $toDate   = $request->get('toDate');
+    $periodSql = $this->getUptimePeriodSql($request->get('period', 'day'), 'ont_uptime.record_date');
 
     Session::put('user', Auth::User());
     $user = Session::get('user');
@@ -521,20 +555,23 @@ public function OntData(Request $request)
     }
 
     $data = $query
-        ->selectRaw('DATE(record_date) as day')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 90 AND uptime_percent < 98 THEN 1 ELSE 0 END) as gte90')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 75 AND uptime_percent < 90 THEN 1 ELSE 0 END) as gte75')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 50 AND uptime_percent < 75 THEN 1 ELSE 0 END) as gte50')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 20 AND uptime_percent < 50 THEN 1 ELSE 0 END) as gte20')
-        ->selectRaw('SUM(CASE WHEN uptime_percent < 20 THEN 1 ELSE 0 END) as lt20')
+        ->selectRaw($periodSql['label'] . ' as label')
+        ->selectRaw('MIN(DATE(ont_uptime.record_date)) as day')
+        ->selectRaw('ROUND(AVG(ont_uptime.uptime_percent), 2) as avg_uptime')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent >= 90 AND ont_uptime.uptime_percent < 98 THEN 1 ELSE 0 END) as gte90')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent >= 75 AND ont_uptime.uptime_percent < 90 THEN 1 ELSE 0 END) as gte75')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent >= 50 AND ont_uptime.uptime_percent < 75 THEN 1 ELSE 0 END) as gte50')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent >= 20 AND ont_uptime.uptime_percent < 50 THEN 1 ELSE 0 END) as gte20')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent < 20 THEN 1 ELSE 0 END) as lt20')
         ->selectRaw('COUNT(*) as total')
-        ->selectRaw('ROUND(SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as pct_gte98')
-        ->groupBy('day')
-        ->orderBy('day', 'asc')
+        ->selectRaw('ROUND(SUM(CASE WHEN ont_uptime.uptime_percent >= 98 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as pct_gte98')
+        ->groupBy(DB::raw($periodSql['group']), DB::raw($periodSql['label']))
+        ->orderByRaw($periodSql['sort'] . ' asc')
         ->get();
 
     $averages = [
+    'avg_uptime' => round($data->avg('avg_uptime'), 2),
     'gte98'     => round($data->avg('gte98'), 2),
     'gte90'     => round($data->avg('gte90'), 2),
     'gte75'     => round($data->avg('gte75'), 2),
@@ -613,6 +650,7 @@ public function OltData(Request $request)
     $month    = $request->get('month');
     $fromDate = $request->get('fromDate');
     $toDate   = $request->get('toDate');
+    $periodSql = $this->getUptimePeriodSql($request->get('period', 'day'), 'olt_uptime.record_date');
     
 
     Session::put('user', Auth::User());
@@ -650,20 +688,23 @@ public function OltData(Request $request)
     }
 
     $data = $query
-        ->selectRaw('DATE(record_date) as day')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 90 AND uptime_percent < 98 THEN 1 ELSE 0 END) as gte90')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 75 AND uptime_percent < 90 THEN 1 ELSE 0 END) as gte75')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 50 AND uptime_percent < 75 THEN 1 ELSE 0 END) as gte50')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 20 AND uptime_percent < 50 THEN 1 ELSE 0 END) as gte20')
-        ->selectRaw('SUM(CASE WHEN uptime_percent < 20 THEN 1 ELSE 0 END) as lt20')
+        ->selectRaw($periodSql['label'] . ' as label')
+        ->selectRaw('MIN(DATE(olt_uptime.record_date)) as day')
+        ->selectRaw('ROUND(AVG(olt_uptime.uptime_percent), 2) as avg_uptime')
+        ->selectRaw('SUM(CASE WHEN olt_uptime.uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
+        ->selectRaw('SUM(CASE WHEN olt_uptime.uptime_percent >= 90 AND olt_uptime.uptime_percent < 98 THEN 1 ELSE 0 END) as gte90')
+        ->selectRaw('SUM(CASE WHEN olt_uptime.uptime_percent >= 75 AND olt_uptime.uptime_percent < 90 THEN 1 ELSE 0 END) as gte75')
+        ->selectRaw('SUM(CASE WHEN olt_uptime.uptime_percent >= 50 AND olt_uptime.uptime_percent < 75 THEN 1 ELSE 0 END) as gte50')
+        ->selectRaw('SUM(CASE WHEN olt_uptime.uptime_percent >= 20 AND olt_uptime.uptime_percent < 50 THEN 1 ELSE 0 END) as gte20')
+        ->selectRaw('SUM(CASE WHEN olt_uptime.uptime_percent < 20 THEN 1 ELSE 0 END) as lt20')
         ->selectRaw('COUNT(*) as total')
-        ->selectRaw('ROUND(SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as pct_gte98')
-        ->groupBy('day')
-        ->orderBy('day', 'asc')
+        ->selectRaw('ROUND(SUM(CASE WHEN olt_uptime.uptime_percent >= 98 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as pct_gte98')
+        ->groupBy(DB::raw($periodSql['group']), DB::raw($periodSql['label']))
+        ->orderByRaw($periodSql['sort'] . ' asc')
         ->get();
 
     $averages = [
+    'avg_uptime' => round($data->avg('avg_uptime'), 2),
     'gte98'     => round($data->avg('gte98'), 2),
     'gte90'     => round($data->avg('gte90'), 2),
     'gte75'     => round($data->avg('gte75'), 2),
@@ -719,6 +760,7 @@ public function SamriddhData(Request $request)
     $month    = $request->get('month');
     $fromDate = $request->get('fromDate');
     $toDate   = $request->get('toDate');
+    $periodSql = $this->getUptimePeriodSql($request->get('period', 'day'), 'ont_uptime.record_date');
 
     Session::put('user', Auth::User());
     $user = Session::get('user');
@@ -757,20 +799,23 @@ public function SamriddhData(Request $request)
     }
 
     $data = $query
-        ->selectRaw('DATE(record_date) as day')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 90 AND uptime_percent < 98 THEN 1 ELSE 0 END) as gte90')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 75 AND uptime_percent < 90 THEN 1 ELSE 0 END) as gte75')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 50 AND uptime_percent < 75 THEN 1 ELSE 0 END) as gte50')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 20 AND uptime_percent < 50 THEN 1 ELSE 0 END) as gte20')
-        ->selectRaw('SUM(CASE WHEN uptime_percent < 20 THEN 1 ELSE 0 END) as lt20')
+        ->selectRaw($periodSql['label'] . ' as label')
+        ->selectRaw('MIN(DATE(ont_uptime.record_date)) as day')
+        ->selectRaw('ROUND(AVG(ont_uptime.uptime_percent), 2) as avg_uptime')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent >= 90 AND ont_uptime.uptime_percent < 98 THEN 1 ELSE 0 END) as gte90')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent >= 75 AND ont_uptime.uptime_percent < 90 THEN 1 ELSE 0 END) as gte75')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent >= 50 AND ont_uptime.uptime_percent < 75 THEN 1 ELSE 0 END) as gte50')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent >= 20 AND ont_uptime.uptime_percent < 50 THEN 1 ELSE 0 END) as gte20')
+        ->selectRaw('SUM(CASE WHEN ont_uptime.uptime_percent < 20 THEN 1 ELSE 0 END) as lt20')
         ->selectRaw('COUNT(*) as total')
-        ->selectRaw('ROUND(SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as pct_gte98')
-        ->groupBy('day')
-        ->orderBy('day', 'asc')
+        ->selectRaw('ROUND(SUM(CASE WHEN ont_uptime.uptime_percent >= 98 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as pct_gte98')
+        ->groupBy(DB::raw($periodSql['group']), DB::raw($periodSql['label']))
+        ->orderByRaw($periodSql['sort'] . ' asc')
         ->get();
 
     $averages = [
+    'avg_uptime' => round($data->avg('avg_uptime'), 2),
     'gte98'     => round($data->avg('gte98'), 2),
     'gte90'     => round($data->avg('gte90'), 2),
     'gte75'     => round($data->avg('gte75'), 2),
@@ -829,6 +874,7 @@ public function GprouterData(Request $request)
     $month    = $request->get('month');
     $fromDate = $request->get('fromDate');
     $toDate   = $request->get('toDate');
+    $periodSql = $this->getUptimePeriodSql($request->get('period', 'day'), 'gp_router_uptime.record_date');
 
     Session::put('user', Auth::User());
     $user = Session::get('user');
@@ -866,12 +912,14 @@ public function GprouterData(Request $request)
     }
 
     $data = $query
-        ->selectRaw('DATE(record_date) as day')
+        ->selectRaw($periodSql['label'] . ' as label')
+        ->selectRaw('MIN(DATE(gp_router_uptime.record_date)) as day')
         ->selectRaw('COUNT(*) as total')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
-        ->selectRaw('SUM(CASE WHEN uptime_percent > 0 AND uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
-        ->selectRaw('SUM(CASE WHEN uptime_percent = 0 THEN 1 ELSE 0 END) as zero_availability')
-        ->selectRaw('ROUND(AVG(uptime_percent), 2) as pct_gte98')
+        ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
+        ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent > 0 AND gp_router_uptime.uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
+        ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent = 0 THEN 1 ELSE 0 END) as zero_availability')
+        ->selectRaw('ROUND(AVG(gp_router_uptime.uptime_percent), 2) as avg_uptime')
+        ->selectRaw('ROUND(AVG(gp_router_uptime.uptime_percent), 2) as pct_gte98')
         ->selectRaw("
                 SUM(
                     CASE
@@ -886,8 +934,8 @@ public function GprouterData(Request $request)
                     END
                 ) as integration
             ")
-        ->groupBy('day')
-        ->orderBy('day', 'asc')
+        ->groupBy(DB::raw($periodSql['group']), DB::raw($periodSql['label']))
+        ->orderByRaw($periodSql['sort'] . ' asc')
         ->get();
 
      $averages = [
@@ -895,6 +943,7 @@ public function GprouterData(Request $request)
         'gte98'     => round($data->avg('gte98'), 2),
         'lt98'      => round($data->avg('lt98'), 2),
         'zero_availability' => round($data->avg('zero_availability'), 2),
+        'avg_uptime' => round($data->avg('avg_uptime'), 2),
         'pct_gte98' => round($data->avg('pct_gte98'), 2),
         'integration' => round($data->avg('integration'), 2),
 
@@ -950,6 +999,7 @@ public function BlockrouterData(Request $request)
     $month    = $request->get('month');
     $fromDate = $request->get('fromDate');
     $toDate   = $request->get('toDate');
+    $periodSql = $this->getUptimePeriodSql($request->get('period', 'day'), 'block_router_uptime.record_date');
 
     Session::put('user', Auth::User());
     $user = Session::get('user');
@@ -987,12 +1037,14 @@ public function BlockrouterData(Request $request)
     }
 
     $data = $query
-        ->selectRaw('DATE(record_date) as day')
+        ->selectRaw($periodSql['label'] . ' as label')
+        ->selectRaw('MIN(DATE(block_router_uptime.record_date)) as day')
         ->selectRaw('COUNT(*) as total')
-        ->selectRaw('SUM(CASE WHEN uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
-        ->selectRaw('SUM(CASE WHEN uptime_percent > 0 AND uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
-        ->selectRaw('SUM(CASE WHEN uptime_percent = 0 THEN 1 ELSE 0 END) as zero_availability')
-        ->selectRaw('ROUND(AVG(uptime_percent), 2) as pct_gte98')
+        ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent >= 98 THEN 1 ELSE 0 END) as gte98')
+        ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent > 0 AND block_router_uptime.uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
+        ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent = 0 THEN 1 ELSE 0 END) as zero_availability')
+        ->selectRaw('ROUND(AVG(block_router_uptime.uptime_percent), 2) as avg_uptime')
+        ->selectRaw('ROUND(AVG(block_router_uptime.uptime_percent), 2) as pct_gte98')
          ->selectRaw("
                 SUM(
                     CASE
@@ -1007,8 +1059,8 @@ public function BlockrouterData(Request $request)
                     END
                 ) as integration
             ")
-         ->groupBy('day')
-        ->orderBy('day', 'asc')
+         ->groupBy(DB::raw($periodSql['group']), DB::raw($periodSql['label']))
+        ->orderByRaw($periodSql['sort'] . ' asc')
         ->get();
    
 
@@ -1016,6 +1068,7 @@ public function BlockrouterData(Request $request)
         'total'     => round($data->avg('total'), 2),
         'gte98'     => round($data->avg('gte98'), 2),
         'lt98'      => round($data->avg('lt98'), 2),
+        'avg_uptime' => round($data->avg('avg_uptime'), 2),
         'pct_gte98' => round($data->avg('pct_gte98'), 2),
         'zero_availability'  => round($data->avg('zero_availability'), 2),
         'integration' => round($data->avg('integration'), 2),

@@ -363,6 +363,29 @@
             </div>
 
         </div>
+        <div class="canvas-card uptime-chart-card">
+            <div class="uptime-chart-header">
+                <div>
+                    <h6 class="fw-bold mb-0">Average Uptime Trend</h6>
+                    <span id="averageUptimeChartSubtitle" class="uptime-chart-subtitle">ONT Dashboard</span>
+                </div>
+
+                <div class="uptime-chart-controls">
+                    <label for="averageUptimePeriod" class="small fw-bold mb-0">Period</label>
+                    <select id="averageUptimePeriod" class="form-control form-control-sm uptime-period-select">
+                        <option value="day">Day</option>
+                        <option value="week">Week</option>
+                        <option value="month">Month</option>
+                        <option value="year">Year</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="uptime-chart-body">
+                <canvas id="averageUptimeTrendChart"></canvas>
+            </div>
+        </div>
+
         <div class="canvas-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
                 <h6 class="fw-bold mb-0">Recurring GP Issue Trends 
@@ -444,6 +467,43 @@
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   padding: 16px;
   margin-top:10px;
+}
+
+.uptime-chart-card {
+    margin-bottom: 12px;
+}
+
+.uptime-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.uptime-chart-subtitle {
+    display: inline-block;
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.uptime-chart-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.uptime-period-select {
+    width: 120px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.uptime-chart-body {
+    position: relative;
+    height: 320px;
+    width: 100%;
 }
 .terrasoft-tab-container {
     background: white;
@@ -1265,6 +1325,20 @@
     .terrasoft-chart-grid {
         grid-template-columns: 1fr;
     }
+
+    .uptime-chart-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .uptime-chart-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .uptime-period-select {
+        width: 150px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1343,6 +1417,7 @@
      let currentMainTab = 'Ontdashboard';
     let currentDataTab = 'ont-data';
     let recurringGpsChartInstance = null;
+    let averageUptimeChartInstance = null;
     let activeRecurringType = 'ont';
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1480,21 +1555,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Filter Apply Buttons
     document.getElementById('applyFilters').addEventListener('click', function() {
         loadDataTabData('Ontdashboard', currentDataTab);
+        loadAverageUptimeChart('Ontdashboard');
     });
     
     document.getElementById('applyOltFilters').addEventListener('click', function() {
         loadDataTabData('Oltdashboard', 'olt-dashboard');
+        loadAverageUptimeChart('Oltdashboard');
     });
     
     document.getElementById('applySamriddhFilters').addEventListener('click', function() {
         loadDataTabData('Samriddhdashboard', 'samriddh-dashboard');
+        loadAverageUptimeChart('Samriddhdashboard');
     });
         document.getElementById('applyGprouterFilters').addEventListener('click', function() {
         loadDataTabData('Gprouterdashboard', 'gprouter-dashboard');
+        loadAverageUptimeChart('Gprouterdashboard');
     });
     
     document.getElementById('applyBlockrouterFilters').addEventListener('click', function() {
         loadDataTabData('Blockrouterdashboard', 'blockrouter-dashboard');
+        loadAverageUptimeChart('Blockrouterdashboard');
+    });
+
+    document.getElementById('averageUptimePeriod').addEventListener('change', function() {
+        loadAverageUptimeChart(currentMainTab);
     });
 
     
@@ -1505,7 +1589,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadMainTabData(mainTab) {
         // Reset to first data tab when switching main tabs
         const firstDataTab = getFirstDataTabForMainTab(mainTab);
+        currentDataTab = firstDataTab;
         loadDataTabData(mainTab, firstDataTab);
+        loadAverageUptimeChart(mainTab);
     }
     
     // Function to get first data tab for main tab
@@ -1588,6 +1674,178 @@ document.addEventListener('DOMContentLoaded', function() {
     function getApiEndpoint(mainTab, dataTab) {
         const baseUrl = '/admin';
         return `${baseUrl}/${dataTab.replace('-', '_')}`;
+    }
+
+    function getChartConfig(mainTab) {
+        const mapping = {
+            'Ontdashboard': {
+                dataTab: 'ont-data',
+                title: 'ONT Dashboard'
+            },
+            'Oltdashboard': {
+                dataTab: 'olt-dashboard',
+                title: 'OLT Dashboard'
+            },
+            'Samriddhdashboard': {
+                dataTab: 'samriddh-dashboard',
+                title: 'SAMRIDDH Dashboard'
+            },
+            'Gprouterdashboard': {
+                dataTab: 'gprouter-dashboard',
+                title: 'GP Router Dashboard'
+            },
+            'Blockrouterdashboard': {
+                dataTab: 'blockrouter-dashboard',
+                title: 'Block Router Dashboard'
+            }
+        };
+
+        return mapping[mainTab] || mapping.Ontdashboard;
+    }
+
+    function loadAverageUptimeChart(mainTab) {
+        const chartConfig = getChartConfig(mainTab);
+        const filters = getFilters(mainTab);
+        const period = document.getElementById('averageUptimePeriod').value || 'day';
+        filters.period = period;
+
+        const queryParams = new URLSearchParams(filters).toString();
+        const apiEndpoint = getApiEndpoint(mainTab, chartConfig.dataTab);
+        const subtitle = document.getElementById('averageUptimeChartSubtitle');
+
+        if (subtitle) {
+            subtitle.textContent = chartConfig.title + ' - ' + getPeriodLabel(period);
+        }
+
+        fetch(`${apiEndpoint}?${queryParams}`)
+            .then(response => response.json())
+            .then(response => {
+                renderAverageUptimeChart(response, chartConfig.title, period);
+            })
+            .catch(error => {
+                console.error('Error loading average uptime chart:', error);
+                renderAverageUptimeChart({ data: [] }, chartConfig.title, period);
+            });
+    }
+
+    function getPeriodLabel(period) {
+        const labels = {
+            day: 'Day Wise',
+            week: 'Week Wise',
+            month: 'Month Wise',
+            year: 'Year Wise'
+        };
+
+        return labels[period] || labels.day;
+    }
+
+    function getChartRowLabel(row) {
+        return row.label || row.period_label || row.day || row.record_date || '';
+    }
+
+    function getChartRowValue(row) {
+        const value = row.avg_uptime || row.average_uptime || row.pct_gte98 || row.uptime_percent || 0;
+        return parseFloat(value) || 0;
+    }
+
+    function renderAverageUptimeChart(response, title, period) {
+        const canvas = document.getElementById('averageUptimeTrendChart');
+        if (!canvas) return;
+
+        const rows = response && response.data ? response.data : [];
+        const labels = rows.map(function(row) {
+            return formatChartAxisLabel(getChartRowLabel(row), period);
+        });
+        const values = rows.map(function(row) {
+            return getChartRowValue(row);
+        });
+
+        const ctx = canvas.getContext('2d');
+
+        if (averageUptimeChartInstance) {
+            averageUptimeChartInstance.destroy();
+        }
+
+        averageUptimeChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels.length ? labels : ['No Data'],
+                datasets: [{
+                    label: title + ' Average Uptime %',
+                    data: values.length ? values : [0],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                    pointBackgroundColor: '#2563eb',
+                    pointBorderColor: '#ffffff',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 2,
+                    tension: 0.35,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'start',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 12
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            autoSkip: true,
+                            maxRotation: 45,
+                            minRotation: 0
+                        },
+                        title: {
+                            display: true,
+                            text: getPeriodLabel(period)
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Average Uptime %'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function formatChartAxisLabel(label, period) {
+        if (!label) return '';
+        if (period !== 'day') return label;
+
+        const date = new Date(label);
+        if (isNaN(date.getTime())) return label;
+
+        return date.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short'
+        });
     }
     
     function getFilters(mainTab) {
