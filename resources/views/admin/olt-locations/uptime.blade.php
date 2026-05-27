@@ -399,12 +399,26 @@
             </div>
            
 
-            <div class="uptime-chart-body">
-                <div class="terrasoft-loading" id="loadingIndicatorChart" style="display: none;">
-                    <div class="terrasoft-spinner"></div>
-                    <span>Loading performance data...</span>
+            <div class="uptime-chart-grid">
+                <div class="uptime-chart-body uptime-line-panel">
+                    <div class="terrasoft-loading" id="loadingIndicatorChart" style="display: none;">
+                        <div class="terrasoft-spinner"></div>
+                        <span>Loading performance data...</span>
+                    </div>
+                    <canvas id="averageUptimeTrendChart"></canvas>
                 </div>
-                <canvas id="averageUptimeTrendChart"></canvas>
+
+                <div class="uptime-chart-body uptime-pie-panel">
+                    <div class="terrasoft-loading" id="loadingIndicatorBreakdownChart" style="display: none;">
+                        <div class="terrasoft-spinner"></div>
+                        <span>Loading breakdown...</span>
+                    </div>
+                    <div class="uptime-breakdown-title">
+                        <span class="fw-bold">Availability Breakdown</span>
+                        <span id="uptimeBreakdownSubtitle" class="uptime-chart-subtitle">ONT Dashboard</span>
+                    </div>
+                    <canvas id="uptimeBreakdownChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -526,6 +540,31 @@
     position: relative;
     height: 320px;
     width: 100%;
+}
+
+.uptime-chart-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 0.9fr);
+    gap: 18px;
+    align-items: stretch;
+}
+
+.uptime-pie-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.uptime-breakdown-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.uptime-pie-panel canvas {
+    max-height: 280px;
 }
 
 .terrasoft-tab-container {
@@ -1348,6 +1387,10 @@
     .terrasoft-chart-grid {
         grid-template-columns: 1fr;
     }
+
+    .uptime-chart-grid {
+        grid-template-columns: 1fr;
+    }
      .uptime-chart-header {
         align-items: flex-start;
         flex-direction: column;
@@ -1440,6 +1483,7 @@
     let currentDataTab = 'ont-data';
     let recurringGpsChartInstance = null;
     let averageUptimeChartInstance = null; 
+    let uptimeBreakdownChartInstance = null;
     let activeRecurringType = 'ont';
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1617,10 +1661,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Trend chart – independent date filter
     document.getElementById('applyTrendFilters').addEventListener('click', function () {
         loadAverageUptimeChart();
+        loadUptimeBreakdownChart(currentMainTab);
     });
 
     document.getElementById('averageUptimePeriod').addEventListener('change', function () {
         loadAverageUptimeChart();
+        loadUptimeBreakdownChart(currentMainTab);
     });
 
 
@@ -1634,6 +1680,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const firstDataTab = getFirstDataTabForMainTab(mainTab);
         currentDataTab = firstDataTab;
         loadDataTabData(mainTab, firstDataTab);
+        loadUptimeBreakdownChart(mainTab);
 
     }
     
@@ -1853,6 +1900,131 @@ function loadAverageUptimeChart() {
                 },
             },
         },
+    });
+}
+
+function loadUptimeBreakdownChart(mainTab) {
+    const chartConfig = getChartConfig(mainTab);
+    const filters = getTrendFilters();
+    const params = new URLSearchParams(filters).toString();
+    const endpoint = getApiEndpoint(mainTab, TREND_DATA_TAB_MAP[mainTab]);
+    const subtitle = document.getElementById('uptimeBreakdownSubtitle');
+
+    if (subtitle) {
+        subtitle.textContent = chartConfig.title + ' - ' + getPeriodLabel(filters.period);
+    }
+
+    showLoading('loadingIndicatorBreakdownChart');
+
+    fetch(`${endpoint}?${params}`)
+        .then(response => response.json())
+        .then(response => {
+            hideLoading('loadingIndicatorBreakdownChart');
+            renderUptimeBreakdownChart(response && response.data ? response.data : [], chartConfig.title);
+        })
+        .catch(error => {
+            hideLoading('loadingIndicatorBreakdownChart');
+            console.error('Error loading uptime breakdown chart:', error);
+            renderUptimeBreakdownChart([], chartConfig.title);
+        });
+}
+
+function getNumber(value) {
+    const number = parseFloat(value);
+    return isNaN(number) ? 0 : number;
+}
+
+function hasValue(row, key) {
+    return Object.prototype.hasOwnProperty.call(row, key) && row[key] !== null && row[key] !== undefined;
+}
+
+function aggregateUptimeBreakdown(rows) {
+    return rows.reduce(function(total, row) {
+        const gte90 = hasValue(row, 'gte90_total')
+            ? getNumber(row.gte90_total)
+            : getNumber(row.gte98) + getNumber(row.gte90);
+
+        const gte50Lt90 = hasValue(row, 'gte50_lt90')
+            ? getNumber(row.gte50_lt90)
+            : getNumber(row.gte75) + getNumber(row.gte50);
+
+        const lt50 = hasValue(row, 'lt50_total')
+            ? getNumber(row.lt50_total)
+            : getNumber(row.gte20) + getNumber(row.lt20) + getNumber(row.zero_availability);
+
+        total.gte90 += gte90;
+        total.gte50Lt90 += gte50Lt90;
+        total.lt50 += lt50;
+
+        return total;
+    }, {
+        gte90: 0,
+        gte50Lt90: 0,
+        lt50: 0
+    });
+}
+
+function renderUptimeBreakdownChart(rows, title) {
+    const canvas = document.getElementById('uptimeBreakdownChart');
+    if (!canvas) return;
+
+    const breakdown = aggregateUptimeBreakdown(rows);
+    const values = [
+        breakdown.gte90,
+        breakdown.gte50Lt90,
+        breakdown.lt50
+    ];
+
+    const hasData = values.some(function(value) {
+        return value > 0;
+    });
+
+    const ctx = canvas.getContext('2d');
+    if (uptimeBreakdownChartInstance) uptimeBreakdownChartInstance.destroy();
+
+    uptimeBreakdownChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: hasData ? ['>=90%', '50% to <90%', '<50%'] : ['No Data'],
+            datasets: [{
+                label: title + ' Breakdown',
+                data: hasData ? values : [1],
+                backgroundColor: hasData ? ['#16a34a', '#f59e0b', '#dc2626'] : ['#e5e7eb'],
+                borderColor: '#ffffff',
+                borderWidth: 2,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '58%',
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 12
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (!hasData) return 'No data';
+
+                            const total = context.dataset.data.reduce(function(sum, value) {
+                                return sum + value;
+                            }, 0);
+                            const value = context.parsed || 0;
+                            const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+
+                            return context.label + ': ' + value + ' (' + pct + '%)';
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
