@@ -19,6 +19,27 @@ Route::post('/logout' , 'UserApiController@logout');
 Route::get('/checkapi' , 'UserApiController@checkapi');
 Route::post('/checkversion' , 'UserApiController@CheckVersion');
 
+Route::group(['prefix' => 'public/uptime'], function () {
+	Route::get('/states', 'Api\PublicUptimeController@states');
+	Route::get('/districts', 'Api\PublicUptimeController@districts');
+	Route::get('/blocks', 'Api\PublicUptimeController@blocks');
+
+	Route::get('/ont-dashboard', 'Api\PublicUptimeController@ontDashboard');
+	Route::get('/ont-performance', 'Api\PublicUptimeController@ontPerformance');
+
+	Route::get('/olt-dashboard', 'Api\PublicUptimeController@oltDashboard');
+	Route::get('/olt-performance', 'Api\PublicUptimeController@oltPerformance');
+
+	Route::get('/samriddh-dashboard', 'Api\PublicUptimeController@samriddhDashboard');
+	Route::get('/samriddh-performance', 'Api\PublicUptimeController@samriddhPerformance');
+
+	Route::get('/gp-router-dashboard', 'Api\PublicUptimeController@gpRouterDashboard');
+	Route::get('/gp-router-performance', 'Api\PublicUptimeController@gpRouterPerformance');
+
+	Route::get('/block-router-dashboard', 'Api\PublicUptimeController@blockRouterDashboard');
+	Route::get('/block-router-performance', 'Api\PublicUptimeController@blockRouterPerformance');
+});
+
 
 Route::post('/auth/facebook', 		'Auth\SocialLoginController@facebookViaAPI');
 Route::post('/auth/google', 		'Auth\SocialLoginController@googleViaAPI');

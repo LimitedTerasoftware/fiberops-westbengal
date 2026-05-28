@@ -18,7 +18,7 @@
                         <p class="terrasoft-page-subtitle">Monitor ONT, OLT, and SAMRIDDH performance data</p>
                     </div>
                 </div>
-                @if(auth()->user()->role == 'admin' || auth()->user()->role == 'zone_admin')
+                @if(auth()->user()->role == 'admin' || (auth()->user()->role == 'zone_admin' && auth()->user()->name !== 'zonal manager'))
 
                 <div class="terrasoft-header-actions">
                     <button class="terrasoft-btn terrasoft-btn-success" id="uploadCsvBtn">
@@ -399,17 +399,17 @@
             </div>
            
 
-            <div class="uptime-chart-grid">
+           <div class="uptime-chart-grid">
                 <div class="uptime-chart-body uptime-line-panel">
-                    <div class="terrasoft-loading" id="loadingIndicatorChart" style="display: none;">
+                    <div class="terrasoft-loading chart-loading" id="loadingIndicatorChart" style="display: none;">
                         <div class="terrasoft-spinner"></div>
-                        <span>Loading performance data...</span>
+                        <span>Loading Trends data...</span>
                     </div>
                     <canvas id="averageUptimeTrendChart"></canvas>
                 </div>
 
                 <div class="uptime-chart-body uptime-pie-panel">
-                    <div class="terrasoft-loading" id="loadingIndicatorBreakdownChart" style="display: none;">
+                    <div class="terrasoft-loading chart-loading" id="loadingIndicatorBreakdownChart" style="display: none;">
                         <div class="terrasoft-spinner"></div>
                         <span>Loading breakdown...</span>
                     </div>
@@ -541,7 +541,6 @@
     height: 320px;
     width: 100%;
 }
-
 .uptime-chart-grid {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(260px, 0.9fr);
@@ -1387,8 +1386,7 @@
     .terrasoft-chart-grid {
         grid-template-columns: 1fr;
     }
-
-    .uptime-chart-grid {
+      .uptime-chart-grid {
         grid-template-columns: 1fr;
     }
      .uptime-chart-header {
@@ -1419,10 +1417,11 @@
 
 /* Loading Styles */
 .terrasoft-loading {
-     position: absolute;
+    position: absolute;
     display: flex;
-       top: 0;
+    /* top: 0; */
     left: 0;
+    bottom: 30%;
     width: 100%;
     height: 100%;
     flex-direction: column;
@@ -1430,6 +1429,26 @@
     justify-content: center;
     padding: 40px;
     color: #64748b;
+}
+.uptime-chart-body > .chart-loading {
+    position: absolute;
+    inset: 0;
+    top:0;
+    width: auto;
+    height: auto;
+    z-index: 10;
+    padding: 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.uptime-pie-panel > .chart-loading {
+    top: 32px;
+}
+
+.uptime-line-panel,
+.uptime-pie-panel {
+    overflow: hidden;
 }
 .terrasoft-loading-overlay {
     position: absolute;
@@ -1662,11 +1681,13 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('applyTrendFilters').addEventListener('click', function () {
         loadAverageUptimeChart();
         loadUptimeBreakdownChart(currentMainTab);
+
     });
 
     document.getElementById('averageUptimePeriod').addEventListener('change', function () {
         loadAverageUptimeChart();
         loadUptimeBreakdownChart(currentMainTab);
+
     });
 
 
@@ -1681,6 +1702,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentDataTab = firstDataTab;
         loadDataTabData(mainTab, firstDataTab);
         loadUptimeBreakdownChart(mainTab);
+
 
     }
     
@@ -1903,6 +1925,7 @@ function loadAverageUptimeChart() {
     });
 }
 
+
 function loadUptimeBreakdownChart(mainTab) {
     const chartConfig = getChartConfig(mainTab);
     const filters = getTrendFilters();
@@ -2028,11 +2051,7 @@ function renderUptimeBreakdownChart(rows, title) {
     });
 }
 
-
-
-    
-    
-    function getFilters(mainTab) {
+function getFilters(mainTab) {
         let filters = {};
         
         switch(mainTab) {
@@ -2451,7 +2470,7 @@ function generatePagination(data, mainTab, dataTab) {
         });
 
         // calculate and show average
-        const avg = calcAverage(data, cat.key, cat.isPercent);
+        const avg = calcAverage(data, cat);
         html += `<td class="terrasoft-td-average">${avg}</td>`;
 
         html += '</tr>';
@@ -2462,17 +2481,30 @@ function generatePagination(data, mainTab, dataTab) {
 }
 
 // Helper for averages (up to two decimal points)
-function calcAverage(data, key, isPercent) {
-    const nums = data.map(d => parseFloat(d[key]) || 0);
-    const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
-    const formatted = avg % 1 === 0 ? avg.toFixed(0) : avg.toFixed(2).replace(/\.?0+$/, '');
-    return isPercent ? `${formatted}%` : formatted;
+function calcAverage(data, cat) {
+    const key = cat.key;
+    const total = data.reduce((sum, row) => sum + (parseFloat(row.total) || 0), 0);
+
+    if (key === 'total' || cat.isNewIntegration) {
+        const nums = data.map(row => parseFloat(row[key]) || 0);
+        const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
+        return formatAverageValue(avg);
+    }
+
+    if (key === 'pct_gte98') {
+        const gte98 = data.reduce((sum, row) => sum + (parseFloat(row.gte98) || 0), 0);
+        return total > 0 ? `${formatAverageValue((gte98 / total) * 100)}%` : '0%';
+    }
+
+    const categoryTotal = data.reduce((sum, row) => sum + (parseFloat(row[key]) || 0), 0);
+    return total > 0 ? `${formatAverageValue((categoryTotal / total) * 100)}%` : '0%';
+}
+function formatAverageValue(value) {
+    return value % 1 === 0 ? value.toFixed(0) : value.toFixed(2).replace(/\.?0+$/, '');
 }
 
 
-    
-    
-    function generateTotalRow(totals, dates) {
+function generateTotalRow(totals, dates) {
         let html = '<tr class="terrasoft-total-row">';
         html += '<td class="terrasoft-td-total" colspan="2"><strong>Total</strong></td>';
         
