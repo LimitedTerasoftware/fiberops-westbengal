@@ -162,6 +162,7 @@ class PublicUptimeController extends Controller
         $this->applyDateFilters($query, $request, $config['date_column']);
 
         $uptime = $config['uptime_column'];
+        $uniqueAvgUptime = $this->uniqueAverageUptime(clone $query, $config['table'] . '.lgd_code', $uptime);
 
         $query
             ->selectRaw($periodSql['label'] . ' as label')
@@ -194,7 +195,7 @@ class PublicUptimeController extends Controller
             ->orderByRaw($periodSql['sort'] . ' asc')
             ->get();
 
-        return $this->successResponse('dashboard', $source, $request, $data, $this->averages($data, $config['supports_router_metrics']), null);
+        return $this->successResponse('dashboard', $source, $request, $data, $this->averages($data, $config['supports_router_metrics'], $uniqueAvgUptime), null);
     }
 
     private function performance(Request $request, $source)
@@ -510,11 +511,22 @@ class PublicUptimeController extends Controller
         ";
     }
 
-    private function averages($data, $includeRouterMetrics)
+    private function uniqueAverageUptime($query, $lgdColumn, $uptimeColumn)
+    {
+        $rows = $query
+            ->selectRaw($lgdColumn . ' as lgd_code')
+            ->selectRaw('AVG(' . $uptimeColumn . ') as asset_avg_uptime')
+            ->groupBy(DB::raw($lgdColumn))
+            ->get();
+
+        return round($rows->avg('asset_avg_uptime'), 2);
+    }
+
+    private function averages($data, $includeRouterMetrics, $uniqueAvgUptime)
     {
         $averages = [
             'total' => round($data->avg('total'), 2),
-            'avg_uptime' => round($data->avg('avg_uptime'), 2),
+            'avg_uptime' => $uniqueAvgUptime,
             'gte98' => round($data->avg('gte98'), 2),
             'gte90' => round($data->avg('gte90'), 2),
             'gte75' => round($data->avg('gte75'), 2),

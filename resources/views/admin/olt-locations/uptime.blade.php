@@ -2351,7 +2351,7 @@ function generatePagination(data, mainTab, dataTab) {
         // Generate rows
         if (data.data && data.data.length > 0) {
             
-            html += generateTableRow(data.data,mainTab);
+            html += generateTableRow(data.data, mainTab, data.averages || {});
 
         }
         
@@ -2403,17 +2403,18 @@ function generatePagination(data, mainTab, dataTab) {
             { key: 'gte20', label: 'GPs with (>=20) to <50%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'lt20', label: 'GPs with (0) to <20%', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'total', label: 'Total', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
+            { key: 'avg_uptime', label: 'Average Uptime %', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true, isOverallAverage: true },
             { key: 'pct_gte98', label: '>98%', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true }
         ];
 
         const routerCategories = [
-            { key: 'integration', label: 'New Integration', color: 'text-blue-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value'},
+            { key: 'integration', label: 'New Integration', color: 'text-blue-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value', isNewIntegration: true },
 
             { key: 'gte98', label: '>98% Availability', color: 'text-green-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'lt98', label: '<98% (Excl. 0%) Availability', color: 'text-red-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'zero_availability', label: '0% Availability', color: 'text-gray-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'total', label: 'Total', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
-            { key: 'pct_gte98', label: 'Overall Availability %', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true }
+            { key: 'avg_uptime', label: 'Average Uptime %', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true, isOverallAverage: true }
         ];
 
         if (mainTab === 'Gprouterdashboard' || mainTab === 'Blockrouterdashboard') {
@@ -2422,7 +2423,7 @@ function generatePagination(data, mainTab, dataTab) {
 
         return allCategories;
     }
-    function generateTableRow(data,mainTab) {
+    function generateTableRow(data, mainTab, averages) {
      const categories = getCategories(mainTab);
     let html = '<tbody>';
     let slNo = 1;
@@ -2431,7 +2432,7 @@ function generatePagination(data, mainTab, dataTab) {
         html += `<tr class="${cat.rowClass || ''}">`;
 
         // serial and description
-        const isCountableRow = cat.key !== 'total' && cat.key !== 'pct_gte98';
+        const isCountableRow = !['total', 'pct_gte98', 'avg_uptime'].includes(cat.key);
         html += `<td class="terrasoft-td-number">${isCountableRow ? slNo++ : ''}</td>`;
         html += `<td class="${cat.colClass || ''}">${cat.label}</td>`;
 
@@ -2444,34 +2445,23 @@ function generatePagination(data, mainTab, dataTab) {
         data.forEach(row => {
             let value = row[cat.key] ?? 0;
             if (cat.isPercent) {
-                value = `${value}%`;
-            }else if (mainTab === 'Ontdashboard') {
-                // Add redirection for Ontdashboard
-                const url = `{{ route('admin.frequently_down_gps') }}?from_date=${row.day}&to_date=${row.day}&uptime_category=${cat.key}&ticket_type=ont`;
-                value = `<a href="${url}" target="_blank" style="text-decoration: underline; color: inherit;">${value}</a>`;
-            }else if(mainTab === 'Samriddhdashboard') {
-                // Add redirection for Samriddhdashboard
-                const url = `{{ route('admin.frequently_down_gps') }}?from_date=${row.day}&to_date=${row.day}&uptime_category=${cat.key}&ticket_type=ont&samriddh=true`;
-                value = `<a href="${url}" target="_blank" style="text-decoration: underline; color: inherit;">${value}</a>`;
-            }else if(mainTab === 'Gprouterdashboard') {
-                // Add redirection for Gprouterdashboard
-                const url = `{{ route('admin.frequently_down_gps') }}?from_date=${row.day}&to_date=${row.day}&router_category=${cat.key}&ticket_type=gprouter`;
-                value = `<a href="${url}" target="_blank" style="text-decoration: underline; color: inherit;">${value}</a>`;
-            }else if(mainTab === 'Blockrouterdashboard') {
-                // Add redirection for Blockrouterdashboard
-                const url = `{{ route('admin.frequently_down_gps') }}?from_date=${row.day}&to_date=${row.day}&Blockrouter_category=${cat.key}&ticket_type=blockrouter`;
-                value = `<a href="${url}" target="_blank" style="text-decoration: underline; color: inherit;">${value}</a>`;
-            }else if(mainTab === 'Oltdashboard') {
-                // Add redirection for Oltdashboard
-                const url = `{{ route('admin.frequently_down_gps') }}?from_date=${row.day}&to_date=${row.day}&OLT_category=${cat.key}&ticket_type=olt`;
+                value = `${formatAverageValue(parseFloat(value) || 0)}%`;
+            }
+
+            const url = getReportUrl(mainTab, row.day, row.day, cat);
+            if (url) {
                 value = `<a href="${url}" target="_blank" style="text-decoration: underline; color: inherit;">${value}</a>`;
             }
             html += `<td class="${cat.valClass || ''}">${value}</td>`;
         });
 
         // calculate and show average
-        const avg = calcAverage(data, cat);
-        html += `<td class="terrasoft-td-average">${avg}</td>`;
+        const avg = calcAverage(data, cat, averages || {});
+        const avgUrl = getAverageReportUrl(mainTab, data, cat);
+        const avgValue = avgUrl
+            ? `<a href="${avgUrl}" target="_blank" style="text-decoration: underline; color: inherit;">${avg}</a>`
+            : avg;
+        html += `<td class="terrasoft-td-average">${avgValue}</td>`;
 
         html += '</tr>';
     });
@@ -2481,9 +2471,29 @@ function generatePagination(data, mainTab, dataTab) {
 }
 
 // Helper for averages (up to two decimal points)
-function calcAverage(data, cat) {
+function calcAverage(data, cat, averages) {
     const key = cat.key;
     const total = data.reduce((sum, row) => sum + (parseFloat(row.total) || 0), 0);
+
+    if (cat.isOverallAverage) {
+        if (averages && averages.avg_uptime !== undefined && averages.avg_uptime !== null) {
+            return `${formatAverageValue(parseFloat(averages.avg_uptime) || 0)}%`;
+        }
+
+        const weightedTotal = data.reduce((sum, row) => {
+            const rowTotal = parseFloat(row.total) || 0;
+            const avgUptime = parseFloat(row.avg_uptime) || 0;
+            return sum + (avgUptime * rowTotal);
+        }, 0);
+
+        if (total > 0) {
+            return `${formatAverageValue(weightedTotal / total)}%`;
+        }
+
+        const nums = data.map(row => parseFloat(row.avg_uptime) || 0);
+        const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
+        return `${formatAverageValue(avg)}%`;
+    }
 
     if (key === 'total' || cat.isNewIntegration) {
         const nums = data.map(row => parseFloat(row[key]) || 0);
@@ -2501,6 +2511,66 @@ function calcAverage(data, cat) {
 }
 function formatAverageValue(value) {
     return value % 1 === 0 ? value.toFixed(0) : value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function getReportCategory(cat) {
+    if (cat.key === 'avg_uptime' || cat.key === 'total') {
+        return 'all';
+    }
+
+    if (cat.key === 'pct_gte98') {
+        return 'gte98';
+    }
+
+    return cat.key;
+}
+
+function getReportUrl(mainTab, fromDate, toDate, cat) {
+    if (!fromDate || !toDate) {
+        return '';
+    }
+
+    const category = getReportCategory(cat);
+    const baseUrl = `{{ route('admin.frequently_down_gps') }}`;
+
+    if (mainTab === 'Ontdashboard') {
+        return `${baseUrl}?from_date=${fromDate}&to_date=${toDate}&uptime_category=${category}&ticket_type=ont`;
+    }
+
+    if (mainTab === 'Samriddhdashboard') {
+        return `${baseUrl}?from_date=${fromDate}&to_date=${toDate}&uptime_category=${category}&ticket_type=ont&samriddh=true`;
+    }
+
+    if (mainTab === 'Gprouterdashboard') {
+        return `${baseUrl}?from_date=${fromDate}&to_date=${toDate}&router_category=${category}&ticket_type=gprouter`;
+    }
+
+    if (mainTab === 'Blockrouterdashboard') {
+        return `${baseUrl}?from_date=${fromDate}&to_date=${toDate}&Blockrouter_category=${category}&ticket_type=blockrouter`;
+    }
+
+    if (mainTab === 'Oltdashboard') {
+        return `${baseUrl}?from_date=${fromDate}&to_date=${toDate}&OLT_category=${category}&ticket_type=olt`;
+    }
+
+    return '';
+}
+
+function getAverageReportUrl(mainTab, data, cat) {
+    if (!cat.isOverallAverage || !data.length) {
+        return '';
+    }
+
+    const sortedDates = data
+        .map(row => row.day)
+        .filter(Boolean)
+        .sort();
+
+    if (!sortedDates.length) {
+        return '';
+    }
+
+    return getReportUrl(mainTab, sortedDates[0], sortedDates[sortedDates.length - 1], cat);
 }
 
 
