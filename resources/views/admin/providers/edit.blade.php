@@ -130,6 +130,8 @@
                                                         <option value="5" {{ $provider->type == 5 ? 'selected' : '' }}>Patroller</option>
                                                         <option value="3" {{ $provider->type == 3 ? 'selected' : '' }}>Zonal incharge</option>
                                                         <option value="4" {{ $provider->type == 4 ? 'selected' : '' }}>District incharge</option>
+                                                        <option value="6" {{ $provider->type == 6 ? 'selected' : '' }}>MIS</option>
+                                                        <option value="7" {{ $provider->type == 7 ? 'selected' : '' }}>Block incharge</option>
 
 						</select>
 					</div>

@@ -90,6 +90,7 @@
                                 <option value="">Please Select Import Type</option>
                                 <option value="1">FRT</option>
                                 <option value="2">Patroller</option>
+                                <option value="3">Zonal incharge</option>
                             </select>
                         </div>
 

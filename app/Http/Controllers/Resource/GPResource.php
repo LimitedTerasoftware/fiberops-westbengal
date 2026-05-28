@@ -1117,7 +1117,7 @@ public function getFrtReport(Request $request)
             ->get()
             ->groupBy('provider_id');
 
-    // ================= ROUTE PATROLLING =================
+     // ================= ROUTE PATROLLING =================
     $routePatrolling = DB::table('raise_tickets')
         ->where('issue_sub_type', 'Route Patrolling')
         ->whereBetween(DB::raw('DATE(created_at)'), [$fromDate, $toDate])
@@ -2071,7 +2071,7 @@ public function gp_mapping_update(Request $request)
   
         // ? Use Validator instead of $request->validate()
         $validator = Validator::make($request->all(), [
-            'type' => 'required|in:1,2',
+            'type' => 'required|in:1,2,3',
             'import_file' => 'required|mimes:csv,txt',
         ]);
 
@@ -2124,6 +2124,13 @@ public function gp_mapping_update(Request $request)
                     $updateData = [
                         'petroller' => $name,
                         'petroller_contact_no' => $phone,
+                    ];
+                    break;
+                case '3': // Zonal Incharge
+                    $updateData = [
+                        'zonal_incharge_name' => $name,
+                        'zonal_incharge_ph' => $phone,
+                       
                     ];
                     break;
                 default:
@@ -3365,12 +3372,5 @@ public function getBlocks($districtId)
         ->select('id', 'name')
         ->get();
 }
-
- 
-
-
-
-
-
 
 }

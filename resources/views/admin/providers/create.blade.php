@@ -48,10 +48,11 @@
 								<option value="">Please Select Designation</option>
 								<option value="1">OFC</option>
 								<option value="2">FRT</option>
-                                                                <option value="5">Patroller</option>
-                                                                <option value="3">Zonal incharge</option>
-                                                                <option value="4">District incharge</option>
-                                                                <option value="6">MIS</option>
+								<option value="5">Patroller</option>
+								<option value="3">Zonal incharge</option>
+								<option value="4">District incharge</option>
+								<option value="6">MIS</option>
+								<option value="7">Block incharge</option>
                                                                
 							</select>
 						</div>

@@ -47,13 +47,15 @@
                         <th>@lang('GP Name')</th>
                         <th>@lang('District')</th>
                         <th>@lang('Block')</th>
-                        <th>Zonal Incharge</th>
+                        <th>Zone</th>
                         <th>Gp Percentage</th>
                         <th>@lang('LGD Code')</th>
                         <th>FRT Name</th>
                         <th>@lang('Contact No')</th>
                         <th>Patroller Name</th>
                         <th>@lang('Contact No')</th>
+                        <th>Zonal Incharge</th>
+                        <th>Zonal Incharge Contact</th>
                         @if(auth()->user()->role == 'admin')
                         <th>@lang('admin.action')</th>
                         @endif
@@ -73,6 +75,8 @@
                         <td>{{ $gp->contact_no }}</td>
                         <td>{{ $gp->petroller}}</td>
                         <td>{{ $gp->petroller_contact_no }}</td>
+                        <td>{{ $gp->zonal_incharge_name }}</td>
+                        <td>{{ $gp->zonal_incharge_ph }}</td>
 
                         @if(auth()->user()->role == 'admin')
                         <td>

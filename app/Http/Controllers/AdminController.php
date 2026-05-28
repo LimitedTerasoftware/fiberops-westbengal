@@ -7964,7 +7964,9 @@ public function exportProviders(Request $request)
                 2 => 'FRT',
                 5 => 'Patroller',
                 3 => 'Zonal incharge',
-                4 => 'District incharge'
+                4 => 'District incharge',
+                7 => 'Block incharge',
+                6 => 'MIS',
             ];
 
             $data = [];
