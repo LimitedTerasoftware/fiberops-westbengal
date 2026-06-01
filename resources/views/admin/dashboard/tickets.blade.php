@@ -233,6 +233,19 @@ inc {
     background: #efd585;
     color: #4a3000;
 }
+.ticket-inst {
+    background: #e8d5ff;
+    color: #6b21a8;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-weight: 700;
+    font-size: 12px;
+    display: inline-block;
+}
+.ticket-inst:hover {
+    background: #d4b8ff;
+    color: #6b21a8;
+}
 /* host_group_name tooltip */
 .hg-tooltip {
     position: relative;
@@ -322,6 +335,15 @@ inc {
             <div class="filter-card">
                 <form action="{{route('admin.tickets1', $query_params)}}" method="GET">
                     <div class="filter-row">
+                        <div class="filter-pill">
+                            <i class="bi bi-ticket-perforated-fill text-secondary"></i>
+                            <select name="ticket_type">
+                                <option value="">All Types</option>
+                                <option value="TK" {{ Request::get('ticket_type') == 'TK' ? 'selected' : '' }}>Regular (TK)</option>
+                                <option value="INC" {{ Request::get('ticket_type') == 'INC' ? 'selected' : '' }}>Router (INC/)</option>
+                                <option value="INST" {{ Request::get('ticket_type') == 'INST' ? 'selected' : '' }}>Installation (INST/)</option>
+                            </select>
+                        </div>
                         <div class="filter-pill">
                             <i class="bi bi-search text-muted"></i>
                             <input type="text" name="searchinfo" placeholder="Search..." value="{{ @Request::get('searchinfo') }}">
@@ -477,6 +499,34 @@ inc {
                     <p>Completed</p>
                 </div>
             </div>
+             <!-- INST Ticket Summary Cards -->
+            <div class="stats-row">
+                <div class="stat-card" style="border-top:3px solid #8b5cf6;">
+                    <small style="font-size:10px;font-weight:700;color:#8b5cf6;letter-spacing:.5px;">INSTALLATION TICKETS</small>
+                    <h3 style="color:#8b5cf6;">{{ $instTotal }}</h3>
+                    <p>Total</p>
+                </div>
+                <div class="stat-card stat-notstarted">
+                    <small style="font-size:10px;font-weight:700;color:#b59500;letter-spacing:.5px;">INSTALLATION TICKETS</small>
+                    <h3>{{ $instOpen }}</h3>
+                    <p>Open</p>
+                </div>
+                <div class="stat-card stat-ongoing">
+                    <small style="font-size:10px;font-weight:700;color:#0298a8;letter-spacing:.5px;">INSTALLATION TICKETS</small>
+                    <h3>{{ $instOngoing }}</h3>
+                    <p>Ongoing</p>
+                </div>
+                <div class="stat-card stat-onhold">
+                    <small style="font-size:10px;font-weight:700;color:#a01c01;letter-spacing:.5px;">INSTALLATION TICKETS</small>
+                    <h3>{{ $instHold }}</h3>
+                    <p>On Hold</p>
+                </div>
+                <div class="stat-card stat-completed">
+                    <small style="font-size:10px;font-weight:700;color:#01a01e;letter-spacing:.5px;">INSTALLATION TICKETS</small>
+                    <h3>{{ $instCompleted }}</h3>
+                    <p>Completed</p>
+                </div>
+            </div>
   
 
          @if(count($tickets) != 0)
@@ -519,6 +569,10 @@ inc {
                               @if(!empty($request->host_group_name))
                               <span class="hg-tip"><i class="bi bi-people-fill"></i> {{ $request->host_group_name }}</span>
                               @endif
+                            </span>
+                          @elseif(Str::startsWith($request->ticketid, 'INST'))
+                            <span class="hg-tooltip">
+                              <span class="ticket-inst">{{ $request->ticketid }}</span>
                             </span>
                           @else
                             {{ $request->ticketid }}
@@ -741,7 +795,7 @@ $formattedTime = sprintf("%02d:%02d", $hours, $minutes);
         </div>
          Showing {{$tickets->currentPage() != 1 ? $tickets->currentPage() * 10 - 9 : $tickets->currentPage()}} to {{$tickets->currentPage() * $tickets->perPage()}} of {{$tickets->total()}} entries
     </div>
-      {{ $tickets->appends(['status' => @$status_get,'district_id'=>@$district_id_get,'interval'=>@$interval_get,'searchinfo'=>@$serch_term_get,'zone_id'=>@$zone_id_get,'team_id'=>@$team_id_get,'block_id'=>@$block_id_get,'from_date'=>@$from_date_get,'to_date'=>@$to_date_get,'autoclose'=>@$autoclose_get,'default_autoclose'=>@$default_autoclose_get,'provider_id'=>@$provider_id_get,'category'=>@$category_get,'newfrom_date'=>@$newfrom_date_get,'newto_date'=>@$newto_date_get,'range'=>@$range_get,'host_group_name'=>@$host_group_name_get,'Gpstatus'=>@$Gpstatus_get])->links()  }}
+      {{ $tickets->appends(['status' => @$status_get,'district_id'=>@$district_id_get,'interval'=>@$interval_get,'searchinfo'=>@$serch_term_get,'zone_id'=>@$zone_id_get,'team_id'=>@$team_id_get,'block_id'=>@$block_id_get,'from_date'=>@$from_date_get,'to_date'=>@$to_date_get,'autoclose'=>@$autoclose_get,'default_autoclose'=>@$default_autoclose_get,'provider_id'=>@$provider_id_get,'category'=>@$category_get,'newfrom_date'=>@$newfrom_date_get,'newto_date'=>@$newto_date_get,'range'=>@$range_get,'host_group_name'=>@$host_group_name_get,'Gpstatus'=>@$Gpstatus_get,'ticket_type'=>@$ticket_type_get])->links()  }}
    </div>
 </div>
           

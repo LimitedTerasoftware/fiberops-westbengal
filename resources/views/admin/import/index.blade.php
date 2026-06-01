@@ -49,6 +49,7 @@
                                 <option value="">Please Select Import Type</option>
                                 <option value="1">Tickets</option>
                                 <option value="3">Router Tickets</option>
+                                <option value="4">Installation Tickets</option>
                                 <!--<option value="2">Patroller Tickets</option>--->
                             </select>
                         </div>

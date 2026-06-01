@@ -76,6 +76,7 @@
                 </div>
                 <ul class="terrasoft-nav-submenu" id="submenu-tickets">
                     <li><a href="{{ url('/admin/tickets') }}" ><i class="ti-ticket"></i> Tickets</a></li>
+                    <li><a href="{{ route('admin.installation.tickets') }}"><i class="ti-ticket"></i> Installation Tickets</a></li>
                     <li><a href="{{ route('admin.dailyrepots') }}"><i class="ti-check"></i> Daily Report</a></li>
                     <li><a href="{{ route('admin.patrollertickets') }}"><i class="ti-check"></i> Patroller Tickets</a></li>
 

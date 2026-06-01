@@ -13,6 +13,7 @@ Route::get('/material-usage-dashboard', 'InventoryMng\StockIssueController@mater
 Route::get('/viewmaps', 'AdminController@viewmaps')->name('viewmaps');
 Route::get('/tickets1', 'AdminController@tickets')->name('tickets');
 Route::get('/tickets', 'AdminController@tickets1')->name('tickets1');
+Route::get('/installation-tickets', 'AdminController@installationTickets')->name('installation.tickets');
 Route::get('/tickets/create', 'AdminController@addNewTicket')->name('tickets.create');
 Route::post('/tickets/store', 'AdminController@storeTicket')->name('tickets.store');
 Route::get('tickets/{id}/edit', 'AdminController@editTicket')->name('tickets.edit'); 

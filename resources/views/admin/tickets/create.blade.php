@@ -21,9 +21,20 @@
       <form class="form-horizontal" action="{{route('admin.tickets.store')}}" method="POST" enctype="multipart/form-data" role="form">
             	{{csrf_field()}}
 				<div class="form-group row">
+					<label class="col-xs-12 col-form-label">Ticket Type</label>
+					<div class="col-xs-10">
+						<select class="form-control" name="ticket_type" id="ticket_type">
+							<option value="">Please Select Ticket Type</option>
+							<option value="1">Regular Ticket</option>
+							<option value="3">Router Ticket</option>
+							<option value="4">Installation Ticket</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-group row">
 					<label for="ticketid" class="col-xs-12 col-form-label">@lang('admin.request.Ticket_ID')</label>
 					<div class="col-xs-10">
-						<input class="form-control" type="text" value="{{ old('ticketid') }}" name="ticketid" required id="ticketid" placeholder=" Enter Ticket ID Start with TKIT000000 format">
+						<input class="form-control" type="text" value="{{ old('ticketid') }}" name="ticketid" required id="ticketid" placeholder="Select a ticket type above to auto-generate ID" readonly>
 					</div>
 				</div>
 
@@ -129,6 +140,30 @@
 @endsection
 @section('scripts')
 <script>
+$('#ticket_type').on('change', function() {
+    var type = $(this).val();
+    var ticketid = $('#ticketid');
+    if (type) {
+        var date = new Date();
+        var y = date.getFullYear();
+        var m = ('0' + (date.getMonth() + 1)).slice(-2);
+        var d = ('0' + date.getDate()).slice(-2);
+        var dateStr = y + m + d;
+        var rand = Math.floor(10000 + Math.random() * 90000);
+        if (type == '1') {
+            ticketid.val('TK26' + Math.floor(1000000 + Math.random() * 9000000));
+        } else if (type == '3') {
+            ticketid.val('INC/' + dateStr + '/' + rand);
+        } else if (type == '4') {
+            ticketid.val('INST/' + dateStr + '/' + rand);
+        }
+        ticketid.prop('readonly', true);
+    } else {
+        ticketid.val('');
+        ticketid.prop('readonly', false);
+    }
+});
+
 $("select[id='district']").change(function(){
   var district_id = $('#district option:selected').attr('rel');
   $.get('{{url("admin/ajax-blocks")}}/'+district_id,function(data) {
