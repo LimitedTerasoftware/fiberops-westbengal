@@ -9,7 +9,8 @@
         2 => 'FRT',
         5 => 'Patroller',
         3 => 'Zonal incharge',
-        4 => 'District incharge'
+        4 => 'District incharge',
+        7 => 'Block incharge'
     ];
 @endphp
 @php
@@ -133,28 +134,28 @@
 
  <div class="row">
 
-    <div class="col-md-4 mb-2">
+    <div class="col-md-4 mb-2 frt-pat-section">
      <div class="canvas-card p-2">
       <canvas id="loginActivityChart"></canvas>
      </div>
   </div>
  
 
-   <div class="col-md-4 mb-2">
+   <div class="col-md-4 mb-2 frt-pat-section">
      <div class="canvas-card p-2">
 
       <canvas id="workDistributionChart"></canvas>
      </div>
   </div>
 
-     <div class="col-md-4 mb-2">
+     <div class="col-md-4 mb-2 frt-pat-section">
      <div class="canvas-card p-2">
 
       <canvas id="patworkDistributionChart"></canvas>
      </div>
   </div>
 
-  <div class="col-md-6 mb-2">
+  <div class="col-md-6 mb-2 frt-pat-section">
       <div class="canvas-card mt-4">
          <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
             <h6 class="fw-bold mb-0">Zone Vs FRT</h6>
@@ -170,25 +171,25 @@
        </div>
    </div>
    
+  <div class="col-md-6 mb-2 frt-pat-section">
+        <div class="canvas-card mt-4">
+           <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
+             <h6 class="fw-bold mb-0">Zone Vs Patrollers</h6>
+             <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label class="small fw-bold me-1">From:</label>
+                <input type="date" id="pat_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+                <label class="small fw-bold me-1">To:</label>
+                <input type="date" id="pat_zone_to_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+                <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-pat-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
+             </div>
+          </div>
+          <div id="patHeatmap" class="heatmap"></div>
+       </div>
+     </div>
   <div class="col-md-6 mb-2">
        <div class="canvas-card mt-4">
           <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <h6 class="fw-bold mb-0">Zone Vs Patrollers</h6>
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-               <label class="small fw-bold me-1">From:</label>
-               <input type="date" id="pat_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
-               <label class="small fw-bold me-1">To:</label>
-               <input type="date" id="pat_zone_to_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
-               <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-pat-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
-            </div>
-         </div>
-         <div id="patHeatmap" class="heatmap"></div>
-      </div>
-    </div>
-  <div class="col-md-6 mb-2">
-       <div class="canvas-card mt-4">
-          <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <h6 class="fw-bold mb-0">Zone Vs District Incharge</h6>
+             <h6 class="fw-bold mb-0">Zone Vs District Incharge</h6>
             <div style="display:flex; justify-content:space-between; align-items:center;">
                <label class="small fw-bold me-1">From:</label>
                <input type="date" id="di_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
@@ -217,8 +218,24 @@
        </div>
      </div>
 
+  <div class="col-md-6 mb-2">
+        <div class="canvas-card mt-4">
+           <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h6 class="fw-bold mb-0">Zone Vs Block Incharge</h6>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+               <label class="small fw-bold me-1">From:</label>
+               <input type="date" id="bi_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <label class="small fw-bold me-1">To:</label>
+               <input type="date" id="bi_zone_to_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-bi-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
+            </div>
+         </div>
+          <div id="biHeatmap" class="heatmap"></div>
+       </div>
+     </div>
 
-<div class="col-md-6 mb-2">
+
+<div class="col-md-6 mb-2 frt-pat-section">
     <div class="canvas-card mt-4">
 
         <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
@@ -239,7 +256,7 @@
     </div>
 </div>
    
-  <div class="col-md-6 mb-2">
+  <div class="col-md-6 mb-2 frt-pat-section">
       <div class="canvas-card mt-4">
 
          <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
@@ -259,7 +276,7 @@
      </div>
    </div>
    
-     <div class="col-md-6 mb-2">
+     <div class="col-md-6 mb-2 frt-pat-section">
         <div class="canvas-card mt-4">
             <div class="heatmap-header"
                 style="display:flex; justify-content:space-between; align-items:center;">
@@ -280,7 +297,7 @@
         </div>
     </div>
 
-    <div class="col-md-6 mb-2">
+    <div class="col-md-6 mb-2 frt-pat-section">
         <div class="canvas-card mt-4">
             <div class="heatmap-header"
                 style="display:flex; justify-content:space-between; align-items:center;">
@@ -327,7 +344,7 @@
             </div>
         </div>
     </div>
-     <div class="col-md-6 mb-2">
+     <div class="col-md-6 mb-2 frt-pat-section">
      <div class="canvas-card mt-4">
          <canvas id="statusComparisonChart"></canvas>
      </div>
@@ -489,7 +506,11 @@
 
     </script>
 <script>
+var userRole = '{{ @$user->role }}';
 $(document).ready(function() {
+    if (userRole === 'installation') {
+        $('.frt-pat-section').hide();
+    }
     $.ajax({
         url: "{{ url('/admin/get_todayfrtreport') }}",// Your Laravel route
         method: 'GET',
@@ -633,6 +654,54 @@ $(document).ready(function() {
                 },
                 error: function(xhr, status, error) {
                     console.error('Error fetching DI/MIS report:', error);
+                }
+            });
+
+            // ===== Render Block Incharge Heatmap =====
+            $.ajax({
+                url: "{{ url('/admin/get_block_incharge_report') }}",
+                method: 'GET',
+                dataType: 'json',
+                success: function(biResponse) {
+                    renderBiHeatmap(biResponse);
+
+                    if (userRole === 'installation') {
+                        var biTotal = 0, biWorking = 0, biNotStarted = 0, biCompleted = 0;
+                        var biNoTicket = 0, biOnlyHold = 0, biLoggedIn = 0, biNotLoggedIn = 0, biLeave = 0;
+                        var biOnline = 0, biOffline = 0;
+
+                        $.each(biResponse.zones, function(zoneId, zoneData) {
+                            var bi = zoneData.block_incharge;
+                            biTotal       += bi.total;
+                            biWorking     += bi.working;
+                            biNotStarted  += bi.not_started;
+                            biCompleted   += bi.completed;
+                            biNoTicket    += bi.no_ticket;
+                            biOnlyHold    += bi.only_hold;
+                            biLoggedIn    += bi.logged_in;
+                            biNotLoggedIn += bi.not_logged_in;
+                            biLeave       += bi.leave;
+                            biOnline      += bi.online;
+                            biOffline     += bi.offline;
+                        });
+
+                        var biHaveTicket = biTotal - biNoTicket;
+
+                        $('#total').text(biTotal);
+                        $('#working').text(biWorking);
+                        $('#not_started').text(biNotStarted);
+                        $('#completed').text(biCompleted);
+                        $('#no_ticket').text(biNoTicket);
+                        $('#only_hold').text(biOnlyHold);
+                        $('#logged_in').text(biLoggedIn);
+                        $('#not_logged_in').text(biNotLoggedIn + biLeave);
+                        $('#haveTicket').text(biHaveTicket);
+                        $('#online').text(biOnline);
+                        $('#offline').text(biOffline);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching Block Incharge report:', error);
                 }
             });
 
@@ -803,6 +872,80 @@ function renderCompletionHeatmap(data, type,fromDate=null,toDate=null) {
     }
 
 
+
+function renderBiHeatmap(data, fromDate=null, toDate=null) {
+  const heatmapContainer = $('#biHeatmap');
+  heatmapContainer.empty();
+
+  const stages = ['no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = [ 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
+
+  let headerRow = `
+    <div class="heatmap-row header">
+      <div class="zone-name"></div>
+      ${stageLabels.map(label => `<div class="cell-header">${label}</div>`).join('')}
+    </div>`;
+  heatmapContainer.append(headerRow);
+
+  $.each(data.zones, function (zoneId, zoneData) {
+    const bi = zoneData.block_incharge;
+    const zoneName = zoneData.zone_name;
+    const zone_id = zoneData.zone_id;
+    const total = bi.total || 1;
+
+    let row = `<div class="heatmap-row">
+      <div class="zone-name">${zoneName} (${bi.total})</div>`;
+
+    stages.forEach((stage, i) => {
+      const value = bi[stage] ?? 0;
+      const percent = (value / total) * 100;
+
+      let riskClass = 'neutral';
+      switch (stage) {
+        case 'no_ticket':
+        case 'not_started':
+          riskClass = value === 0 ? 'good' : 'bad';
+          break;
+        case 'only_hold':
+          if (value === 0) riskClass = 'good';
+          else if (percent <= 10) riskClass = 'medium';
+          else riskClass = 'bad';
+          break;
+        case 'working':
+          riskClass = value > 0 ? 'good' : 'bad';
+          break;
+        case 'completed':
+          riskClass = value > 0 ? 'good' : 'neutral';
+          break;
+        default:
+          riskClass = 'neutral';
+      }
+
+     let dateParams = '';
+     if (fromDate && toDate) {
+         dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
+     }
+
+      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=block_incharge${dateParams}`;
+      row += `<a href="${url}" class="cell ${riskClass}" 
+     title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
+    ${value}
+  </a>`;
+    });
+
+    row += '</div>';
+    heatmapContainer.append(row);
+  });
+
+  const legend = `
+    <div class="heatmap-legend mt-2">
+      <span><span class="box good"></span> Healthy</span>
+      <span><span class="box medium"></span> Moderate Risk</span>
+      <span><span class="box bad"></span> High Risk</span>
+      <span><span class="box neutral"></span> Neutral</span>
+    </div>`;
+  heatmapContainer.append(legend);
+}
 
 function renderHeatmap(data, fromDate=null, toDate=null) {
   const heatmapContainer = $('#frtHeatmap');

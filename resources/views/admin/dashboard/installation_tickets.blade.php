@@ -66,6 +66,13 @@
                         </li>
                     @endforeach
                 </ul>
+                 @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
+                    <div class="bulk-actions" style="display: none;" id="bulkActionsBar">
+                        <button type="button" class="btn btn-warning" onclick="openBulkHoldModal()">
+                            <i class="fa fa-pause-circle"></i> Bulk On Hold (<span id="selectedCount">0</span>)
+                        </button>
+                    </div>
+                @endif
                 <div>
                     <a href="{{ route('admin.import') }}" class="btn btn-success mr-2"><i class="fa fa-upload"></i> Upload CSV</a>
                     <a href="{{ route('admin.tickets.create') }}" class="btn btn-primary"><i class="fa fa-plus"></i> Add Ticket</a>
@@ -159,9 +166,12 @@
 
             @if(count($tickets) != 0)
             <div class="table-wrapper">
-                <table class="new-table nowrap display" style="width:100%">
+                <table id="table-5" class="new-table nowrap display" style="width:100%">
                     <thead>
                         <tr>
+                            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
+                            <th><input type="checkbox" id="selectAllTickets"></th>
+                            @endif
                             <th>Ticket Id</th>
                             <th>GP Details</th>
                             <th>Assigned To</th>
@@ -177,6 +187,9 @@
                     <tbody>
                     @foreach($tickets as $index => $request)
                         <tr>
+                            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
+                            <td><input type="checkbox" class="ticket-checkbox" value="{{ $request->ticketid }}"></td>
+                            @endif
                             <td class="font-weight-bold">
                                 <span class="ticket-inst">{{ $request->ticketid }}</span>
                             </td>
@@ -271,17 +284,43 @@
                             <?php } else {?>
                           <td><span class="tag tag-info tag-brp">Not Assigned</span></td>
                            <?php } ?> 
+                            <?php if($request->status != ''){?>
                             <td>
                                 <div class="input-group-btn">
                                     <button type="button" class="btn btn-info b-a-radius-0-5 dropdown-toggle pull-left" data-toggle="dropdown">Action <span class="caret"></span></button>
                                     <ul class="dropdown-menu">
                                         <li><a href="{{ route('admin.requests.show', $request->request_id) }}" class="btn btn-default"><i class="fa fa-search"></i> More Details</a></li>
                                         @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge')
-                                        <li><a href="{{ route('admin.tickets.edit', $request->master_id) }}" class="btn btn-default"><i class="fa fa-pencil"></i> Edit</a></li>
+                                        <li><a href="{{ route('admin.tickets.edit', $request->master_id) }}" class="btn btn-default"><i class="fa fa-pencil"></i> @lang('admin.edit')</a></li>
+                                        @if($request->status == 'SEARCHING')
+                                        <li><a href="{{ route('admin.dispatcher.assignform', $request->request_id) }}" class="btn btn-default"><i class="fa fa-arrows"></i> Assign</a></li>
+                                        @endif
+                                        @endif
+                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
+                                        @if($request->status != 'COMPLETED')
+                                        <li><a href="{{ route('admin.dispatcher.completeform', $request->request_id) }}" class="btn btn-default"><i class="fa fa-arrows"></i> Request Close</a></li>
+                                        @endif
+                                        @endif
+                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin')
+                                        @if($request->status == 'INCOMING' || $request->status == 'ONHOLD')
+                                        <li><a href="{{ route('admin.dispatcher.assignform', $request->request_id) }}" class="btn btn-default"><i class="fa fa-arrows"></i> Re-Assign</a></li>
+                                        @endif
+                                        @endif
+                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role == 'district_incharge')
+                                        @if($request->status == 'INCOMING' || $request->status == 'PICKEDUP')
+                                        <li><a href="{{ route('admin.dispatcher.onholdform', $request->request_id) }}" class="btn btn-default"><i class="fa fa-arrows"></i> On Hold</a></li>
+                                        @endif
                                         @endif
                                     </ul>
                                 </div>
                             </td>
+                            <?php } else { ?>
+                            <td>
+                                <div class="input-group-btn">
+                                    <button type="button" class="btn btn-info b-a-radius-0-5 dropdown-toggle pull-left" data-toggle="dropdown">Action <span class="caret"></span></button>
+                                </div>
+                            </td>
+                            <?php } ?>
                         </tr>
                     @endforeach
                     </tbody>
@@ -296,8 +335,91 @@
 </div>
 @endsection
 
+<link rel="stylesheet" href="{{ asset('/css/olt.css')}}">
+
 @section('scripts')
 <script>
+$(document).ready(function() {
+    var buttonsArray = [
+        @if(auth()->user()->role != 'client')
+        'copyHtml5',
+        'excelHtml5',
+        'csvHtml5',
+        'pdfHtml5'
+        @endif
+    ];
+
+    $('#table-5').DataTable({
+        scrollX: true,
+        searching: false,
+        responsive: false,
+        paging: false,
+        info: false,
+        dom: 'Bfrtip',
+        buttons: buttonsArray
+    });
+
+    restoreCheckboxStates();
+});
+
+// Bulk On Hold Functions
+$(document).on('change', '#bulk_category', function() {
+    var categoryId = $(this).val();
+    var categoryName = $('#bulk_category option:selected').data('name');
+    $('#bulk_downreason_name').val(categoryName || '');
+
+    if (categoryId) {
+        $.ajax({
+            url: "{{ url('admin/get_sub_categories') }}/" + categoryId,
+            type: "GET",
+            success: function(data) {
+                $('#bulk_sub_category').empty();
+                $('#bulk_sub_category').append('<option value="">Select Sub Category</option>');
+                $.each(data, function(key, value) {
+                    $('#bulk_sub_category').append(
+                        '<option value="' + value.id + '" data-name="' + value.name + '">' + value.name + '</option>'
+                    );
+                });
+                $('#bulk_sub_category_name').val('');
+            },
+            error: function() {
+                alert('Something went wrong while loading sub categories.');
+            }
+        });
+    } else {
+        $('#bulk_sub_category').empty();
+        $('#bulk_sub_category').append('<option value="">Sub Category</option>');
+        $('#bulk_sub_category_name').val('');
+    }
+});
+
+$(document).on('change', '#bulk_sub_category', function() {
+    var subCategoryName = $('#bulk_sub_category option:selected').data('name');
+    $('#bulk_sub_category_name').val(subCategoryName || '');
+});
+
+$(document).on('change', '#selectAllTickets', function() {
+    var isChecked = $(this).prop('checked');
+    $('.ticket-checkbox').prop('checked', isChecked);
+    if(isChecked){
+        $('.ticket-checkbox').each(function(){
+            addToSelectedIds($(this).val());
+        });
+    }else{
+        clearSelectedIds();
+    }
+    updateBulkActions();
+});
+
+$(document).on('change', '.ticket-checkbox', function() {
+    if($(this).prop('checked')){
+        addToSelectedIds($(this).val());
+    }else{
+        removeFromSelectedIds($(this).val());
+    }
+    updateBulkActions();
+});
+
 $('#zone_id').on('change', function () {
     var zoneId = $(this).val();
     if(zoneId) {
@@ -331,5 +453,158 @@ $('#district_id').on('change', function () {
         $('#block_id').html(h);
     });
 });
+
+function getSelectedIds() {
+    var ids = sessionStorage.getItem('bulkSelectedTicketIds');
+    return ids ? JSON.parse(ids) : [];
+}
+
+function addToSelectedIds(id) {
+    var ids = getSelectedIds();
+    if (!ids.includes(id)) {
+        ids.push(id);
+        sessionStorage.setItem('bulkSelectedTicketIds', JSON.stringify(ids));
+    }
+}
+
+function removeFromSelectedIds(id) {
+    var ids = getSelectedIds();
+    var index = ids.indexOf(id);
+    if (index > -1) {
+        ids.splice(index, 1);
+        sessionStorage.setItem('bulkSelectedTicketIds', JSON.stringify(ids));
+    }
+}
+
+function clearSelectedIds() {
+    sessionStorage.removeItem('bulkSelectedTicketIds');
+}
+
+function restoreCheckboxStates() {
+    var selectedIds = getSelectedIds();
+    $('.ticket-checkbox').each(function() {
+        var id = $(this).val();
+        if (selectedIds.includes(id)) {
+            $(this).prop('checked', true);
+        } else {
+            $(this).prop('checked', false);
+        }
+    });
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    var selected = getSelectedIds().length;
+    $('#selectedCount').text(selected);
+    if (selected > 0) {
+        $('#bulkActionsBar').show();
+    } else {
+        $('#bulkActionsBar').hide();
+    }
+}
+
+function openBulkHoldModal() {
+    var selected = getSelectedIds();
+    if (selected.length === 0) {
+        alert('Please select at least one ticket');
+        return;
+    }
+    $('#selectedTicketsCount').text('Selected ' + selected.length + ' ticket(s)');
+    $('#bulkHoldModal').css('display', 'block');
+}
+
+function closeBulkHoldModal() {
+    $('#bulkHoldModal').css('display', 'none');
+    $('#bulk_category').val('');
+    $('#bulk_sub_category').val('');
+    $('#bulk_downreasonindetailed').val('');
+    $('#bulk_downreason_name').val('');
+    $('#bulk_sub_category_name').val('');
+    clearSelectedIds();
+}
+
+function submitBulkHold() {
+    var selected = getSelectedIds();
+    var category = $('#bulk_category').val();
+    var subCategory = $('#bulk_sub_category').val();
+    var reason = $('#bulk_downreasonindetailed').val();
+    var categoryName = $('#bulk_downreason_name').val();
+    var subCategoryName = $('#bulk_sub_category_name').val();
+
+    if (!category) {
+        alert('Please select a category');
+        return;
+    }
+    if (!reason) {
+        alert('Please enter a hold reason');
+        return;
+    }
+
+    $.ajax({
+        url: "{{ route('admin.dispatcher.bulkHold') }}",
+        type: "POST",
+        data: {
+            _token: "{{ csrf_token() }}",
+            ticket_ids: selected,
+            downreason: category,
+            downreason_name: categoryName,
+            sub_category: subCategory,
+            sub_category_name: subCategoryName,
+            downreasonindetailed: reason
+        },
+        success: function(response) {
+            if (response.success) {
+                alert(response.message);
+                clearSelectedIds();
+                location.reload();
+            } else {
+                alert('Error: ' + response.message);
+            }
+        },
+        error: function(xhr) {
+            alert('Error: ' + (xhr.responseJSON.message || 'Something went wrong'));
+        }
+    });
+}
 </script>
+
+<!-- Bulk On Hold Modal -->
+<div id="bulkHoldModal" class="terrasoft-modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div class="terrasoft-modal-content" style="max-width: 500px; margin: 10% auto; display: block;">
+        <div class="terrasoft-modal-header">
+            <h3>Bulk On Hold</h3>
+            <button class="terrasoft-modal-close" onclick="closeBulkHoldModal()">
+                <i class="ti-x"></i>
+            </button>
+        </div>
+        <div class="terrasoft-modal-body">
+            <p id="selectedTicketsCount"></p>
+            <div class="form-group">
+                <label>Category <span class="text-danger">*</span></label>
+                <select class="form-control" name="bulk_downreason" id="bulk_category" required>
+                    <option value="">Please Select</option>
+                    @foreach($services as $types)
+                    <option value="{{ $types->id }}" data-name="{{ $types->name }}">{{$types->name}}</option>
+                    @endforeach
+                </select>
+                <input type="hidden" name="bulk_downreason_name" id="bulk_downreason_name">
+            </div>
+            <div class="form-group">
+                <label>Sub Category</label>
+                <select class="form-control" name="bulk_sub_category" id="bulk_sub_category">
+                    <option value="">Sub Category</option>
+                </select>
+                <input type="hidden" name="bulk_sub_category_name" id="bulk_sub_category_name">
+            </div>
+            <div class="form-group">
+                <label>Hold Reason <span class="text-danger">*</span></label>
+                <textarea class="form-control" name="bulk_downreasonindetailed" id="bulk_downreasonindetailed" rows="3" placeholder="Enter reason for on hold" required></textarea>
+            </div>
+        </div>
+        <div class="terrasoft-modal-footer">
+            <button class="terrasoft-btn terrasoft-btn-secondary" onclick="closeBulkHoldModal()">Cancel</button>
+            <button class="terrasoft-btn" style="background: #FA2602; color: white;" onclick="submitBulkHold()">Put On Hold</button>
+        </div>
+    </div>
+</div>
 @endsection
