@@ -28,7 +28,8 @@ use App\Zonalmanger;
 use App\Leave;
 use Excel;
 use Illuminate\Support\Facades\Validator;
-
+use App\Services\FcmService;
+use App\ProviderDevice;
 
 class ProviderResource extends Controller
 {
@@ -687,12 +688,20 @@ public function exportProviders(Request $request)
                 ->where('provider_id', $request->provider_id)
                 ->whereDate('created_at', Carbon::today())
                 ->first();
+            $user = ProviderDevice::where('provider_id', $request->provider_id)->whereDate('updated_at',Carbon::today())->first();
 
-            if ($todayAttendance && $todayAttendance->status === 'active') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You are currently logged in APP. Please logout first to apply for leave.'
-                ], 422);
+            if (($todayAttendance && $todayAttendance->status === 'active') || $user) {
+                $fcm = new FcmService();
+                $fcm->sendToUser(
+                    $user->token,
+                    'Alert!',
+                    'You are currently on leave. Please log out.'
+                );
+
+                // return response()->json([
+                //     'success' => false,
+                //     'message' => 'You are currently logged in APP. Please logout first to apply for leave.'
+                // ], 422);
             }
 
     
