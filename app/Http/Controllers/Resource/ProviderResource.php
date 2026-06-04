@@ -684,27 +684,74 @@ public function exportProviders(Request $request)
                      'message' => "Already marked as {$request->type} for today"
                 ], 409);
             }
-            $todayAttendance = DB::table('attendance')
-                ->where('provider_id', $request->provider_id)
-                ->whereDate('created_at', Carbon::today())
-                ->first();
-            $user = ProviderDevice::where('provider_id', $request->provider_id)->whereDate('updated_at',Carbon::today())->first();
+            if ($request->type == 'leave') {
 
-            if (($todayAttendance && $todayAttendance->status === 'active') || $user) {
-                $fcm = new FcmService();
-                $fcm->sendToUser(
-                    $user->token,
-                    'Alert!',
-                    'You are currently on leave. Please log out.'
-                );
+                        $todayAttendance = DB::table('attendance')
+                                            ->where('provider_id', $request->provider_id)
+                                            ->whereDate('created_at', Carbon::today())
+                                            ->first();
 
-                // return response()->json([
-                //     'success' => false,
-                //     'message' => 'You are currently logged in APP. Please logout first to apply for leave.'
-                // ], 422);
-            }
+                        $user = ProviderDevice::where('provider_id', $request->provider_id)
+                                            ->whereDate('updated_at', Carbon::today())
+                                            ->first();
 
-    
+                        $isLoggedIn = ($todayAttendance && $todayAttendance->status === 'active') || $user;
+
+                        if ($isLoggedIn) {
+
+                        $today = Carbon::today()->format('Y-m-d');
+
+                        $hasWorkToday = UserRequests::where('provider_id', $request->provider_id)
+                                            ->where(function($query) use ($today) {
+                                                $query->whereDate('started_at',  '=', $today)
+                                                    ->orWhereDate('reached_at',  '=', $today)
+                                                    ->orWhereDate('finished_at', '=', $today);
+                                            })
+                                            ->exists()
+                                        || DB::table('raise_tickets')
+                                            ->where('patroller_id', $request->provider_id)
+                                            ->whereDate('created_at', '=', $today)
+                                            ->exists();
+
+                            if ($hasWorkToday) {
+                                Leave::create([
+                                    'provider_id' => $request->provider_id,
+                                    'start_date'  => $request->start_date,
+                                    'end_date'    => $request->end_date,
+                                    'reason'      => $request->reason,
+                                    'status'      => $request->status,
+                                    'type'        => 'late_login'
+                                ]);
+
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => "User already has work assigned for today, marked as late login."
+                                ], 409);
+                            }
+
+                            if ($user && $user->token) {
+                                try {
+                                    $fcm = new FcmService();
+                                    $fcm->sendData(
+                                        $user->token,
+                                        ['action' => 'FORCE_LOGOUT']
+                                    );
+                                } catch (\Exception $e) {
+                                    \Log::error('FCM sendData failed: ' . $e->getMessage());
+                                }
+                            }
+
+                            DB::table('attendance')
+                                ->where('provider_id', $request->provider_id)
+                                ->whereDate('created_at', Carbon::today())
+                                ->delete();
+
+                            ProviderTrackingHistory::where('provider_id', $request->provider_id)
+                                ->whereDate('created_at', Carbon::today())
+                                ->delete();
+
+                        } 
+            } 
         Leave::create([
             'provider_id' => $request->provider_id,
             'start_date'  => $request->start_date,
@@ -721,10 +768,10 @@ public function exportProviders(Request $request)
         ]);
 
     
-    }
+}
     public function DeleteLeaves($id){
-    Leave::where('id', $id)->delete();
-    return response()->json(['success' => true]);
+        Leave::where('id', $id)->delete();
+        return response()->json(['success' => true]);
     }
 
 }

@@ -83,4 +83,31 @@ class FcmService
 
     return json_decode($response->getBody(), true);
 }
+public function sendData($fcmToken, array $data = [])
+{
+    $accessToken = $this->getAccessToken();
+    $url = 'https://fcm.googleapis.com/v1/projects/' . $this->projectId . '/messages:send';
+
+    // Cast all keys and values to string
+    $stringData = [];
+    foreach ($data as $key => $value) {
+        $stringData[(string)$key] = (string)$value;
+    }
+
+    $response = $this->client->post($url, [
+        'headers' => [
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type'  => 'application/json',
+        ],
+        'json' => [
+            'message' => [
+                'token' => $fcmToken,
+                'data'  => $stringData,  
+            ],
+        ],
+    ]);
+
+    return json_decode($response->getBody(), true);
+}
+
 }
