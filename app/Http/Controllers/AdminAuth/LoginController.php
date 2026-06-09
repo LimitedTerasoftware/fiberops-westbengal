@@ -74,7 +74,7 @@ class LoginController extends Controller
         } else if (trim(Auth::guard('admin')->user()->role) == 'inventory') {
             return '/admin/inventorydashboard';
 
-        } else if (empty(trim(Auth::guard('admin')->user()->role))){
+        }else if (empty(trim(Auth::guard('admin')->user()->role))){
             return '/admin/unassigned_role';
 
         } else {

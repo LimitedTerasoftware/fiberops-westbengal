@@ -58,12 +58,11 @@ Route::post('/savedocuments' , 	'UserApiController@savedocuments');
 Route::post('/submit-files/{id}/update-joint-images', 'UserApiController@updateJointImages');
 Route::get('/export_non_geotagged_images', 'UserApiController@exportNonGeotaggedImages');
 
-Route::post('/consume_material' , 	'UserApiController@consumeMaterials');
-
 Route::get('/assigned-materials','UserApiController@getEmployeeMaterials');
-Route::get('/all-employees-materials', 'UserApiController@getAllEmployeesMaterials');
-Route::get('/materials', 'UserApiController@getMaterialsList');
 Route::post('/multiupload' , 	'UserApiController@multiupload');
+Route::get('/materials', 'UserApiController@getMaterialsList');
+Route::get('/all-employees-materials', 'UserApiController@getAllEmployeesMaterials');
+
 
 Route::post('/savehistory' , 	'UserApiController@savehistory');
 Route::post('/providerhistory' , 	'UserApiController@providerhistory');

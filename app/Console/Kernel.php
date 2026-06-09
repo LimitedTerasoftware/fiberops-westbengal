@@ -44,7 +44,7 @@ class Kernel extends ConsoleKernel
              ->withoutOverlapping()
              ->runInBackground();
              
-        $schedule->command('logs:clear-old')->weeklyOn(0, '02:00'); 
+        $schedule->command('logs:clear-old')->dailyAt('02:00'); 
      
   
                          

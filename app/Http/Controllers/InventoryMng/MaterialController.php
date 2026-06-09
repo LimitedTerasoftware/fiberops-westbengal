@@ -366,7 +366,6 @@ private function attachEmptyBreakdowns($results)
 }
 
 
-
  public function getFrequentlyDownGps(Request $request)
 {
     try {
@@ -440,16 +439,16 @@ private function attachEmptyBreakdowns($results)
                     ->paginate(15);
                     $results = $this->attachEmptyBreakdowns($results);
                 } else {
-                    $results = $query->select(
-                        'block_router_uptime.lgd_code',
-                        'districts.name as district',
-                        'blocks.name as mandal',
-                        'blocks.name as gpname',
-                        'block_router_uptime.uptime_percent',
-                        'block_router_uptime.record_date'
-                    )
-                    ->orderBy('block_router_uptime.uptime_percent', 'asc')
-                    ->paginate(15);
+                $results = $query->select(
+                    'block_router_uptime.lgd_code',
+                    'districts.name as district',
+                    'blocks.name as mandal',
+                    'blocks.name as gpname',
+                    'block_router_uptime.uptime_percent',
+                    'block_router_uptime.record_date'
+                )
+                ->orderBy('block_router_uptime.uptime_percent', 'asc')
+                ->paginate(15);
                 }
 
                 $is_uptime_report = true;
@@ -479,7 +478,7 @@ private function attachEmptyBreakdowns($results)
                 }
 
                 switch ($OLT_category) {
-                    case 'all':
+                       case 'all':
                         // Average Uptime % redirect: show all OLT rows with their own uptime percentages.
                         break;
                        case 'gte98':
@@ -501,7 +500,7 @@ private function attachEmptyBreakdowns($results)
                         $query->where('olt_uptime.uptime_percent', '<', 20);
                         break;
                  }
-                if ($OLT_category === 'all') {
+                   if ($OLT_category === 'all') {
                     $results = $query->select(
                         'olt_uptime.lgd_code',
                         'olt_locations.olt_location as gpname',
@@ -515,16 +514,16 @@ private function attachEmptyBreakdowns($results)
                     ->paginate(15);
                     $results = $this->attachEmptyBreakdowns($results);
                 } else {
-                    $results = $query->select(
-                        'olt_uptime.lgd_code',
-                        'olt_locations.olt_location as gpname',
-                        'districts.name as district',
-                        'blocks.name as mandal',
-                        'olt_uptime.uptime_percent',
-                        'olt_uptime.record_date'
-                    )
-                    ->orderBy('olt_uptime.uptime_percent', 'asc')
-                    ->paginate(15);
+                $results = $query->select(
+                    'olt_uptime.lgd_code',
+                    'olt_locations.olt_location as gpname',
+                    'districts.name as district',
+                    'blocks.name as mandal',
+                    'olt_uptime.uptime_percent',
+                    'olt_uptime.record_date'
+                )
+                ->orderBy('olt_uptime.uptime_percent', 'asc')
+                ->paginate(15);
                 }
 
                 $is_uptime_report = true;
@@ -577,7 +576,7 @@ private function attachEmptyBreakdowns($results)
                 }
 
                 switch ($uptime_category) {
-                    case 'all':
+                     case 'all':
                         // Average Uptime % redirect: show all GP rows with their own uptime percentages.
                         break;
                     case 'gte98':
@@ -617,8 +616,7 @@ private function attachEmptyBreakdowns($results)
                     });
                 }
 
-
-                if ($uptime_category === 'all') {
+               if ($uptime_category === 'all') {
                     $results = $query->select(
                         'gp_list.lgd_code',
                         'gp_list.gp_name as gpname',
@@ -632,19 +630,19 @@ private function attachEmptyBreakdowns($results)
                     ->paginate(15);
                     $results = $this->attachEmptyBreakdowns($results);
                 } else {
-                    $results = $query->select(
-                        'gp_list.lgd_code',
-                        'gp_list.gp_name as gpname',
-                        'districts.name as district',
-                        'blocks.name as mandal',
-                        'ont_uptime.uptime_percent',
-                        'ont_uptime.record_date'
-                    )
-                        ->orderBy('ont_uptime.uptime_percent', 'asc')
-                        ->paginate(15);
+                $results = $query->select(
+                    'gp_list.lgd_code',
+                    'gp_list.gp_name as gpname',
+                    'districts.name as district',
+                    'blocks.name as mandal',
+                    'ont_uptime.uptime_percent',
+                    'ont_uptime.record_date'
+                )
+                    ->orderBy('ont_uptime.uptime_percent', 'asc')
+                    ->paginate(15);
+            }
 
-                   $results = $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
-                }
+               $results = $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
 
                 $is_uptime_report = true;
 
@@ -670,7 +668,7 @@ private function attachEmptyBreakdowns($results)
                 }
 
                 switch ($router_category) {
-                    case 'all':
+                     case 'all':
                         // Average Uptime % redirect: show all GP-router rows with their own uptime percentages.
                         break;
                     case 'gte98':
@@ -701,7 +699,6 @@ private function attachEmptyBreakdowns($results)
                         });
                 }
 
-
                 if ($router_category === 'all') {
                     $results = $query->select(
                         'gp_list.lgd_code',
@@ -716,19 +713,19 @@ private function attachEmptyBreakdowns($results)
                     ->paginate(15);
                     $results = $this->attachEmptyBreakdowns($results);
                 } else {
-                    $results = $query->select(
-                        'gp_list.lgd_code',
-                        'gp_list.gp_name as gpname',
-                        'districts.name as district',
-                        'blocks.name as mandal',
-                        'gp_router_uptime.uptime_percent',
-                        'gp_router_uptime.record_date'
-                    )
-                        ->orderBy('gp_router_uptime.uptime_percent', 'asc')
-                        ->paginate(15);
-
-                    $results = $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
+                $results = $query->select(
+                    'gp_list.lgd_code',
+                    'gp_list.gp_name as gpname',
+                    'districts.name as district',
+                    'blocks.name as mandal',
+                    'gp_router_uptime.uptime_percent',
+                    'gp_router_uptime.record_date'
+                )
+                    ->orderBy('gp_router_uptime.uptime_percent', 'asc')
+                    ->paginate(15);
                 }
+
+                $results = $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
 
 
                 $is_uptime_report = true;
@@ -1077,7 +1074,7 @@ private function attachEmptyBreakdowns($results)
 
 
                 switch ($uptime_category) {
-                    case 'all':
+                     case 'all':
                         break;
                     case 'gte98':
                         $query->where('ont_uptime.uptime_percent', '>=', 98);
@@ -1116,7 +1113,20 @@ private function attachEmptyBreakdowns($results)
                 });
             }
 
-
+            if ($uptime_category === 'all') {
+                    $results = $query->select(
+                        'gp_list.lgd_code',
+                        'gp_list.gp_name as gpname',
+                        'districts.name as district',
+                        'blocks.name as mandal',
+                        DB::raw('ROUND(AVG(ont_uptime.uptime_percent), 2) as uptime_percent'),
+                        DB::raw('MIN(ont_uptime.record_date) as record_date')
+                    )
+                    ->groupBy('gp_list.lgd_code', 'gp_list.gp_name', 'districts.name', 'blocks.name')
+                    ->orderBy('uptime_percent', 'asc')
+                    ->get();
+                    $results = $this->attachEmptyBreakdowns($results);
+                } else {
 
             $results = $query->select(
                 'gp_list.lgd_code',
@@ -1128,6 +1138,7 @@ private function attachEmptyBreakdowns($results)
             )
                 ->orderBy('ont_uptime.uptime_percent', 'asc')
                 ->get();
+                }
 
 
             $data[] = ['District', 'Block', 'GP Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
@@ -1211,8 +1222,8 @@ private function attachEmptyBreakdowns($results)
                 }
 
                 switch ($router_category) {
-                    case 'all':
-                        break;
+                        case 'all':
+                            break;
                     case 'gte98':
                         $query->where('gp_router_uptime.uptime_percent', '>=', 98);
                         break;
@@ -1240,7 +1251,20 @@ private function attachEmptyBreakdowns($results)
                             ->where('ur.booking_id', 'like', 'INC%');
                         });
                 }
-
+              if ($router_category === 'all') {
+                    $results = $query->select(
+                        'gp_list.lgd_code',
+                        'gp_list.gp_name as gpname',
+                        'districts.name as district',
+                        'blocks.name as mandal',
+                        DB::raw('ROUND(AVG(gp_router_uptime.uptime_percent), 2) as uptime_percent'),
+                        DB::raw('MIN(gp_router_uptime.record_date) as record_date')
+                    )
+                    ->groupBy('gp_list.lgd_code', 'gp_list.gp_name', 'districts.name', 'blocks.name')
+                    ->orderBy('uptime_percent', 'asc')
+                    ->get();
+                    $results = $this->attachEmptyBreakdowns($results);
+                } else {
 
                 $results = $query->select(
                     'gp_list.lgd_code',
@@ -1252,6 +1276,7 @@ private function attachEmptyBreakdowns($results)
                 )
                     ->orderBy('gp_router_uptime.uptime_percent', 'asc')
                     ->get();
+                }
             $data[] = ['District', 'Block', 'GP Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
 
 
@@ -1340,6 +1365,20 @@ private function attachEmptyBreakdowns($results)
                             $this->applyIntegrationFilter($query, 'block_router_uptime');
                             break;
                  }
+                   if ($Blockrouter_category === 'all') {
+                    $results = $query->select(
+                        'block_router_uptime.lgd_code',
+                        'districts.name as district',
+                        'blocks.name as mandal',
+                        'blocks.name as gpname',
+                        DB::raw('ROUND(AVG(block_router_uptime.uptime_percent), 2) as uptime_percent'),
+                        DB::raw('MIN(block_router_uptime.record_date) as record_date')
+                    )
+                    ->groupBy('block_router_uptime.lgd_code', 'districts.name', 'blocks.name')
+                    ->orderBy('uptime_percent', 'asc')
+                    ->get();
+                    $results = $this->attachEmptyBreakdowns($results);
+                } else {
                 $results = $query->select(
                     'block_router_uptime.lgd_code',
                     'districts.name as district',
@@ -1350,6 +1389,7 @@ private function attachEmptyBreakdowns($results)
                 )
                 ->orderBy('block_router_uptime.uptime_percent', 'asc')
                 ->get();
+                }
 
                  $data[] = ['District', 'Block', 'Block Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
 
@@ -1415,6 +1455,20 @@ private function attachEmptyBreakdowns($results)
                         $query->where('olt_uptime.uptime_percent', '<', 20);
                         break;
                  }
+                    if ($OLT_category === 'all') {
+                    $results = $query->select(
+                        'olt_uptime.lgd_code',
+                        'olt_locations.olt_location as gpname',
+                        'districts.name as district',
+                        'blocks.name as mandal',
+                        DB::raw('ROUND(AVG(olt_uptime.uptime_percent), 2) as uptime_percent'),
+                        DB::raw('MIN(olt_uptime.record_date) as record_date')
+                    )
+                    ->groupBy('olt_uptime.lgd_code', 'olt_locations.olt_location', 'districts.name', 'blocks.name')
+                    ->orderBy('uptime_percent', 'asc')
+                    ->get();
+                    $results = $this->attachEmptyBreakdowns($results);
+                } else {
                 $results = $query->select(
                     'olt_uptime.lgd_code',
                     'olt_locations.olt_location as gpname',
@@ -1425,6 +1479,7 @@ private function attachEmptyBreakdowns($results)
                 )
                 ->orderBy('olt_uptime.uptime_percent', 'asc')
                 ->get();
+                }
 
                  $data[] = ['District', 'Block', 'OLT Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
 

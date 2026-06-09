@@ -33,8 +33,9 @@
 <div class="content-area py-1">
     <div class="container-fluid">
     	<div class="box box-block bg-white"> 
-    		<a href="{{ route('admin.tickets') }}" class="btn btn-default pull-right"><i class="fa fa-angle-left"></i> @lang('admin.back')</a>
-
+    		<a href="javascript:void(0);" onclick="window.history.back();" class="btn btn-default pull-right mt-0">
+                <i class="fa fa-angle-left"></i> @lang('admin.back')
+            </a>
             <h5 class="mb-2">Import Data</h5>
             <form action="{{route('admin.import.process')}}" method="POST" enctype="multipart/form-data" id="import_form">
                 {{csrf_field()}}
@@ -52,6 +53,7 @@
                                 <option value="3">Router Tickets</option>
                                 @endif
                                 <option value="4">Installation Tickets</option>
+
                                 <!--<option value="2">Patroller Tickets</option>--->
                             </select>
                         </div>

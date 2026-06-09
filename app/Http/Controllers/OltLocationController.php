@@ -429,6 +429,7 @@ public function GprouterUpload(Request $request)
     ]);
 }
 
+
 public function BlockrouterUpload(Request $request)
 {
     $this->validate($request, [
@@ -511,7 +512,6 @@ private function getUptimePeriodSql($period, $dateColumn)
             ];
     }
 }
-
 private function getUniqueAverageUptime($query, $lgdColumn, $uptimeColumn)
 {
     $rows = $query
@@ -522,6 +522,7 @@ private function getUniqueAverageUptime($query, $lgdColumn, $uptimeColumn)
 
     return round($rows->avg('gp_avg_uptime'), 2);
 }
+
 
 public function OntData(Request $request)
 {
@@ -564,7 +565,6 @@ public function OntData(Request $request)
             Carbon::now()->toDateString()
         ]);
     }
-
     $uniqueAvgUptime = $this->getUniqueAverageUptime(clone $query, 'ont_uptime.lgd_code', 'ont_uptime.uptime_percent');
 
     $data = $query
@@ -585,6 +585,7 @@ public function OntData(Request $request)
         ->groupBy(DB::raw($periodSql['group']), DB::raw($periodSql['label']))
         ->orderByRaw($periodSql['sort'] . ' asc')
         ->get();
+
 
     $averages = [
     'avg_uptime' => $uniqueAvgUptime,
@@ -667,7 +668,7 @@ public function OltData(Request $request)
     $fromDate = $request->get('fromDate');
     $toDate   = $request->get('toDate');
     $periodSql = $this->getUptimePeriodSql($request->get('period', 'day'), 'olt_uptime.record_date');
-    
+
 
     Session::put('user', Auth::User());
     $user = Session::get('user');
@@ -702,10 +703,9 @@ public function OltData(Request $request)
             Carbon::now()->toDateString()
         ]);
     }
-
     $uniqueAvgUptime = $this->getUniqueAverageUptime(clone $query, 'olt_uptime.lgd_code', 'olt_uptime.uptime_percent');
 
-    $data = $query
+   $data = $query
         ->selectRaw($periodSql['label'] . ' as label')
         ->selectRaw('MIN(DATE(olt_uptime.record_date)) as day')
         ->selectRaw('ROUND(AVG(olt_uptime.uptime_percent), 2) as avg_uptime')
@@ -818,7 +818,6 @@ public function SamriddhData(Request $request)
             Carbon::now()->toDateString()
         ]);
     }
-
     $uniqueAvgUptime = $this->getUniqueAverageUptime(clone $query, 'ont_uptime.lgd_code', 'ont_uptime.uptime_percent');
 
     $data = $query
@@ -902,6 +901,7 @@ public function GprouterData(Request $request)
     $toDate   = $request->get('toDate');
     $periodSql = $this->getUptimePeriodSql($request->get('period', 'day'), 'gp_router_uptime.record_date');
 
+
     Session::put('user', Auth::User());
     $user = Session::get('user');
     $company_id = $user->company_id;
@@ -936,10 +936,10 @@ public function GprouterData(Request $request)
             Carbon::now()->toDateString()
         ]);
     }
-
     $uniqueAvgUptime = $this->getUniqueAverageUptime(clone $query, 'gp_router_uptime.lgd_code', 'gp_router_uptime.uptime_percent');
 
-    $data = $query
+
+     $data = $query
         ->selectRaw($periodSql['label'] . ' as label')
         ->selectRaw('MIN(DATE(gp_router_uptime.record_date)) as day')
         ->selectRaw('COUNT(*) as total')
@@ -974,9 +974,11 @@ public function GprouterData(Request $request)
         'gte98'     => round($data->avg('gte98'), 2),
         'lt98'      => round($data->avg('lt98'), 2),
         'zero_availability' => round($data->avg('zero_availability'), 2),
-        'avg_uptime' => $uniqueAvgUptime,
         'pct_gte98' => round($data->avg('pct_gte98'), 2),
         'integration' => round($data->avg('integration'), 2),
+        'avg_uptime' => $uniqueAvgUptime,
+
+
 
     ];
        
@@ -1066,9 +1068,8 @@ public function BlockrouterData(Request $request)
             Carbon::now()->toDateString()
         ]);
     }
-
     $uniqueAvgUptime = $this->getUniqueAverageUptime(clone $query, 'block_router_uptime.lgd_code', 'block_router_uptime.uptime_percent');
-
+            
     $data = $query
         ->selectRaw($periodSql['label'] . ' as label')
         ->selectRaw('MIN(DATE(block_router_uptime.record_date)) as day')
@@ -1104,10 +1105,11 @@ public function BlockrouterData(Request $request)
         'total'     => round($data->avg('total'), 2),
         'gte98'     => round($data->avg('gte98'), 2),
         'lt98'      => round($data->avg('lt98'), 2),
-        'avg_uptime' => $uniqueAvgUptime,
         'pct_gte98' => round($data->avg('pct_gte98'), 2),
         'zero_availability'  => round($data->avg('zero_availability'), 2),
         'integration' => round($data->avg('integration'), 2),
+        'avg_uptime' => $uniqueAvgUptime,
+
 
     ];
     return response()->json([

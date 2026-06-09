@@ -11,6 +11,7 @@
         3 => 'Zonal incharge',
         4 => 'District incharge',
         7 => 'Block incharge'
+
     ];
 @endphp
 @php
@@ -156,8 +157,8 @@
   </div>
 
   <div class="col-md-6 mb-2 frt-pat-section">
-      <div class="canvas-card mt-4">
-         <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
+     <div class="canvas-card mt-4">
+                 <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
             <h6 class="fw-bold mb-0">Zone Vs FRT</h6>
             <div style="display:flex; justify-content:space-between; align-items:center;">
                <label class="small fw-bold me-1">From:</label>
@@ -167,29 +168,30 @@
                <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-frt-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
             </div>
          </div>
-         <div id="frtHeatmap" class="heatmap"></div>
-       </div>
-   </div>
+
+        <div id="frtHeatmap" class="heatmap"></div>
+      </div>
+  </div>
    
   <div class="col-md-6 mb-2 frt-pat-section">
-        <div class="canvas-card mt-4">
+      <div class="canvas-card mt-4">
            <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
-             <h6 class="fw-bold mb-0">Zone Vs Patrollers</h6>
-             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label class="small fw-bold me-1">From:</label>
-                <input type="date" id="pat_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
-                <label class="small fw-bold me-1">To:</label>
-                <input type="date" id="pat_zone_to_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
-                <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-pat-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
-             </div>
-          </div>
-          <div id="patHeatmap" class="heatmap"></div>
-       </div>
+            <h6 class="fw-bold mb-0">Zone Vs Patrollers</h6>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+               <label class="small fw-bold me-1">From:</label>
+               <input type="date" id="pat_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <label class="small fw-bold me-1">To:</label>
+               <input type="date" id="pat_zone_to_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-pat-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
+            </div>
+         </div>
+        <div id="patHeatmap" class="heatmap"></div>
      </div>
-  <div class="col-md-6 mb-2">
-       <div class="canvas-card mt-4">
-          <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
-             <h6 class="fw-bold mb-0">Zone Vs District Incharge</h6>
+   </div>
+     <div class="col-md-6 mb-2 frt-pat-section">
+      <div class="canvas-card mt-4">
+        <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h6 class="fw-bold mb-0">Zone Vs District Incharge</h6>
             <div style="display:flex; justify-content:space-between; align-items:center;">
                <label class="small fw-bold me-1">From:</label>
                <input type="date" id="di_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
@@ -198,13 +200,13 @@
                <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-di-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
             </div>
          </div>
-          <div id="diHeatmap" class="heatmap"></div>
-       </div>
-    </div>
+         <div id="diHeatmap" class="heatmap"></div>
+      </div>
+   </div>
 
-  <div class="col-md-6 mb-2">
-        <div class="canvas-card mt-4">
-           <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
+   <div class="col-md-6 mb-2 frt-pat-section">
+       <div class="canvas-card mt-4">
+         <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
             <h6 class="fw-bold mb-0">Zone Vs MIS</h6>
             <div style="display:flex; justify-content:space-between; align-items:center;">
                <label class="small fw-bold me-1">From:</label>
@@ -214,11 +216,11 @@
                <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-mis-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
             </div>
          </div>
-          <div id="misHeatmap" class="heatmap"></div>
-       </div>
-     </div>
+         <div id="misHeatmap" class="heatmap"></div>
+      </div>
+    </div>
 
-  <div class="col-md-6 mb-2">
+    <div class="col-md-12 mb-2">
         <div class="canvas-card mt-4">
            <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
             <h6 class="fw-bold mb-0">Zone Vs Block Incharge</h6>
@@ -233,7 +235,6 @@
           <div id="biHeatmap" class="heatmap"></div>
        </div>
      </div>
-
 
 <div class="col-md-6 mb-2 frt-pat-section">
     <div class="canvas-card mt-4">
@@ -323,7 +324,7 @@
 
 
  
-   <div class="col-md-6 mb-2">
+   <div class="col-md-6 mb-2 frt-pat-section">
         <div class="canvas-card mt-4">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h6 class="fw-bold mb-0">Completion Trend (Assigned vs Completed)</h6>
@@ -507,8 +508,9 @@
     </script>
 <script>
 var userRole = '{{ @$user->role }}';
+
 $(document).ready(function() {
-    if (userRole === 'installation') {
+     if (userRole === 'installation') {
         $('.frt-pat-section').hide();
     }
     $.ajax({
@@ -657,7 +659,7 @@ $(document).ready(function() {
                 }
             });
 
-            // ===== Render Block Incharge Heatmap =====
+    // ===== Render Block Incharge Heatmap =====
             $.ajax({
                 url: "{{ url('/admin/get_block_incharge_report') }}",
                 method: 'GET',
@@ -714,9 +716,82 @@ $(document).ready(function() {
     });
 });
 
+function renderBiHeatmap(data, fromDate=null, toDate=null) {
+  const heatmapContainer = $('#biHeatmap');
+  heatmapContainer.empty();
+
+  const stages = ['no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = [ 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
+
+  let headerRow = `
+    <div class="heatmap-row header">
+      <div class="zone-name"></div>
+      ${stageLabels.map(label => `<div class="cell-header">${label}</div>`).join('')}
+    </div>`;
+  heatmapContainer.append(headerRow);
+
+  $.each(data.zones, function (zoneId, zoneData) {
+    const bi = zoneData.block_incharge;
+    const zoneName = zoneData.zone_name;
+    const zone_id = zoneData.zone_id;
+    const total = bi.total || 1;
+
+    let row = `<div class="heatmap-row">
+      <div class="zone-name">${zoneName} (${bi.total})</div>`;
+
+    stages.forEach((stage, i) => {
+      const value = bi[stage] ?? 0;
+      const percent = (value / total) * 100;
+
+      let riskClass = 'neutral';
+      switch (stage) {
+        case 'no_ticket':
+        case 'not_started':
+          riskClass = value === 0 ? 'good' : 'bad';
+          break;
+        case 'only_hold':
+          if (value === 0) riskClass = 'good';
+          else if (percent <= 10) riskClass = 'medium';
+          else riskClass = 'bad';
+          break;
+        case 'working':
+          riskClass = value > 0 ? 'good' : 'bad';
+          break;
+        case 'completed':
+          riskClass = value > 0 ? 'good' : 'neutral';
+          break;
+        default:
+          riskClass = 'neutral';
+      }
+
+     let dateParams = '';
+     if (fromDate && toDate) {
+         dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
+     }
+
+      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=block_incharge${dateParams}`;
+      row += `<a href="${url}" class="cell ${riskClass}" 
+     title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
+    ${value}
+  </a>`;
+    });
+
+    row += '</div>';
+    heatmapContainer.append(row);
+  });
+
+  const legend = `
+    <div class="heatmap-legend mt-2">
+      <span><span class="box good"></span> Healthy</span>
+      <span><span class="box medium"></span> Moderate Risk</span>
+      <span><span class="box bad"></span> High Risk</span>
+      <span><span class="box neutral"></span> Neutral</span>
+    </div>`;
+  heatmapContainer.append(legend);
+}
 
 // ===== Enhanced Heatmap Function =====
-function renderpatHeatmap(data, fromDate=null, toDate=null) {
+function renderpatHeatmap(data,fromDate=null,toDate=null) {
   const heatmapContainer = $('#patHeatmap');
   heatmapContainer.empty();
 
@@ -741,7 +816,7 @@ function renderpatHeatmap(data, fromDate=null, toDate=null) {
 
     let row = `<div class="heatmap-row">
       <div class="zone-name">${zoneName} (${pat.total})</div>`;
-     
+       
 
     stages.forEach((stage, i) => {
       const value = pat[stage] ?? 0;
@@ -777,11 +852,11 @@ function renderpatHeatmap(data, fromDate=null, toDate=null) {
           riskClass = 'neutral';
       }
 
+    //  const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=patroller`;
      let dateParams = '';
-     if (fromDate && toDate) {
-         dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
-     }
-   
+        if (fromDate && toDate) {
+            dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
+        }
       const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=patroller${dateParams}`;
 
       row += `<a href="${url}" class="cell ${riskClass}" 
@@ -873,81 +948,7 @@ function renderCompletionHeatmap(data, type,fromDate=null,toDate=null) {
 
 
 
-function renderBiHeatmap(data, fromDate=null, toDate=null) {
-  const heatmapContainer = $('#biHeatmap');
-  heatmapContainer.empty();
-
-  const stages = ['no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
-  const stageLabels = [ 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
-
-  let headerRow = `
-    <div class="heatmap-row header">
-      <div class="zone-name"></div>
-      ${stageLabels.map(label => `<div class="cell-header">${label}</div>`).join('')}
-    </div>`;
-  heatmapContainer.append(headerRow);
-
-  $.each(data.zones, function (zoneId, zoneData) {
-    const bi = zoneData.block_incharge;
-    const zoneName = zoneData.zone_name;
-    const zone_id = zoneData.zone_id;
-    const total = bi.total || 1;
-
-    let row = `<div class="heatmap-row">
-      <div class="zone-name">${zoneName} (${bi.total})</div>`;
-
-    stages.forEach((stage, i) => {
-      const value = bi[stage] ?? 0;
-      const percent = (value / total) * 100;
-
-      let riskClass = 'neutral';
-      switch (stage) {
-        case 'no_ticket':
-        case 'not_started':
-          riskClass = value === 0 ? 'good' : 'bad';
-          break;
-        case 'only_hold':
-          if (value === 0) riskClass = 'good';
-          else if (percent <= 10) riskClass = 'medium';
-          else riskClass = 'bad';
-          break;
-        case 'working':
-          riskClass = value > 0 ? 'good' : 'bad';
-          break;
-        case 'completed':
-          riskClass = value > 0 ? 'good' : 'neutral';
-          break;
-        default:
-          riskClass = 'neutral';
-      }
-
-     let dateParams = '';
-     if (fromDate && toDate) {
-         dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
-     }
-
-      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=block_incharge${dateParams}`;
-      row += `<a href="${url}" class="cell ${riskClass}" 
-     title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
-    ${value}
-  </a>`;
-    });
-
-    row += '</div>';
-    heatmapContainer.append(row);
-  });
-
-  const legend = `
-    <div class="heatmap-legend mt-2">
-      <span><span class="box good"></span> Healthy</span>
-      <span><span class="box medium"></span> Moderate Risk</span>
-      <span><span class="box bad"></span> High Risk</span>
-      <span><span class="box neutral"></span> Neutral</span>
-    </div>`;
-  heatmapContainer.append(legend);
-}
-
-function renderHeatmap(data, fromDate=null, toDate=null) {
+function renderHeatmap(data,fromDate=null,toDate=null) {
   const heatmapContainer = $('#frtHeatmap');
   heatmapContainer.empty();
 
@@ -1006,11 +1007,12 @@ function renderHeatmap(data, fromDate=null, toDate=null) {
           riskClass = 'neutral';
       }
 
-     let dateParams = '';
+     
+    let dateParams = '';
      if (fromDate && toDate) {
          dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
      }
-   
+    //  const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=frt`;
       const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=frt${dateParams}`;
 
       row += `<a href="${url}" class="cell ${riskClass}" 
@@ -1039,8 +1041,8 @@ function renderDiHeatmap(data, fromDate=null, toDate=null) {
   const heatmapContainer = $('#diHeatmap');
   heatmapContainer.empty();
 
-  const stages = ['no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
-  const stageLabels = [ 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
+  const stages = [ 'working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = ['Ongoing', 'Hold', 'Completed', 'Not Started'];
 
   let headerRow = `
     <div class="heatmap-row header">
@@ -1087,7 +1089,6 @@ function renderDiHeatmap(data, fromDate=null, toDate=null) {
      if (fromDate && toDate) {
          dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
      }
-
       const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=di${dateParams}`;
       row += `<a href="${url}" class="cell ${riskClass}" 
      title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
@@ -1113,8 +1114,8 @@ function renderMisHeatmap(data, fromDate=null, toDate=null) {
   const heatmapContainer = $('#misHeatmap');
   heatmapContainer.empty();
 
-  const stages = ['no_ticket', 'working', 'only_hold', 'completed', 'not_started'];
-  const stageLabels = [ 'Not Assigned', 'Ongoing', 'Hold', 'Completed', 'Not Started'];
+  const stages = ['working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = ['Ongoing', 'Hold', 'Completed', 'Not Started'];
 
   let headerRow = `
     <div class="heatmap-row header">
@@ -1156,8 +1157,7 @@ function renderMisHeatmap(data, fromDate=null, toDate=null) {
         default:
           riskClass = 'neutral';
       }
-
-     let dateParams = '';
+         let dateParams = '';
      if (fromDate && toDate) {
          dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
      }
@@ -1665,7 +1665,7 @@ function loadHeatmapWithFilter(filterType) {
                 });
             });
 
-            function loadCompletionData(fromDate, toDate, type) {
+        function loadCompletionData(fromDate, toDate, type) {
 
                 $.ajax({
                     url: "{{ route('admin.get_todayfrtreport') }}",
@@ -1682,12 +1682,13 @@ function loadHeatmapWithFilter(filterType) {
                 });
             }
 
-            // Zone Heatmap Filter Handlers
+             // Zone Heatmap Filter Handlers
             $('#btn-frt-zone-filter').on('click', function () {
                 const fromDate = $('#frt_zone_from_date').val();
                 const toDate = $('#frt_zone_to_date').val();
                 if (fromDate && toDate) {
                     loadZoneHeatmapData(fromDate, toDate, 'frt');
+                    
                 } else {
                     alert('Please select both From and To dates');
                 }
@@ -1731,9 +1732,9 @@ function loadHeatmapWithFilter(filterType) {
                         data: { from_date: fromDate, to_date: toDate },
                         success: function (response) {
                             if (type === 'frt') {
-                                renderHeatmap(response);
+                                renderHeatmap(response, fromDate, toDate);
                             } else if (type === 'pat') {
-                                renderpatHeatmap(response);
+                                renderpatHeatmap(response, fromDate, toDate);
                             }
                         },
                         error: function (err) {
@@ -1747,9 +1748,9 @@ function loadHeatmapWithFilter(filterType) {
                         data: { from_date: fromDate, to_date: toDate },
                         success: function (response) {
                             if (type === 'di') {
-                                renderDiHeatmap(response);
+                                renderDiHeatmap(response, fromDate, toDate);
                             } else if (type === 'mis') {
-                                renderMisHeatmap(response);
+                                renderMisHeatmap(response, fromDate, toDate);
                             }
                         },
                         error: function (err) {

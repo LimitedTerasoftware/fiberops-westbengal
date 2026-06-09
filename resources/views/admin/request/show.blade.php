@@ -83,10 +83,10 @@ if (!function_exists('getDuration')) {
                 <div class="ticket-info flex-grow-1 pe-3">
                     <div class="d-flex align-items-center mb-2 flex-wrap">
                         <h2 class="ticket-id mb-0 me-3">{{ $request->booking_id }}</h2>
-                        <a href="{{ route('admin.requests.index') }}" class="btn btn-default pull-right mt-0">
+                       <a href="javascript:void(0);" onclick="window.history.back();" class="btn btn-default pull-right mt-0">
                             <i class="fa fa-angle-left"></i> @lang('admin.back')
                         </a>
-                        
+                                                
                     </div>
                     <div class="ticket-meta text-muted">
                         <i class="ti-location-pin" style="color: #FF0000;"></i>
@@ -345,14 +345,17 @@ if (!function_exists('getDuration')) {
                                 <label class="detail-label">Issue Type</label>
                                 <div class="detail-value">{{ isset($request->issue_type) ? $request->issue_type : '' }}</div>
                             </div>
-                                @php
-                                    $issues = json_decode($documents->issues, true);
+                              @php
+                                    $issues = is_array($request->issues)
+                                        ? $request->issues
+                                        : json_decode($request->issues, true);
                                 @endphp
 
                             <div class="detail-group mb-3">
                                 <label class="detail-label">Issues</label>
                                 <div class="detail-value">
-                                    @if(!empty($issues))
+                                    @if(!empty($issues) && is_array($issues))
+
                                         @foreach($issues as $issue)
                                             <div>
                                                 <strong>Type:</strong> {{ $issue['issue_type'] ?? '-' }} <br>

@@ -38,6 +38,7 @@
                 <option value="5">Patroller</option>
                 <option value="4">District Incharge</option>
                 <option value ="6">MIS</option>
+                <option value ="7">Block Incharge</option>
             </select>
         </div>
    
@@ -260,6 +261,12 @@ $(document).ready(function() {
           roleVal = 'frt';
              } else if (roleVal == 5) {
               roleVal = 'patroller';
+            }else if (roleVal == 4) {
+              roleVal = 'di';
+            }else if (roleVal == 7) {
+              roleVal = 'block_incharge';
+            }else if (roleVal == 6) {
+              roleVal = 'mis';
             }
 
         let filters = {};
@@ -326,7 +333,7 @@ $(document).ready(function() {
                         { data: 'zone_name', title: 'Zone' },
                         { data: null, title: 'Name', render: d => `${d.first_name} ${d.last_name}` },
                         { data: 'mobile', title: 'Mobile' },
-                        { data: 'type', title: 'Role', render: d => d == 2 ? 'FRT' : d == 4 ? 'District Incharge' : d == 6 ? 'MIS' : 'Patroller' },
+                        { data: 'type', title: 'Role', render: d => d == 2 ? 'FRT' : d == 4 ? 'District Incharge' : d == 6 ? 'MIS' : d == 7 ? 'Block Incharge' : 'Patroller' },
                         { data: 'total_tickets', title: 'New Tickets',
                           render: { _: data => parseInt(data) || 0,
                            display: function (data, type, row) {

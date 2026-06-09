@@ -40,7 +40,7 @@ class EmployeeMaterialLedger extends Model
 
         // Ticket / usage
         'ticket_id',
-        'is_pre_used',
+         'is_pre_used',
 
         // Dates
         'issue_date',
@@ -51,7 +51,6 @@ class EmployeeMaterialLedger extends Model
         'quantity'    => 'decimal:3',
         'issue_date'  => 'datetime',
         'is_pre_used' => 'boolean',
-
     ];
 
 
@@ -115,7 +114,7 @@ class EmployeeMaterialLedger extends Model
     {
         return $query->where('has_serial', 0);
     }
-    public function ticket()
+        public function ticket()
     {
         return $this->belongsTo(\App\SubmitFile::class, 'ticket_id', 'ticket_id');
     }

@@ -41,8 +41,7 @@ class SubmitFile extends Model
     protected $hidden = [
         'created_at','updated_at'
     ];
-
-    public function materials()
+   public function materials()
     {
         return $this->hasMany(
             \App\EmployeeMaterialLedger::class,
@@ -50,5 +49,4 @@ class SubmitFile extends Model
             'ticket_id'   
         );
     }
-
 }

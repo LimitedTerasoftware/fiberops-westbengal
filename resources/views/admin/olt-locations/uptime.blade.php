@@ -2351,7 +2351,7 @@ function generatePagination(data, mainTab, dataTab) {
         // Generate rows
         if (data.data && data.data.length > 0) {
             
-            html += generateTableRow(data.data, mainTab, data.averages || {});
+            html += generateTableRow(data.data,mainTab, data.averages || {});
 
         }
         
@@ -2414,7 +2414,7 @@ function generatePagination(data, mainTab, dataTab) {
             { key: 'lt98', label: '<98% (Excl. 0%) Availability', color: 'text-red-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'zero_availability', label: '0% Availability', color: 'text-gray-500', rowClass: 'terrasoft-data-row', colClass: 'terrasoft-td-description', valClass: 'terrasoft-td-value' },
             { key: 'total', label: 'Total', rowClass: 'terrasoft-total-row', colClass: 'terrasoft-td-total', valClass: 'terrasoft-td-total-value' },
-            { key: 'avg_uptime', label: 'Average Uptime %', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true, isOverallAverage: true }
+            { key: 'avg_uptime', label: 'Overall Availability %', rowClass: 'terrasoft-percentage-row', colClass: 'terrasoft-td-percentage', valClass: 'terrasoft-td-percentage-value', isPercent: true , isOverallAverage: true }
         ];
 
         if (mainTab === 'Gprouterdashboard' || mainTab === 'Blockrouterdashboard') {
@@ -2423,7 +2423,7 @@ function generatePagination(data, mainTab, dataTab) {
 
         return allCategories;
     }
-    function generateTableRow(data, mainTab, averages) {
+    function generateTableRow(data,mainTab, averages) {
      const categories = getCategories(mainTab);
     let html = '<tbody>';
     let slNo = 1;
@@ -2442,7 +2442,7 @@ function generatePagination(data, mainTab, dataTab) {
         //     if (cat.isPercent) value = `${value}%`;
         //     html += `<td class="${cat.valClass || ''}">${value}</td>`;
         // });
-        data.forEach(row => {
+           data.forEach(row => {
             let value = row[cat.key] ?? 0;
             if (cat.isPercent) {
                 value = `${formatAverageValue(parseFloat(value) || 0)}%`;
@@ -2454,7 +2454,6 @@ function generatePagination(data, mainTab, dataTab) {
             }
             html += `<td class="${cat.valClass || ''}">${value}</td>`;
         });
-
         // calculate and show average
         const avg = calcAverage(data, cat, averages || {});
         const avgUrl = getAverageReportUrl(mainTab, data, cat);
@@ -2474,7 +2473,7 @@ function generatePagination(data, mainTab, dataTab) {
 function calcAverage(data, cat, averages) {
     const key = cat.key;
     const total = data.reduce((sum, row) => sum + (parseFloat(row.total) || 0), 0);
-
+   
     if (cat.isOverallAverage) {
         if (averages && averages.avg_uptime !== undefined && averages.avg_uptime !== null) {
             return `${formatAverageValue(parseFloat(averages.avg_uptime) || 0)}%`;
@@ -2494,8 +2493,7 @@ function calcAverage(data, cat, averages) {
         const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
         return `${formatAverageValue(avg)}%`;
     }
-
-    if (key === 'total' || cat.isNewIntegration) {
+   if (key === 'total' || cat.isNewIntegration) {
         const nums = data.map(row => parseFloat(row[key]) || 0);
         const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
         return formatAverageValue(avg);
@@ -2512,7 +2510,6 @@ function calcAverage(data, cat, averages) {
 function formatAverageValue(value) {
     return value % 1 === 0 ? value.toFixed(0) : value.toFixed(2).replace(/\.?0+$/, '');
 }
-
 function getReportCategory(cat) {
     if (cat.key === 'avg_uptime' || cat.key === 'total') {
         return 'all';
@@ -2572,6 +2569,8 @@ function getAverageReportUrl(mainTab, data, cat) {
 
     return getReportUrl(mainTab, sortedDates[0], sortedDates[sortedDates.length - 1], cat);
 }
+
+
 
 
 function generateTotalRow(totals, dates) {

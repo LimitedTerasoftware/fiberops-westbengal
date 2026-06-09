@@ -335,11 +335,11 @@ inc {
             <div class="filter-card">
                 <form action="{{route('admin.tickets1', $query_params)}}" method="GET">
                     <div class="filter-row">
-                        <div class="filter-pill">
+                         <div class="filter-pill">
                             <i class="bi bi-ticket-perforated-fill text-secondary"></i>
                             <select name="ticket_type">
                                 <option value="">All Types</option>
-                                <option value="TK" {{ Request::get('ticket_type') == 'TK' ? 'selected' : '' }}>Regular (TK)</option>
+                                <option value="TK" {{ Request::get('ticket_type') == 'TK' ? 'selected' : '' }}>ONT (TK)</option>
                                 <option value="INC" {{ Request::get('ticket_type') == 'INC' ? 'selected' : '' }}>Router (INC/)</option>
                                 <option value="INST" {{ Request::get('ticket_type') == 'INST' ? 'selected' : '' }}>Installation (INST/)</option>
                             </select>
@@ -499,7 +499,7 @@ inc {
                     <p>Completed</p>
                 </div>
             </div>
-             <!-- INST Ticket Summary Cards -->
+    <!-- INST Ticket Summary Cards -->
             <div class="stats-row">
                 <div class="stat-card" style="border-top:3px solid #8b5cf6;">
                     <small style="font-size:10px;font-weight:700;color:#8b5cf6;letter-spacing:.5px;">INSTALLATION TICKETS</small>
@@ -528,6 +528,7 @@ inc {
                 </div>
             </div>
   
+
 
          @if(count($tickets) != 0)
            <div class="table-wrapper">
@@ -570,7 +571,7 @@ inc {
                               <span class="hg-tip"><i class="bi bi-people-fill"></i> {{ $request->host_group_name }}</span>
                               @endif
                             </span>
-                          @elseif(Str::startsWith($request->ticketid, 'INST'))
+                           @elseif(Str::startsWith($request->ticketid, 'INST'))
                             <span class="hg-tooltip">
                               <span class="ticket-inst">{{ $request->ticketid }}</span>
                             </span>

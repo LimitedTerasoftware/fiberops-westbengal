@@ -10,14 +10,15 @@ Route::get('/', 'AdminController@dashboard')->name('index');
 Route::get('/dashboard', 'AdminController@dashboard')->name('dashboard');
 Route::get('/inventorydashboard', 'AdminController@inventorydashboard')->name('inventorydashboard');
 Route::get('/material-usage-dashboard', 'InventoryMng\StockIssueController@materialUsageDashboard')->name('material-usage-dashboard');
+
 Route::get('/viewmaps', 'AdminController@viewmaps')->name('viewmaps');
 Route::get('/tickets1', 'AdminController@tickets')->name('tickets');
 Route::get('/tickets', 'AdminController@tickets1')->name('tickets1');
-Route::get('/installation-tickets', 'AdminController@installationTickets')->name('installation.tickets');
 Route::get('/tickets/create', 'AdminController@addNewTicket')->name('tickets.create');
 Route::post('/tickets/store', 'AdminController@storeTicket')->name('tickets.store');
 Route::get('tickets/{id}/edit', 'AdminController@editTicket')->name('tickets.edit'); 
 Route::delete('/delticket/{id}', 'AdminController@DeleteTicketByAdmin')->name('delticket');
+Route::get('/installation-tickets', 'AdminController@installationTickets')->name('installation-tickets');
 
 Route::PATCH('tickets/{id}', 'AdminController@updateTicket')->name('tickets.update');
 Route::get('/deleteticket/{id}', 'AdminController@deleteticket')->name('deleteticket');
@@ -76,6 +77,7 @@ Route::group(['as' => 'dispatcher.', 'prefix' => 'dispatcher'], function () {
     Route::get('/onholdform/{id}', 'DispatcherController@onholdform')->name('onholdform');
     Route::post('/onholdrequest', 'DispatcherController@onholdrequest')->name('onholdrequest');
     Route::post('/bulk-hold-tickets', 'DispatcherController@bulkHold')->name('bulkHold');
+
 
 
 
@@ -280,6 +282,7 @@ Route::get('dailyrepots', 'Resource\GPResource@frtreports')->name('dailyrepots')
 Route::get('get_todayfrtreport', 'Resource\GPResource@gettodayFrtReport')->name('get_todayfrtreport');
 Route::get('get_dimis_report', 'Resource\GPResource@getDiMisReport')->name('get_dimis_report');
 Route::get('get_block_incharge_report', 'Resource\GPResource@getBlockInchargeReport')->name('get_block_incharge_report');
+
 //Route::get('workforce_details', 'Resource\GPResource@getFrtReport')->name('workforce_details');
 Route::get('get_frtreport', 'Resource\GPResource@getFrtReport')->name('get_frtreport');
 Route::get('get_todayfrt_details', 'Resource\GPResource@getTodayFrtDetails')->name('get_todayfrt_details');
@@ -306,9 +309,6 @@ Route::get('/district-heatmap', 'AdminController@districtHeatmap')->name('distri
 
 
 Route::resource('olt-locations', "OltLocationController");
-Route::resource('holidays', "HolidayController");
-Route::get('/holidays/get-districts', "HolidayController@getDistricts")->name('admin.holidays.get-districts');
-Route::get('/holidays/get-blocks', "HolidayController@getBlocks")->name('admin.holidays.get-blocks');
 Route::get('/uptime', "OltLocationController@UptimeMng")->name('uptime');
 Route::get('/ont_data', "OltLocationController@OntData")->name('ont_data');
 Route::get('/uptime_data', "OltLocationController@OntDataList")->name('uptime_data');
@@ -320,6 +320,7 @@ Route::get('/gprouter_dashboard', "OltLocationController@GprouterData")->name('g
 Route::get('/gprouter_performance', "OltLocationController@GprouterDataList")->name('gprouter_performance');
 Route::get('/blockrouter_dashboard', "OltLocationController@BlockrouterData")->name('blockrouter_dashboard');
 Route::get('/blockrouter_performance', "OltLocationController@BlockrouterDataList")->name('blockrouter_performance');
+
 Route::post('upload-otdr-images', 'AdminController@uploadImages')->name('upload-otdr-images');
 
 
@@ -328,7 +329,6 @@ Route::post('/ont-upload', "OltLocationController@OntUpload")->name('ont-upload'
 Route::post('/olt-upload', "OltLocationController@OltUpload")->name('olt-upload');
 Route::post('/gprouter-upload', "OltLocationController@GprouterUpload")->name('gprouter-upload');
 Route::post('/blockrouter-upload', "OltLocationController@BlockrouterUpload")->name('blockrouter-upload');
-
 
 Route::get('/olt-export', 'OltLocationController@ExportOlt')->name('olt-export');
 
@@ -371,4 +371,5 @@ Route::get('/get_recurring_gp_trends', 'InventoryMng\MaterialController@getRecur
 
 Route::get('/frequently_down_gps_export', 'InventoryMng\MaterialController@exportFrequentlyDownGps')->name('frequently_down_gps_export');
 
+Route::resource('holidays', "HolidayController");
 

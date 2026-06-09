@@ -34,7 +34,7 @@
 				<div class="form-group row">
 					<label for="ticketid" class="col-xs-12 col-form-label">@lang('admin.request.Ticket_ID')</label>
 					<div class="col-xs-10">
-						<input class="form-control" type="text" value="{{ old('ticketid') }}" name="ticketid" required id="ticketid" placeholder="Select a ticket type above to auto-generate ID" readonly>
+						<input class="form-control" type="text" value="{{ old('ticketid') }}" name="ticketid" required id="ticketid" placeholder=" Enter Ticket ID Start with TKIT000000 format">
 					</div>
 				</div>
 
@@ -140,7 +140,7 @@
 @endsection
 @section('scripts')
 <script>
-$('#ticket_type').on('change', function() {
+	$('#ticket_type').on('change', function() {
     var type = $(this).val();
     var ticketid = $('#ticketid');
     if (type) {

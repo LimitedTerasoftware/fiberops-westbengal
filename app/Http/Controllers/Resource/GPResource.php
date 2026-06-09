@@ -1119,7 +1119,6 @@ public function getFrtReport(Request $request)
 
      // ================= ROUTE PATROLLING =================
     $routePatrolling = DB::table('raise_tickets')
-        ->where('issue_sub_type', 'Route Patrolling')
         ->whereBetween(DB::raw('DATE(created_at)'), [$fromDate, $toDate])
         ->select('patroller_id', DB::raw('COUNT(*) as route_patrolling_count'))
         ->groupBy('patroller_id')
@@ -1709,7 +1708,6 @@ public function getDiMisReport(Request $request)
         'zones' => $zoneReport
     ]);
 }
-
 public function getBlockInchargeReport(Request $request)
 {
     $user = Session::get('user');
@@ -1863,7 +1861,6 @@ public function getBlockInchargeReport(Request $request)
         'zones' => $zoneReport
     ]);
 }
-
  // --- Helper: Determine provider stage ---
 //  private function getProviderStage($prov, $attendance)
 // {
@@ -2093,6 +2090,7 @@ public function getTodayFrtDetails(Request $request)
     $company_id = $user->company_id;
     $state_id = $user->state_id;
     $district_id = $user->district_id;
+    $Role = $user->role;
 
    $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING" THEN user_requests.id END) as pending_tickets';
 
@@ -2111,13 +2109,16 @@ public function getTodayFrtDetails(Request $request)
         ->where('providers.company_id', $company_id)
         ->where('providers.state_id', $state_id)
         ->where('providers.zone_id', '!=', 0) 
-        ->whereIn('providers.type', [2, 5,4,6])
+        ->whereIn('providers.type', [2, 5,4,6,7])
         ->where('providers.status', 'approved')
         ->when($zone_id, function ($q) use ($zone_id) {
     return $q->where('providers.zone_id', $zone_id);
 })
+->when($Role == 'installation', function ($q) use ($Role) {
+    return $q->where('providers.type', 7);
+})
 ->when($type, function ($q) use ($type) {
-    $typeMap = ['frt' => 2, 'patroller' => 5, 'di' => 4, 'mis' => 6];
+    $typeMap = ['frt' => 2, 'patroller' => 5, 'di' => 4, 'mis' => 6, 'block_incharge' => 7];
     $providerType = $typeMap[$type] ?? null;
     if ($providerType) {
         return $q->where('providers.type', $providerType);
@@ -3526,5 +3527,12 @@ public function getBlocks($districtId)
         ->select('id', 'name')
         ->get();
 }
+
+ 
+
+
+
+
+
 
 }

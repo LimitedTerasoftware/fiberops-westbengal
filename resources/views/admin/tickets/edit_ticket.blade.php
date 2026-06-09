@@ -15,7 +15,8 @@
                 <div class="ticket-info flex-grow-1 pe-3">
                     <div class="d-flex align-items-center mb-2 flex-wrap">
                         <h2 class="ticket-id mb-0 me-3">{{ $userrequest->booking_id }}</h2>
-                        <a href="{{ route('admin.requests.index') }}" class="btn btn-default pull-right mt-0">
+                       
+                        <a href="javascript:void(0);" onclick="window.history.back();" class="btn btn-default pull-right mt-0">
                             <i class="fa fa-angle-left"></i> @lang('admin.back')
                         </a>
                         

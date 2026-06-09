@@ -4213,7 +4213,7 @@ public function get_employee_list(Request $request)
     }
 }
 
- public function createmastertickets(Request $request)
+ public function createmastertickets_test(Request $request)
     {
         try {
             $mappedData = $this->mapKolkataRequest($request->all());
@@ -4398,7 +4398,7 @@ private function processTicketData(array $jsonData)
             $district_id = null;
             $block_id    = null;
             $lgd_code    = null;
-            $stateId = null;
+            $stateId = 1;
 
             if ($districtName && isset($districtMap[$districtName])) {
                 $district_id = $districtMap[$districtName];
@@ -4423,8 +4423,8 @@ private function processTicketData(array $jsonData)
             if (!$lgd_code) {
                 $popKey = $keyvalue['pop_map_key'] ?? '';
 
-                if (preg_match('/-(B?\d+)-/', $popKey, $matches)) {
-                    $lgd_code = $matches[1];
+             if (preg_match('/-(B[A-Z]*\d+|\d{5,})-/', $popKey, $matches)) {
+                $lgd_code = $matches[1];
 
                     $gpData = DB::table('gp_list')
                         ->leftJoin('districts', 'districts.id', '=', 'gp_list.district_id')
@@ -4625,6 +4625,8 @@ private function getNearestProvider($lat, $lng, $radius = 150)
             ")
         )
         ->having('distance', '<=', $radius)
+        ->whereIN('providers.type',['2','5']) 
+        ->where('providers.status', 'approved') 
         ->orderBy('distance', 'ASC')
         ->first();
 }

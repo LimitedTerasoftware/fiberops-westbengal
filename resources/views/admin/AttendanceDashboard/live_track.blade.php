@@ -9,7 +9,9 @@ $roles = [
 2 => 'FRT',
 5 => 'Patroller',
 3 => 'Zonal incharge',
-4 => 'District incharge'
+4 => 'District incharge',
+6 => 'MIS',
+7 => 'Block incharge',
 ];
 @endphp
 

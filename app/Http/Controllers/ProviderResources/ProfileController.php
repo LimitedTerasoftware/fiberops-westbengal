@@ -624,7 +624,7 @@ class ProfileController extends Controller
               $service_type_id = 2 ;
             }
             else {
-              $a=array("1"=>"1","3"=>"3","4"=>"4","7"=>"7");
+              $a=array("1"=>"1","3"=>"3","4"=>"4",'7'=>'7');
               $service_type_id = array_rand($a,1);   
             }
 

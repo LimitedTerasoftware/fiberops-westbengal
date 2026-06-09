@@ -1135,16 +1135,17 @@
     <div class="table-card">
       <div class="table-header">
         <div class="table-title">District-wise Usage</div>
+        <!-- <a href="#" class="view-all-link">View All Reports →</a> -->
       </div>
-      <div style="overflow-x: auto; max-height: 300px; overflow-y: auto;">
+      <div style="overflow-x: auto; overflow-y: visible; max-height: 500px;">
       <table>
-        <thead style="position: sticky; top: 0; z-index: 10; background: #f8f9fa;">
+        <thead>
           <tr>
-            <th style="min-width: 150px;">District Name</th>
-            <th style="min-width: 100px;">Total Issued</th>
-            <th style="min-width: 100px;">Total Used</th>
-            <th style="min-width: 90px;">Scrap Rate</th>
-            <th style="min-width: 90px;">Status</th>
+            <th>District Name</th>
+            <th>Total Issued</th>
+            <th>Total Used</th>
+            <th>Scrap Rate</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -1189,8 +1190,14 @@
           @endif
         </tbody>
       </table>
-      </div>
+     </div>
     </div>
+    <!-- <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">Employee-wise Usage</div>
+      </div>
+    </div> -->
+
 
   <!-- Recent Transaction Logs -->
   <div class="table-card">
@@ -1200,7 +1207,7 @@
         <button class="table-filter-btn">↓ Filter Log</button>
       </div> -->
     </div>
-    <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+    <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
     <table>
       <thead style="position: sticky; top: 0; z-index: 10; background: #f8f9fa;">
         <tr>
@@ -1251,8 +1258,10 @@
         @endif
       </tbody>
     </table>
-    </div>
+</div>
   </div>
+    </div>
+</div>
 
 <script>
   // Chart.js Bar Chart - Global scope functions
@@ -1484,7 +1493,7 @@
         <div class="donut-legend-item">
           <div class="donut-legend-dot" style="background: ${color};"></div>
           <span>${cat.category || 'Unknown'}</span>
-          <span class="donut-legend-pct">${pct}%</span>
+          <span class="donut-legend-pct">${formatQuantity(cat.value)} (${pct}%)</span>
         </div>
       `;
     });

@@ -1462,7 +1462,6 @@ public function employeeStockReport(Request $request)
         $assetsActive = $totalSerialIssued - $totalSerialUsed;
         $efficiency = $totalIssued > 0 && $unusedBalance > 0 ? round(($totalUsed / $totalIssued) * 100, 1) : 0;
         $chartData = $materialWiseData;
-         
         // if (count($chartData) > 8) {
         //     $chartData = array_slice($chartData, 0, 8);
         // }
@@ -1484,17 +1483,26 @@ public function employeeStockReport(Request $request)
             'categoryChartData' => $categoryChartData,
             'categoryChartDataByUnit' => $categoryChartDataByUnit,
             'districtWiseData' => $districtWiseData,
-            'transactionLogs' => collect($ledgerRows)->take(50)->map(function($row) {
-                return [
-                    'date' => $row->issue_date,
-                    'type' => $row->transaction_type,
-                    'material_name' => $row->material->name ?? 'Unknown',
-                    'quantity' => $row->quantity,
-                    'employee_name' => ($row->employee->first_name ?? '') . ' ' . ($row->employee->last_name ?? ''),
-                    'district_name' => $row->district->name ?? 'Unknown',
-                    'ticket_id' => $row->ticket_id
-                ];
-            })
+           'transactionLogs' => collect($ledgerRows)
+                                ->sortByDesc('issue_date') 
+                                ->take(10)
+                                ->map(function($row) {
+                                    return [
+                                        'date' => $row->issue_date,
+                                        'type' => $row->transaction_type,
+                                         'base_unit' => ($row->material)->base_unit ?? 'Unknown',
+                                         'material_code' => ($row->material)->code ?? 'Unknown',
+                                        'material_name' => ($row->material)->name ?? 'Unknown',
+                                        'quantity' => $row->quantity,
+                                        'employee_name' => trim(
+                                            (($row->employee)->first_name ?? '') . ' ' .
+                                            (($row->employee)->last_name ?? '')
+                                        ) ?: '—',
+                                        'district_name' => ($row->district)->name ?? 'Unknown',
+                                        'ticket_id' => $row->ticket_id ?? '—'
+                                    ];
+                                })
+
 
 
         ]);

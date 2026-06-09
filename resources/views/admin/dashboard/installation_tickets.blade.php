@@ -65,17 +65,21 @@
                             </a>
                         </li>
                     @endforeach
+                  
                 </ul>
-                 @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
-                    <div class="bulk-actions" style="display: none;" id="bulkActionsBar">
-                        <button type="button" class="btn btn-warning" onclick="openBulkHoldModal()">
-                            <i class="fa fa-pause-circle"></i> Bulk On Hold (<span id="selectedCount">0</span>)
-                        </button>
-                    </div>
-                @endif
+                   @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
+                        <div class="bulk-actions" style="display: none;" id="bulkActionsBar">
+                            <button type="button" class="btn btn-warning" onclick="openBulkHoldModal()">
+                                <i class="fa fa-pause-circle"></i> Bulk On Hold (<span id="selectedCount">0</span>)
+                            </button>
+                        </div>
+                    @endif
                 <div>
+                 
                     <a href="{{ route('admin.import') }}" class="btn btn-success mr-2"><i class="fa fa-upload"></i> Upload CSV</a>
+                    @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
                     <a href="{{ route('admin.tickets.create') }}" class="btn btn-primary"><i class="fa fa-plus"></i> Add Ticket</a>
+                    @endif
                 </div>
             </div>
 
@@ -187,7 +191,7 @@
                     <tbody>
                     @foreach($tickets as $index => $request)
                         <tr>
-                            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
+                             @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
                             <td><input type="checkbox" class="ticket-checkbox" value="{{ $request->ticketid }}"></td>
                             @endif
                             <td class="font-weight-bold">
@@ -290,23 +294,23 @@
                                     <button type="button" class="btn btn-info b-a-radius-0-5 dropdown-toggle pull-left" data-toggle="dropdown">Action <span class="caret"></span></button>
                                     <ul class="dropdown-menu">
                                         <li><a href="{{ route('admin.requests.show', $request->request_id) }}" class="btn btn-default"><i class="fa fa-search"></i> More Details</a></li>
-                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge')
+                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'installation')
                                         <li><a href="{{ route('admin.tickets.edit', $request->master_id) }}" class="btn btn-default"><i class="fa fa-pencil"></i> @lang('admin.edit')</a></li>
                                         @if($request->status == 'SEARCHING')
                                         <li><a href="{{ route('admin.dispatcher.assignform', $request->request_id) }}" class="btn btn-default"><i class="fa fa-arrows"></i> Assign</a></li>
                                         @endif
                                         @endif
-                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
+                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role == 'district_incharge' || auth()->user()->role == 'installation')
                                         @if($request->status != 'COMPLETED')
                                         <li><a href="{{ route('admin.dispatcher.completeform', $request->request_id) }}" class="btn btn-default"><i class="fa fa-arrows"></i> Request Close</a></li>
                                         @endif
                                         @endif
-                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin')
+                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'installation')
                                         @if($request->status == 'INCOMING' || $request->status == 'ONHOLD')
                                         <li><a href="{{ route('admin.dispatcher.assignform', $request->request_id) }}" class="btn btn-default"><i class="fa fa-arrows"></i> Re-Assign</a></li>
                                         @endif
                                         @endif
-                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role == 'district_incharge')
+                                        @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'installation')
                                         @if($request->status == 'INCOMING' || $request->status == 'PICKEDUP')
                                         <li><a href="{{ route('admin.dispatcher.onholdform', $request->request_id) }}" class="btn btn-default"><i class="fa fa-arrows"></i> On Hold</a></li>
                                         @endif
@@ -330,16 +334,17 @@
                 <h6 class="no-result">No installation tickets found</h6>
             @endif
         </div>
+        Showing {{$tickets->currentPage() != 1 ? $tickets->currentPage() * 10 - 9 : $tickets->currentPage()}} to {{$tickets->currentPage() * $tickets->perPage()}} of {{$tickets->total()}} entries
+
         {{ $tickets->appends(['status' => @$status_get,'zone_id'=>@$zone_id_get,'district_id'=>@$district_id_get,'block_id'=>@$block_id_get,'category'=>@$category_get,'from_date'=>@$from_date_get,'to_date'=>@$to_date_get,'searchinfo'=>@$serch_term_get,'range'=>@$range_get,'provider_id'=>@$provider_id_get])->links() }}
     </div>
 </div>
 @endsection
-
 <link rel="stylesheet" href="{{ asset('/css/olt.css')}}">
 
 @section('scripts')
 <script>
-$(document).ready(function() {
+   $(document).ready(function() {
     var buttonsArray = [
         @if(auth()->user()->role != 'client')
         'copyHtml5',
@@ -420,6 +425,9 @@ $(document).on('change', '.ticket-checkbox', function() {
     updateBulkActions();
 });
 
+
+
+
 $('#zone_id').on('change', function () {
     var zoneId = $(this).val();
     if(zoneId) {
@@ -453,7 +461,6 @@ $('#district_id').on('change', function () {
         $('#block_id').html(h);
     });
 });
-
 function getSelectedIds() {
     var ids = sessionStorage.getItem('bulkSelectedTicketIds');
     return ids ? JSON.parse(ids) : [];
@@ -566,8 +573,8 @@ function submitBulkHold() {
         }
     });
 }
-</script>
 
+</script>
 <!-- Bulk On Hold Modal -->
 <div id="bulkHoldModal" class="terrasoft-modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
     <div class="terrasoft-modal-content" style="max-width: 500px; margin: 10% auto; display: block;">

@@ -9,7 +9,8 @@
         2 => 'FRT',
         5 => 'Patroller',
         3 => 'Zonal incharge',
-        4 => 'District incharge'
+        4 => 'District incharge',
+        7 => 'Block incharge',
     ];
     $user = Session::get('user');
     $DistId = null; 
@@ -670,6 +671,8 @@
 .role-zonal-incharge { background: #fdf4ff; color: #7e22ce; }
 .role-district-incharge { background: #fff7ed; color: #c2410c; }
 .role-unknown { background: #e2e8f0; color: #475569; }
+.role-mis { background: #f0fff4; color: #2f855a; }
+.role-block-incharge { background: #ebf4ff; color: #2c5282; }
 
 
 /* Status Badges */

@@ -9,7 +9,9 @@
         2 => 'FRT',
         5 => 'Patroller',
         3 => 'Zonal incharge',
-        4 => 'District incharge'
+        4 => 'District incharge',
+        6 => 'MIS',
+        7 => 'Block incharge',
     ];
 @endphp
 <div class="member-details-container">
@@ -71,11 +73,18 @@
                                 <span class="profile-emp-id">EMP ID: -</span>
                                 <span class="profile-separator">•</span>
                                 <span class="profile-zone">Zone: {{ $provider->zone_name ?  $provider->zone_name:'-' }}</span>
+                                <span class="profile-separator">•</span>
+                                <span class="profile-district">District: {{ $provider->district_name ?  $provider->district_name:'-' }}</span>
+
                             </div>
                             @if(auth()->user()->role != 'client')
 
                             <div class="profile-contact">
                                 <span>Mobile: {{ $provider->mobile ? $provider->mobile : '-' }}</span>
+                                <span class="profile-separator">•</span>
+                                <span>Email: {{ $provider->email ? $provider->email : '-' }}</span>
+
+
                             </div>
                             @endif
                         </div>
