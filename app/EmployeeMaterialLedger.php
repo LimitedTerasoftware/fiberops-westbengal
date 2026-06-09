@@ -29,7 +29,7 @@ class EmployeeMaterialLedger extends Model
         'replaced_serial_number',
 
         // Transaction
-        'transaction_type',
+        'transaction_type',//ISSUE,USED
         'quantity',
         'used',
         'wastage',
@@ -37,6 +37,10 @@ class EmployeeMaterialLedger extends Model
         'Image_lat_long',
         'wastage_reason',
         'note',
+
+        'original_issued_qty',
+        'transferred_in_qty',
+        'transferred_out_qty',
 
         // Ticket / usage
         'ticket_id',
@@ -51,6 +55,9 @@ class EmployeeMaterialLedger extends Model
         'quantity'    => 'decimal:3',
         'issue_date'  => 'datetime',
         'is_pre_used' => 'boolean',
+        'original_issued_qty' => 'decimal:3',
+        'transferred_in_qty'  => 'decimal:3',
+        'transferred_out_qty' => 'decimal:3',
     ];
 
 

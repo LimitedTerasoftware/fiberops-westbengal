@@ -9,6 +9,7 @@ use App\EmployeeMaterialLedger;
 use App\Provider;
 use App\Material;
 use Illuminate\Support\Facades\Log;
+use \Carbon\Carbon;
 
 class SyncEmployeeMaterialLedger extends Command
 {
@@ -28,60 +29,86 @@ class SyncEmployeeMaterialLedger extends Command
             $response = $client->get('https://projects.terasoftware.com/index.php/api/get_om_material_issue_list');
             $body = json_decode($response->getBody()->getContents(), true);
 
-            if (!is_array($body) || !isset($body['data'])) {
-                Log::error('Ledger API returned invalid JSON', [
-                    'response' => $body
-                ]);
+           if (!is_array($body) || !isset($body['data']) || !isset($body['status']) || $body['status'] != 1) {
+                Log::error('Ledger API returned invalid or unsuccessful response', ['response' => $body]);
                 return 0;
             }
+            $inserted = 0;
+            $updated  = 0;
+            $skipped  = 0;
 
             foreach ($body['data'] as $row) {
 
-
-                $exists = EmployeeMaterialLedger::where([
-                    'request_id'       => $row['request_id'],
-                    'issued_item_id'   => $row['issued_item_id'],
-                    'transaction_type'=> 'ISSUE'
-                ])->exists();
-
-                if ($exists) {
-                    continue;
-                }
                 $employee = Provider::find($row['employee_id']);
                 if (!$employee) {
+                    Log::warning('Ledger sync: employee not found', ['employee_id' => $row['employee_id']]);
+                    $skipped++;
                     continue;
                 }
 
                 $material = Material::where('code', $row['mat_code'])->first();
                 if (!$material) {
+                    Log::warning('Ledger sync: material not found', ['mat_code' => $row['mat_code']]);
+                    $skipped++;
                     continue;
                 }
+                //    One ISSUE ledger row per (employee + material + indent)
+                $matchKey = [
+                    'employee_id'      => $employee->id,
+                    'material_code'    => $row['mat_code'],
+                    'indent_no'        => $row['indent_no'] ?? null,
+                    'transaction_type' => 'ISSUE',
+                ];
 
-                EmployeeMaterialLedger::create([
-                    'request_id'      => $row['request_id'],
-                    'issued_item_id'  => $row['issued_item_id'],
-                    'indent_no'       => $row['indent_no'] ?? null,
+                $isLengthBased = ($row['issued_length'] > 0);
+                $isDrum   = !empty($row['drum_no']);
+                $isSerial = !empty($row['serial_no']);
+                $syncPayload = [
+                    'indent_no'       =>  $row['indent_no'] ?? null,
+                    'employee_id'         => $employee->id,
+                    'state_id'            => $employee->state_id,
+                    'district_id'         => $employee->district_id,
+                    'material_id'         => $material->id,
+                    'material_code'       => $row['mat_code'],
+                    'has_serial'    => ($isDrum || $isSerial) ? 1 : 0,
+                    'serial_number' => $isDrum
+                                        ? $row['drum_no']      
+                                        : ($isSerial ? $row['serial_no'] : null),
+                  
+                    'quantity'            => $isLengthBased
+                                                ? $row['balance_length']
+                                                : $row['balance_qty'],
 
-                    'employee_id'     => $employee->id,
-                    'state_id'        => $employee->state_id,
-                    'district_id'     => $employee->district_id,
+                    'original_issued_qty' => $isLengthBased
+                                                ? $row['issued_length']
+                                                : $row['issued_qty'],
+                    'transferred_in_qty'  => $isLengthBased
+                                                ? $row['transferred_in_length']
+                                                : $row['transferred_in_qty'],
+                    'transferred_out_qty' => $isLengthBased
+                                                ? $row['transferred_out_length']
+                                                : $row['transferred_out_qty'],
+                ];
 
 
-                     'material_id'     => $material->id,
-                     'material_code'   => $row['mat_code'],
+               $existing = EmployeeMaterialLedger::where($matchKey)->first();
 
-                    'has_serial'      => $row['mat_serial_no'] === 'Yes' ? 1 : 0,
-                    'serial_number'   => $row['serial_no'],
 
-                    'transaction_type'=> 'ISSUE',
-                    'quantity'        => $row['issue_qty'],
-
-                    'issue_date'      => $row['issue_date'],
-                ]);
+                if ($existing) {
+                    $existing->update($syncPayload);
+                     $updated++;
+                }else{
+                    EmployeeMaterialLedger::create(array_merge($matchKey, [
+                        'transaction_type' => 'ISSUE',
+                        'issue_date'       => Carbon::now(),
+                    ], $syncPayload));
+                    $inserted++;
+                }
             }
 
-            $this->info('Ledger sync completed');
-            Log::info('Ledger sync completed');
+            $summary = "Ledger sync completed — inserted: {$inserted}, updated: {$updated}, skipped: {$skipped}";
+            $this->info($summary);
+            Log::info($summary);
 
         } catch (RequestException $e) {
             Log::error('Ledger sync failed', [
