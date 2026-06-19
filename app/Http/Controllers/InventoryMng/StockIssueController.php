@@ -1355,6 +1355,7 @@ public function employeeStockReport(Request $request)
             $districtKey = $row->district_id;
             if (!isset($districtWiseData[$districtKey])) {
                 $districtWiseData[$districtKey] = [
+                    'district_id' => $row->district_id,
                     'district_name' => $row->district->name ?? 'Unknown',
                     'issued' => 0,
                     'used' => 0,
@@ -1366,6 +1367,26 @@ public function employeeStockReport(Request $request)
             if ($row->transaction_type === 'ISSUE') {
                 $districtWiseData[$districtKey]['issued'] += $row->quantity;
                 $totalIssued += $row->quantity;
+                if ($row->has_serial && $row->serial_number) {
+                    $totalSerialIssued += $row->quantity;
+                }
+                $matKey = $row->material_id;
+                if (!isset($materialWiseData[$matKey])) {
+                    $materialWiseData[$matKey] = [
+                        'material_id' => $row->material_id,
+                        'material_name' => $row->material->name ?? 'Unknown',
+                        'material_code' => $row->material_code ?? '',
+                        'base_unit' => $row->material->base_unit ?? '',
+                        'issued' => 0,
+                        'used' => 0,
+                    ];
+                }
+                $materialWiseData[$matKey]['issued'] += $row->quantity;
+            }
+
+            if ($row->transaction_type === 'RETURN') {
+                $totalIssued += $row->quantity;
+                $districtWiseData[$districtKey]['issued'] += $row->quantity;
                 if ($row->has_serial && $row->serial_number) {
                     $totalSerialIssued += $row->quantity;
                 }

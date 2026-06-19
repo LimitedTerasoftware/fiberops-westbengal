@@ -1030,6 +1030,7 @@
           <th style="min-width: 100px;">Balance</th>
           <th style="min-width: 120px;">Usage %</th>
           <th style="min-width: 100px;">Status</th>
+          <th style="min-width: 80px;">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -1073,11 +1074,17 @@
                 </div>
               </td>
               <td><span class="badge {{ $statusClass }}">{{ $statusText }}</span></td>
+              <td>
+                <a href="{{ route('admin.stock-report', ['material_id' => $item['material_id'] ?? '']) }}"
+                   style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: var(--primary); color: white; border-radius: 4px; font-size: 11px; font-weight: 600; text-decoration: none; white-space: nowrap;">
+                  <i class="fa fa-eye"></i> View
+                </a>
+              </td>
             </tr>
           @endforeach
         @else
           <tr>
-            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">
               No material usage data available for the selected filters
             </td>
           </tr>
@@ -1146,6 +1153,7 @@
             <th>Total Used</th>
             <th>Scrap Rate</th>
             <th>Status</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -1181,11 +1189,17 @@
                 <td style="color: var(--success); font-weight: 600;">{{ number_format($district['used']) }}</td>
                 <td>{{ $scrapRate }}%</td>
                 <td><span class="badge {{ $statusClass }}">{{ $statusText }}</span></td>
+                <td>
+                  <a href="{{ route('admin.stock-report', ['district' => $district['district_id'] ?? '']) }}"
+                     style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: var(--primary); color: white; border-radius: 4px; font-size: 11px; font-weight: 600; text-decoration: none; white-space: nowrap;">
+                    <i class="fa fa-eye"></i> View
+                  </a>
+                </td>
               </tr>
             @endforeach
           @else
             <tr>
-              <td colspan="5" style="text-align: center; color: var(--text-muted);">No district data available</td>
+              <td colspan="6" style="text-align: center; color: var(--text-muted);">No district data available</td>
             </tr>
           @endif
         </tbody>

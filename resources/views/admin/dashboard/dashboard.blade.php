@@ -1973,6 +1973,45 @@ function loadDistrictHeatmap() {
         });
 }
 
+function buildTicketsUrl(did, status) {
+    const range  = document.getElementById('districtRange').value;
+    const type   = document.getElementById('districtType').value;
+    const g_type = document.getElementById('districtGType').value;
+
+    let params = [];
+    if (did) params.push('district_id=' + did);
+    if (status) params.push('status=' + status);
+
+    const today = new Date();
+    const fmt = d => {
+        let y = d.getFullYear();
+        let m = ('0' + (d.getMonth() + 1)).slice(-2);
+        let day = ('0' + d.getDate()).slice(-2);
+        return y + '-' + m + '-' + day;
+    };
+
+    if (range === 'today') {
+        params.push('c_from_date=' + fmt(today) + '&c_to_date=' + fmt(today));
+    } else if (range === 'yesterday') {
+        let yest = new Date(today);
+        yest.setDate(yest.getDate() - 1);
+        params.push('c_from_date=' + fmt(yest) + '&c_to_date=' + fmt(yest));
+    } else if (range === '7days') {
+        let weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 6);
+        params.push('c_from_date=' + fmt(weekAgo) + '&c_to_date=' + fmt(today));
+    }
+
+    if (type !== 'all') {
+        params.push('autoclose=' + type.charAt(0).toUpperCase() + type.slice(1));
+    }
+    if (g_type !== 'all') {
+        params.push('default_autoclose=' + g_type.charAt(0).toUpperCase() + g_type.slice(1));
+    }
+
+    return "{{ url('/admin/tickets') }}?" + params.join('&');
+}
+
 function renderDistrictTable(rows) {
 
     let html = '';
@@ -1997,20 +2036,22 @@ function renderDistrictTable(rows) {
         let velocityClass =
             r.net_velocity < 0 ? 'hm-bad' : 'hm-good';
 
+        let did = r.district_id ? r.district_id : '';
+
         html += `
             <tr>
                 <td><strong>${r.district}</strong></td>
-                <td>${r.assigned}</td>
-                <td>${r.closed}</td>
-                <td>${r.hold}</td>
-                <td>${r.ongoing}</td>
-                <td class="${openClass}">${r.not_started}</td>
+                <td><a href="${buildTicketsUrl(did, '')}" class="text-decoration-none fw-bold">${r.assigned}</a></td>
+                <td><a href="${buildTicketsUrl(did, 'Completed')}" class="text-decoration-none fw-bold text-success">${r.closed}</a></td>
+                <td><a href="${buildTicketsUrl(did, 'Onhold')}" class="text-decoration-none fw-bold text-warning">${r.hold}</a></td>
+                <td><a href="${buildTicketsUrl(did, 'OnGoing')}" class="text-decoration-none fw-bold">${r.ongoing}</a></td>
+                <td class="${openClass}"><a href="${buildTicketsUrl(did, 'Open')}" class="text-decoration-none fw-bold ${openClass}">${r.not_started}</a></td>
                 <td>
                     <span class="text-success">${r.sla_pass}</span> /
                     <span class="text-danger">${r.sla_fail}</span>
                 </td>
                 <td class="${slaClass}">
-                    ${r.closed > 0 ? r.sla_percent + '%' : '�'}
+                    ${r.closed > 0 ? r.sla_percent + '%' : '-'}
                 </td>
                 <td class="${velocityClass}">
                     ${r.net_velocity > 0 ? '+' : ''}${r.net_velocity}

@@ -9190,6 +9190,7 @@ public function districtHeatmap(Request $request)
     /* ================= RAW DATA ================= */
     $rows = $query
         ->select(
+            'districts.id as district_id',
             'districts.name as district',
             'user_requests.status',
             'user_requests.finished_at as closed_at',
@@ -9206,6 +9207,7 @@ public function districtHeatmap(Request $request)
 
         if (!isset($summary[$r->district])) {
             $summary[$r->district] = array(
+                'district_id'  => $r->district_id,
                 'assigned'     => 0,
                 'closed'       => 0,
                 'backlog'      => 0,
@@ -9274,8 +9276,11 @@ public function districtHeatmap(Request $request)
             ? round(($v['sla_fail'] / $closed) * 100, 1)
             : 0;
 
+        $districtId = $v['district_id'] ?? null;
+
         $data[] = array(
             'district'      => $district,
+            'district_id'   => $districtId,
             'assigned'      => $v['assigned'],
             'closed'        => $closed,
             'backlog'       => $v['backlog'],

@@ -57,6 +57,18 @@
     <img src="{{ Setting::get('site_icon') }}" alt="Logo">
     <h3 class="fw-bold mb-4">Fiber Ops</h3>
 
+    @if ($errors->any())
+        <div class="alert alert-danger py-2 mb-3">
+            {{ $errors->first('email') ?: $errors->first() }}
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="alert alert-danger py-2 mb-3">
+            {{ session('error') }}
+        </div>
+    @endif
+
     <form method="POST" action="/admin/login">
         <input type="hidden" name="_token" value="{{ csrf_token() }}">
 
