@@ -1972,7 +1972,6 @@ function loadDistrictHeatmap() {
             renderDistrictTable(rows);
         });
 }
-
 function buildTicketsUrl(did, status) {
     const range  = document.getElementById('districtRange').value;
     const type   = document.getElementById('districtType').value;
@@ -2012,6 +2011,7 @@ function buildTicketsUrl(did, status) {
     return "{{ url('/admin/tickets') }}?" + params.join('&');
 }
 
+
 function renderDistrictTable(rows) {
 
     let html = '';
@@ -2035,8 +2035,8 @@ function renderDistrictTable(rows) {
 
         let velocityClass =
             r.net_velocity < 0 ? 'hm-bad' : 'hm-good';
-
         let did = r.district_id ? r.district_id : '';
+
 
         html += `
             <tr>

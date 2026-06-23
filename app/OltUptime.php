@@ -12,6 +12,7 @@ class OltUptime extends Model
         'lgd_code',
         'uptime_percent',
         'record_date',
+         'reason',
     ];
 
     protected $casts = [

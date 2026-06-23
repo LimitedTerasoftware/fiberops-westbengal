@@ -310,6 +310,7 @@ public function OntUpload(Request $request)
                 'lgd_code' => $row[0],
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
+                'reason'=>$row[3],
             ];
 
             OntUptime::create($data);
@@ -359,6 +360,7 @@ public function OltUpload(Request $request)
                 'lgd_code' => $row[0],
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
+                 'reason'=>$row[3],
             ];
 
             OltUptime::create($data);
@@ -410,6 +412,7 @@ public function GprouterUpload(Request $request)
                 'lgd_code' => $row[0],
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
+                 'reason'=>$row[3],
             ];
 
             GpRouterUptime::create($data);
@@ -461,6 +464,7 @@ public function BlockrouterUpload(Request $request)
                 'lgd_code' => $row[0],
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
+                 'reason'=>$row[3],
             ];
 
             BlockRouterUptime::create($data);
@@ -589,6 +593,7 @@ public function OntData(Request $request)
 
     $averages = [
     'avg_uptime' => $uniqueAvgUptime,
+    'avg_uptime_val'=>round($data->avg('avg_uptime'), 2),
     'gte98'     => round($data->avg('gte98'), 2),
     'gte90'     => round($data->avg('gte90'), 2),
     'gte75'     => round($data->avg('gte75'), 2),
@@ -726,6 +731,7 @@ public function OltData(Request $request)
 
     $averages = [
     'avg_uptime' => $uniqueAvgUptime,
+    'avg_uptime_val'=>round($data->avg('avg_uptime'), 2),
     'gte98'     => round($data->avg('gte98'), 2),
     'gte90'     => round($data->avg('gte90'), 2),
     'gte75'     => round($data->avg('gte75'), 2),
@@ -841,6 +847,7 @@ public function SamriddhData(Request $request)
 
     $averages = [
     'avg_uptime' => $uniqueAvgUptime,
+    'avg_uptime_val'=>round($data->avg('avg_uptime'), 2),
     'gte98'     => round($data->avg('gte98'), 2),
     'gte90'     => round($data->avg('gte90'), 2),
     'gte75'     => round($data->avg('gte75'), 2),
@@ -977,18 +984,13 @@ public function GprouterData(Request $request)
         'pct_gte98' => round($data->avg('pct_gte98'), 2),
         'integration' => round($data->avg('integration'), 2),
         'avg_uptime' => $uniqueAvgUptime,
-
-
-
-    ];
+         'avg_uptime_val'=>round($data->avg('avg_uptime'), 2),
+          ];
        
 
     return response()->json([
         'data' => $data,
         'averages' => $averages,
-             
-        
-
     ]);
 }
 
@@ -1109,9 +1111,8 @@ public function BlockrouterData(Request $request)
         'zero_availability'  => round($data->avg('zero_availability'), 2),
         'integration' => round($data->avg('integration'), 2),
         'avg_uptime' => $uniqueAvgUptime,
-
-
-    ];
+        'avg_uptime_val'=>round($data->avg('avg_uptime'), 2),
+        ];
     return response()->json([
         'data' => $data,
         'averages' => $averages

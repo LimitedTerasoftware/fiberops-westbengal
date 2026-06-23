@@ -233,19 +233,7 @@ inc {
     background: #efd585;
     color: #4a3000;
 }
-.ticket-inst {
-    background: #e8d5ff;
-    color: #6b21a8;
-    border-radius: 6px;
-    padding: 3px 8px;
-    font-weight: 700;
-    font-size: 12px;
-    display: inline-block;
-}
-.ticket-inst:hover {
-    background: #d4b8ff;
-    color: #6b21a8;
-}
+
 /* host_group_name tooltip */
 .hg-tooltip {
     position: relative;
@@ -341,7 +329,6 @@ inc {
                                 <option value="">All Types</option>
                                 <option value="TK" {{ Request::get('ticket_type') == 'TK' ? 'selected' : '' }}>ONT (TK)</option>
                                 <option value="INC" {{ Request::get('ticket_type') == 'INC' ? 'selected' : '' }}>Router (INC/)</option>
-                                <option value="INST" {{ Request::get('ticket_type') == 'INST' ? 'selected' : '' }}>Installation (INST/)</option>
                             </select>
                         </div>
                         <div class="filter-pill">
@@ -499,36 +486,7 @@ inc {
                     <p>Completed</p>
                 </div>
             </div>
-    <!-- INST Ticket Summary Cards -->
-            <div class="stats-row">
-                <div class="stat-card" style="border-top:3px solid #8b5cf6;">
-                    <small style="font-size:10px;font-weight:700;color:#8b5cf6;letter-spacing:.5px;">INSTALLATION TICKETS</small>
-                    <h3 style="color:#8b5cf6;">{{ $instTotal }}</h3>
-                    <p>Total</p>
-                </div>
-                <div class="stat-card stat-notstarted">
-                    <small style="font-size:10px;font-weight:700;color:#b59500;letter-spacing:.5px;">INSTALLATION TICKETS</small>
-                    <h3>{{ $instOpen }}</h3>
-                    <p>Open</p>
-                </div>
-                <div class="stat-card stat-ongoing">
-                    <small style="font-size:10px;font-weight:700;color:#0298a8;letter-spacing:.5px;">INSTALLATION TICKETS</small>
-                    <h3>{{ $instOngoing }}</h3>
-                    <p>Ongoing</p>
-                </div>
-                <div class="stat-card stat-onhold">
-                    <small style="font-size:10px;font-weight:700;color:#a01c01;letter-spacing:.5px;">INSTALLATION TICKETS</small>
-                    <h3>{{ $instHold }}</h3>
-                    <p>On Hold</p>
-                </div>
-                <div class="stat-card stat-completed">
-                    <small style="font-size:10px;font-weight:700;color:#01a01e;letter-spacing:.5px;">INSTALLATION TICKETS</small>
-                    <h3>{{ $instCompleted }}</h3>
-                    <p>Completed</p>
-                </div>
-            </div>
-  
-
+    
 
          @if(count($tickets) != 0)
            <div class="table-wrapper">
@@ -571,10 +529,7 @@ inc {
                               <span class="hg-tip"><i class="bi bi-people-fill"></i> {{ $request->host_group_name }}</span>
                               @endif
                             </span>
-                           @elseif(Str::startsWith($request->ticketid, 'INST'))
-                            <span class="hg-tooltip">
-                              <span class="ticket-inst">{{ $request->ticketid }}</span>
-                            </span>
+                          
                           @else
                             {{ $request->ticketid }}
                           @endif

@@ -10,9 +10,6 @@ Route::get('/', 'AdminController@dashboard')->name('index');
 Route::get('/dashboard', 'AdminController@dashboard')->name('dashboard');
 Route::get('/inventorydashboard', 'AdminController@inventorydashboard')->name('inventorydashboard');
 Route::get('/material-usage-dashboard', 'InventoryMng\StockIssueController@materialUsageDashboard')->name('material-usage-dashboard');
-Route::post('/material-usage/import', 'UserApiController@importMaterialUsage')
-    ->name('material-usage.import')
-    ->middleware('admin');
 
 Route::get('/viewmaps', 'AdminController@viewmaps')->name('viewmaps');
 Route::get('/tickets1', 'AdminController@tickets')->name('tickets');
@@ -284,7 +281,6 @@ Route::get('workforce', 'AdminController@dashboard_workforce')->name('workforce'
 Route::get('dailyrepots', 'Resource\GPResource@frtreports')->name('dailyrepots');
 Route::get('get_todayfrtreport', 'Resource\GPResource@gettodayFrtReport')->name('get_todayfrtreport');
 Route::get('get_dimis_report', 'Resource\GPResource@getDiMisReport')->name('get_dimis_report');
-Route::get('get_block_incharge_report', 'Resource\GPResource@getBlockInchargeReport')->name('get_block_incharge_report');
 
 //Route::get('workforce_details', 'Resource\GPResource@getFrtReport')->name('workforce_details');
 Route::get('get_frtreport', 'Resource\GPResource@getFrtReport')->name('get_frtreport');
@@ -375,3 +371,4 @@ Route::get('/get_recurring_gp_trends', 'InventoryMng\MaterialController@getRecur
 Route::get('/frequently_down_gps_export', 'InventoryMng\MaterialController@exportFrequentlyDownGps')->name('frequently_down_gps_export');
 
 Route::resource('holidays', "HolidayController");
+

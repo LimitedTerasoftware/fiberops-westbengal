@@ -963,6 +963,8 @@
                         <th class="center">Issued</th>
                         <th class="center">Used</th>
                         <th class="center">Balance</th>
+                       <!-- <th class="center">Transfer In</th> -->
+                        <th class="center">Transfer Out</th>
                         <th class="center">Status</th>
                         <th class="center">Last Used</th>
                         <th class="center">Action</th>
@@ -1036,6 +1038,16 @@
                                     {{ number_format($balance, 2) }} {{ $item['baseunit'] }}
                                 </span>
                             </td>
+                             <!-- <td class="center">
+                                <span class="sr-balance">
+                                    {{ (floatval($item["transfer_in"])) }} {{ $item['baseunit'] }}
+                                </span>
+                            </td> -->
+                               <td class="center">
+                                <span class="sr-balance">
+                                    {{ (floatval($item["transfer_out"])) }} {{ $item['baseunit'] }}
+                                </span>
+                            </td>
                             <td class="center">
                                 <span class="sr-status-badge {{ $statusClass }}">
                                     <span class="{{ $statusDot }}"></span>
@@ -1099,7 +1111,7 @@
             Re-allocation suggested.
         </div>
         <div class="sr-alert-actions">
-            <a href="{{ route('admin.stock-issue.index') }}" class="sr-alert-btn-primary">Re-Allocate Stock</a>
+            <!-- <a href="{{ route('admin.stock-issue.index') }}" class="sr-alert-btn-primary">Re-Allocate Stock</a> -->
             <button class="sr-alert-btn-dismiss" onclick="document.getElementById('srAlertPopup').style.display='none'">
                 Dismiss
             </button>
@@ -1141,7 +1153,8 @@ document.getElementById('district_id').addEventListener('change', function () {
         .then(data => {
             if (data.success) {
                 empSelect.innerHTML = '<option value="">All Employees</option>';
-                data.employees.filter(emp=>emp.type === 2).forEach(emp => {
+                data.employees.filter(emp => [2, 4, 5].includes(emp.type))
+                .forEach(emp => {
                     empSelect.innerHTML += `<option value="${emp.id}">${emp.first_name} ${emp.last_name}</option>`;
                 });
             } else {

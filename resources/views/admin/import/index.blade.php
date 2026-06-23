@@ -48,11 +48,8 @@
                         <div class="card-text mb-2">
                             <select class="form-control select-box" name="type" id="import_type" required>
                                 <option value="">Please Select Import Type</option>
-                                @if(auth()->user()->role != 'installation')
                                 <option value="1">Tickets</option>
                                 <option value="3">Router Tickets</option>
-                                @endif
-                                <option value="4">Installation Tickets</option>
 
                                 <!--<option value="2">Patroller Tickets</option>--->
                             </select>

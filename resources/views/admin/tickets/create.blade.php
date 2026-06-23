@@ -27,7 +27,6 @@
 							<option value="">Please Select Ticket Type</option>
 							<option value="1">Regular Ticket</option>
 							<option value="3">Router Ticket</option>
-							<option value="4">Installation Ticket</option>
 						</select>
 					</div>
 				</div>

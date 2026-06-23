@@ -57,6 +57,7 @@ class SyncEmployeeMaterialLedger extends Command
                     'employee_id'      => $employee->id,
                     'material_code'    => $row['mat_code'],
                     'indent_no'        => $row['indent_no'] ?? null,
+                    'serial_number'=>    $row['serial_no'] ?? null,
                     'transaction_type' => 'ISSUE',
                 ];
 

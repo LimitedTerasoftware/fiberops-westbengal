@@ -934,10 +934,10 @@
       </div>
     </div>
     <div class="stat-card green2">
-      <div class="stat-label">Serial Assets Active</div>
-      <div class="stat-value" style="color: var(--success);">{{ number_format($statCards['assetsActive'] ?? 0) }}</div>
+      <div class="stat-label">Non Serial Assets</div>
+      <div class="stat-value" style="color: var(--success);">{{ number_format($statCards['totalIssued'] - $statCards['serialAssets'] ?? 0) }}</div>
       <div class="stat-subtitle">
-        <span style="color: var(--text-muted);">Deployment</span>
+        <span style="color: var(--text-muted);">Issued Inventory</span>
       </div>
     </div>
   </div>
@@ -1031,6 +1031,7 @@
           <th style="min-width: 120px;">Usage %</th>
           <th style="min-width: 100px;">Status</th>
           <th style="min-width: 80px;">Action</th>
+
         </tr>
       </thead>
       <tbody>
@@ -1074,10 +1075,10 @@
                 </div>
               </td>
               <td><span class="badge {{ $statusClass }}">{{ $statusText }}</span></td>
-              <td>
+               <td>
                 <a href="{{ route('admin.stock-report', ['material_id' => $item['material_id'] ?? '']) }}"
                    style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: var(--primary); color: white; border-radius: 4px; font-size: 11px; font-weight: 600; text-decoration: none; white-space: nowrap;">
-                  <i class="fa fa-eye"></i> View
+                  <i class="fa fa-eye"></i>
                 </a>
               </td>
             </tr>
@@ -1154,6 +1155,7 @@
             <th>Scrap Rate</th>
             <th>Status</th>
             <th>Action</th>
+
           </tr>
         </thead>
         <tbody>
@@ -1192,7 +1194,7 @@
                 <td>
                   <a href="{{ route('admin.stock-report', ['district' => $district['district_id'] ?? '']) }}"
                      style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: var(--primary); color: white; border-radius: 4px; font-size: 11px; font-weight: 600; text-decoration: none; white-space: nowrap;">
-                    <i class="fa fa-eye"></i> View
+                    <i class="fa fa-eye"></i>
                   </a>
                 </td>
               </tr>

@@ -3759,11 +3759,7 @@ public function storeTicket(Request $request)
                 do {
                     $ticketid = 'INC/' . $date . '/' . mt_rand(10000, 99999);
                 } while (DB::table('master_tickets')->where('ticketid', $ticketid)->exists());
-            } elseif ($ticket_type == 4) {
-                do {
-                    $ticketid = 'INST/' . $date . '/' . mt_rand(10000, 99999);
-                } while (DB::table('master_tickets')->where('ticketid', $ticketid)->exists());
-            } elseif ($ticket_type == 1) {
+            }elseif ($ticket_type == 1) {
                 do {
                     $ticketid = 'TK26' . mt_rand(100000, 9999999);
                 } while (DB::table('master_tickets')->where('ticketid', $ticketid)->exists());
@@ -4227,183 +4223,7 @@ public function import_data(Request $request)
     }
 }
 
-public function installationTickets(Request $request)
-{
-    try{
-        $user = Session::get('user');
-        $company_id = $user->company_id;
-        $state_id = $user->state_id;
-        $Roledistrict_id = $user->district_id;
 
-        $serch_term = $request->searchinfo;
-        $status=$request->get('status');
-        $district_id=$request->get('district_id');
-        $zone_id=$request->get('zone_id');
-        $block_id=$request->get('block_id');
-        $from_date=$request->get('from_date');
-        $to_date=$request->get('to_date');
-        $range=$request->get('range');
-        $provider_id=$request->get('provider_id');
-        $category=$request->get('category');
-
-
-        $status_get = $status;
-        $district_id_get = $district_id;
-        $zone_id_get = $zone_id;
-        $block_id_get = $block_id;
-        $from_date_get = $from_date;
-        $to_date_get = $to_date;
-        $range_get = $range;
-        $provider_id_get = $provider_id;
-        $category_get = $category;
-        $serch_term_get = $serch_term;
-
-        $query_params = array();
-        $tickets = DB::table('user_requests')
-          ->select('master_tickets.id as master_id','master_tickets.ticketid','master_tickets.district','master_tickets.mandal','master_tickets.gpname',
-                   'master_tickets.lgd_code','user_requests.downreason','user_requests.downreasonindetailed','user_requests.subcategory','user_requests.id as request_id','user_requests.status','master_tickets.downdate','master_tickets.downtime',
-                   'providers.first_name','providers.last_name','providers.mobile',
-                   'user_requests.s_address','user_requests.d_address','user_requests.assigned_at',
-                   'user_requests.started_at','user_requests.finished_at','user_requests.autoclose','user_requests.default_autoclose',
-                    DB::raw('COALESCE((SELECT name FROM admins WHERE admins.id = user_requests.created_by LIMIT 1), (SELECT CONCAT(first_name, " ", last_name) FROM providers WHERE providers.id = user_requests.created_by LIMIT 1)) as created_by_name'),
-                    DB::Raw('TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate," ",master_tickets.downtime), "%Y-%m-%d %H:%i:%s"), "'.Carbon::now().'") as duringhours'))
-          ->leftjoin('master_tickets', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
-          ->leftjoin('providers', 'providers.id', '=', 'user_requests.provider_id')
-           ->leftjoin('gp_list', 'master_tickets.lgd_code', '=', 'gp_list.lgd_code')
-          ->leftjoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
-          ->where('user_requests.company_id', $company_id)
-          ->where('user_requests.state_id', $state_id)
-          ->where('user_requests.booking_id', 'like', 'INST%');
-
-        if (!empty($Roledistrict_id)) {
-            $tickets->where('user_requests.district_id', $Roledistrict_id);
-        }
-
-        if(isset($request->ticket_id) && !empty($request->ticket_id)){
-            $query_params['ticket_id'] = $request->ticket_id;
-            $tickets->where('master_tickets.ticketid',$request->ticket_id);
-        }
-           if(isset($request->zone_id) && !empty($request->zone_id)){
-            $query_params['zone_id'] = $request->zone_id;
-            $tickets->where('gp_list.zonal_id',$request->zone_id);
-        }
-        if(isset($request->district_id) && !empty($request->district_id)){
-            $query_params['district_id'] = $request->district_id;
-            $tickets->where('user_requests.district_id',$request->district_id);
-        }
-        if(isset($request->block_id) && !empty($request->block_id)){
-            $query_params['block_id'] = $request->block_id;
-            $tickets->where('master_tickets.mandal',$request->block_id);
-        }
-        if(isset($request->provider_id) && !empty($request->provider_id)){
-            $query_params['provider_id'] = $request->provider_id;
-            $tickets->where('providers.id',$request->provider_id);
-        }
-        if(isset($request->status) && !empty($request->status)){
-            $query_params['status'] = $request->status;
-            $tkt_status = array('Open' => 'INCOMING','OnGoing' => 'PICKEDUP', 'Completed' => 'COMPLETED', 'Onhold' => 'ONHOLD');
-            $tickets->where('user_requests.status',$tkt_status[$request->status]);
-        }
-        if (isset($request->category) && !empty($request->category)) {
-            $query_params['category'] = $request->category;
-            switch (strtolower($request->category)) {
-               case 'installation':
-                    $tickets->where('user_requests.downreason', 'regexp', 'Rack Installation|Router Installation|FDMS Installation|RFMS Installation|UPS Installation|Bypass Installation|Solar Installation|Earthing|Electrical Wiring');
-                    break;
-                case 'configuration':
-                    $tickets->where('user_requests.downreason', 'regexp', 'FWDM Configuration|Router Configuration|Rack Configuration|UPS Configuration|IP Configuration|RFMS Configuration');
-                    break;
-                case 'rectification':
-                    $tickets->where('user_requests.downreason', 'regexp', 'Fiber rectification Works|FDMS Splicing');
-                    break;
-                case 'material':
-                    $tickets->where('user_requests.downreason', 'regexp', 'Material Delivery|Material Replacement|Material shifting');
-                    break;
-                case 'others':
-                    $tickets->where('user_requests.downreason', 'regexp', 'Others|No Bin Type|GP Shifting|PP Extension|Other');
-                    break;
-                default:
-                    $tickets->where('user_requests.downreason', 'like', '%'.$request->category.'%');
-            }
-        }
-
-
-        if(isset($request->from_date) && !empty($request->to_date)){
-            $query_params['from_date'] = $request->from_date;
-            $query_params['to_date'] = $request->to_date;
-            $fromDate = $request->from_date . ' 00:00:00';
-            $toDate = $request->to_date . ' 23:59:59';
-            $tickets->whereBetween('user_requests.created_at', [$fromDate, $toDate]);
-        }
-        if(isset($request->range) && !empty($request->range)){
-            $query_params['range'] = $request->range;
-            $tickets->whereRaw('STR_TO_DATE(CONCAT(master_tickets.downdate, " ", master_tickets.downtime), "%Y-%m-%d %h:%i:%s %p") < DATE_SUB(NOW(), INTERVAL 24 HOUR)');
-        }
-        if(isset($request->searchinfo) && !empty($request->searchinfo))
-        {
-            $query_params['searchinfo'] = $request->searchinfo;
-            $tickets->where(function ($query) use($serch_term){
-                $query->where('master_tickets.ticketid', 'like', '%'.$serch_term.'%')
-                        ->orWhere('zonal_managers.Name', 'like', '%'.$serch_term.'%')
-                        ->orWhere('master_tickets.district', 'like', '%'.$serch_term.'%')
-                    ->orWhere('master_tickets.mandal', 'like', '%'.$serch_term.'%')
-                    ->orWhere('master_tickets.gpname', 'like', '%'.$serch_term.'%')
-                    ->orWhere('master_tickets.lgd_code', 'like', '%'.$serch_term.'%')
-                    ->orWhere('providers.first_name', 'like', '%'.$serch_term.'%')
-                    ->orWhere('providers.last_name', 'like', '%'.$serch_term.'%');
-            });
-        }
-
-        $tickets = $tickets->orderBy('user_requests.created_at','desc');
-
-        $instBase = clone $tickets;
-        $instTotal     = (clone $instBase)->count();
-        $instOpen      = (clone $instBase)->where('user_requests.status', 'INCOMING')->count();
-        $instOngoing   = (clone $instBase)->where('user_requests.status', 'PICKEDUP')->count();
-        $instHold      = (clone $instBase)->where('user_requests.status', 'ONHOLD')->count();
-        $instCompleted = (clone $instBase)->where('user_requests.status', 'COMPLETED')->count();
-
-        $tickets = $tickets->paginate($this->perpage);
-        $pagination=(new Helper)->formatPagination($tickets);
-          $zonals = DB::table('zonal_managers')
-            ->where(function($query) use ($state_id) {
-                if($state_id == 1){
-                    $query->where('id','!=',6);
-                } else {
-                    $query->where('id',6);
-                }
-            })->get();
-
-        $distriQuery = DB::table('districts')->where('state_id',$state_id);
-        if (!empty($Roledistrict_id)) {
-            $distriQuery->where('id', $Roledistrict_id);
-        } elseif ($request->has('zone_id') && !empty($request->zone_id) && empty($Roledistrict_id)) {
-            $zoneDistricts = DB::table('gp_list')->where('zonal_id', $request->zone_id)->where('type', 'GP')->pluck('district_id')->unique();
-            $distriQuery->whereIn('id', $zoneDistricts);
-        }
-        $districts = $distriQuery->get();
-
-        $blockQuery = DB::table('blocks')->whereIn('district_id', $districts->pluck('id')->all());
-        if (!empty($Roledistrict_id)) {
-            $blockQuery->where('district_id', $Roledistrict_id);
-        } elseif ($request->has('district_id') && !empty($request->district_id) && empty($Roledistrict_id)) {
-            $blockQuery->where('district_id', $request->district_id);
-        }
-        $blocks = $blockQuery->get();
-
-        $services = DB::table('service_types')->whereIn('id',[15,16,17,18])->get();
-
-        $ticket_status = array('Open', 'OnGoing','Completed', 'Onhold');
-
-        return view('admin.dashboard.installation_tickets', compact('tickets','districts','blocks','zonals','services','ticket_status','query_params','pagination',
-            'status_get','district_id_get','zone_id_get','block_id_get','from_date_get','to_date_get','range_get','provider_id_get','serch_term_get','category_get',
-            'instTotal','instOpen','instOngoing','instHold','instCompleted'));
-
-    } catch (Exception $e) {
-        dd($e);
-        return back()->with('flash_error', trans('admin.something_wrong'));
-    }
-}
 
 public function process_old(Request $request)
 {
@@ -4870,14 +4690,7 @@ public function process(Request $request)
         	$date = date('Ymd');
         	$tkt_id = 'INC/' . $date . '/' . mt_rand(10000, 99999);
     		} while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
-		}elseif ($import_type == 4) {
-    		 do {
-         	$date = date('Ymd');
-         	$tkt_id = 'INST/' . $date . '/' . mt_rand(10000, 99999);
-     		} while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
-		} 
-
-         else {
+		}else {
     		do {
         	$tkt_id = 'TK26' . mt_rand(100000, 9999999);
     		} while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
@@ -5016,10 +4829,7 @@ public function process(Request $request)
                             $downReasonnew = strtolower(trim($filedata[2] ?? ''));
                             if ($import_type == 2) {  
                             $mobile = $check_lgd_code->petroller_contact_no;
-                            } else if ($import_type == 4) {
-                            $mobile = $check_lgd_code->zonal_incharge_ph;
-                            }
-                            else {
+                            }else {
                             
                                  if (strpos($downReasonnew, 'fiber') !== false) {
                                  $mobile = $check_lgd_code->contact_no;
@@ -5032,11 +4842,7 @@ public function process(Request $request)
                              
                             if ($import_type == 2) {
                             $getproviderdetails = DB::table('providers')->select( 'providers.id', 'providers.mobile', 'providers.type','providers.latitude', 'providers.longitude','provider_devices.token')->leftjoin('provider_devices','providers.id','=','provider_devices.provider_id')->whereIn('providers.type', [2, 5])->where('mobile','=',$mobile)->first();
-                            } else if ($import_type == 4) {
-
-                            $getproviderdetails = DB::table('providers')->select( 'providers.id', 'providers.mobile', 'providers.type','providers.latitude', 'providers.longitude')->whereIn('providers.type', [3])->where('mobile','=',$mobile)->first();
-                            }
-                            else {
+                            }else {
                             $getproviderdetails = DB::table('providers')->select( 'providers.id', 'providers.mobile', 'providers.latitude', 'providers.longitude','provider_devices.token')->leftjoin('provider_devices','providers.id','=','provider_devices.provider_id')->where('mobile','=',$mobile)->first();
                             }
                             //dd($getproviderdetails);
@@ -5617,15 +5423,7 @@ public function tickets1(Request $request){
             $incOngoing   = (clone $incBase)->where('user_requests.status', 'PICKEDUP')->count();
             $incHold      = (clone $incBase)->where('user_requests.status', 'ONHOLD')->count();
             $incCompleted = (clone $incBase)->where('user_requests.status', 'COMPLETED')->count();
-           // INST ticket counts (tickets whose ticketid starts with 'INST')
-            $instBase = clone $tickets;
-            $instBase->where('user_requests.booking_id', 'like', 'INST%');
-            $instTotal     = (clone $instBase)->count();
-            $instOpen      = (clone $instBase)->where('user_requests.status', 'INCOMING')->count();
-            $instOngoing   = (clone $instBase)->where('user_requests.status', 'PICKEDUP')->count();
-            $instHold      = (clone $instBase)->where('user_requests.status', 'ONHOLD')->count();
-            $instCompleted = (clone $instBase)->where('user_requests.status', 'COMPLETED')->count();
-
+          
            if ($request->ajax()) {
 
                     $tickets = $tickets->get();
@@ -5747,7 +5545,7 @@ public function tickets1(Request $request){
         $ticket_status = array('Open', 'OnGoing','Completed', 'Onhold');
 
         return view('admin.dashboard.tickets', compact('services','tickets','statusCounts','permanentDownCount','districts','blocks', 'zonals','ticket_status', 'query_params','pagination','status_get','district_id_get','zone_id_get','team_id_get','provider_id_get','block_id_get','from_date_get','to_date_get','autoclose_get','default_autoclose_get','interval_get','category_get','newfrom_date_get','newto_date_get','serch_term_get','range_get','hostGroups', 'host_group_name_get',
-          'incTotal', 'incOpen', 'incOngoing', 'incHold', 'incCompleted', 'instTotal', 'instOpen', 'instOngoing', 'instHold', 'instCompleted','ontTotal','Gpstatus_get','ticket_type_get'));
+          'incTotal', 'incOpen', 'incOngoing', 'incHold', 'incCompleted', 'ontTotal','Gpstatus_get','ticket_type_get'));
 
     } catch (Exception $e) { 
         dd($e);
@@ -7637,10 +7435,7 @@ return view('admin.reports.dashboard');
         if (!empty($district_id)) {
             $providersQuery->where('providers.district_id', $district_id);
         }
-        if($role == 'installation'){
-            $providersQuery->where('providers.type', 7);
-
-        }
+        
         
 
     // filters
@@ -7759,10 +7554,7 @@ return view('admin.reports.dashboard');
    if ($request->has('role') && !empty($request->role)) {
         $presentsQuery->where('providers.type', $request->role);
     }
-    if($role == 'installation'){
-        $presentsQuery->where('providers.type', 7);
-
-    }
+   
 
     // handle date_range OR from-to
     if ($request->has('date_range') && !empty($request->date_range)) {
@@ -7981,9 +7773,7 @@ private function buildAttendanceQuery(Request $request)
         ->where('providers.state_id',$state_id)
         ->where('providers.status','approved');
       
-      if ($user->role == 'installation') {
-            $providersQuery->where('providers.type', 7);
-        }
+     
     if (!empty($district_id)) {
         $providersQuery->where('providers.district_id', $district_id);
     }
@@ -9275,7 +9065,6 @@ public function districtHeatmap(Request $request)
         $slaPct = $closed > 0
             ? round(($v['sla_fail'] / $closed) * 100, 1)
             : 0;
-
         $districtId = $v['district_id'] ?? null;
 
         $data[] = array(

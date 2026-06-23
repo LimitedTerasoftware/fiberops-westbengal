@@ -35,7 +35,7 @@
         <ul class="terrasoft-nav-menu">
             {{-- 1. Executive Dashboard --}}
             @if(auth()->user()->role == 'admin' || auth()->user()->role == 'inventory' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge'
-                || auth()->user()->role=='client' || auth()->user()->role=='installation')
+                || auth()->user()->role=='client')
             <li class="terrasoft-nav-group">
                 <div class="terrasoft-nav-header" data-submenu="dashboard">
                     <i class="ti-bar-chart"></i>
@@ -43,18 +43,14 @@
                     <i class="fa fa-angle-down terrasoft-nav-arrow"></i>
                 </div>
                 <ul class="terrasoft-nav-submenu" id="submenu-dashboard">
-                    @if(auth()->user()->role !='installation')
                     <li><a href="{{ route('admin.dashboard') }}" ><i class="ti-bar-chart"></i> Tickets Overview</a></li>
-                    @endif
                     <li><a href="{{ route('admin.workforce') }}" ><i class="ti-bar-chart"></i> Workforce Overview</a></li>
 
                     @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' ||  auth()->user()->role == 'zone_admin' )
                     <li><a href="{{ route('admin.material-usage-dashboard') }}" ><i class="ti-pie-chart"></i> Material Usage</a></li>
 
                     @endif
-                    @if(auth()->user()->role != 'installation')
                     <li><a href="{{ route('admin.uptime') }}" ><i class="ti-stats-up"></i> GP Trends</a></li>
-                        @endif
 
                     @if(auth()->user()->role == 'inventory')
                     <li><a href="{{ route('admin.inventorydashboard') }}" ><i class="ti-anchor"></i> @lang('admin.include.inventory_dashboard')</a></li>
@@ -62,17 +58,15 @@
                     @endif
                 </ul>
             </li>
-         @if(auth()->user()->role != 'installation')
             <li class="terrasoft-nav-group"> 
                 <div class="terrasoft-nav-header text-info" id="MapView"> 
                     <a href="{{ route('admin.heatmap') }}" ><i class="ti-map-alt text-white"></i> <span class="text-white"> &nbsp; Map View</span></a> 
                 </div>
             </li>
             @endif
-            @endif
 
             {{-- 2. Tickets & Dispatch --}}
-            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' || auth()->user()->role=='installation')
+            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' )
             <li class="terrasoft-nav-group">
                 <div class="terrasoft-nav-header" data-submenu="tickets">
                     <i class="ti-ticket"></i>
@@ -80,22 +74,14 @@
                     <i class="fa fa-angle-down terrasoft-nav-arrow"></i>
                 </div>
                 <ul class="terrasoft-nav-submenu" id="submenu-tickets">
-                    @if(auth()->user()->role !='installation')
                     <li><a href="{{ url('/admin/tickets') }}" ><i class="ti-ticket"></i> Tickets</a></li>
                     <li><a href="{{ route('admin.dailyrepots') }}"><i class="ti-check"></i> Daily Report</a></li>
                     <li><a href="{{ route('admin.patrollertickets') }}"><i class="ti-check"></i> Patroller Tickets</a></li>
-                    @endif
-                     @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role=='installation')
-                    <li><a href="{{ route('admin.installation-tickets') }}"><i class="ti-ticket"></i> Installation Tickets</a></li>
-                    @endif
-
-
                 </ul>
             </li>
             @endif
 
             {{-- 3. Team Monitoring --}}
-             @if(auth()->user()->role !='installation')
             <li class="terrasoft-nav-group">
                 <div class="terrasoft-nav-header" data-submenu="team">
                     <i class="ti-user"></i>
@@ -109,10 +95,10 @@
                     @endif
                 </ul>
             </li>
-                @endif
+                
 
             {{-- 4. Attendance --}}
-            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' || auth()->user()->role=='installation')
+            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client')
 
             <li class="terrasoft-nav-group">
                 <div class="terrasoft-nav-header" data-submenu="attendance">
@@ -124,10 +110,8 @@
 
                     <li><a href="{{ route('admin.attendance_dashboard') }}" ><i class="ti-clipboard"></i> Attendance Dashboard</a></li>
                     <li><a href="{{ route('admin.attendance_list') }}"><i class="ti-list"></i> Attendance List</a></li>
-                    @if(auth()->user()->role !='installation')
 
                     <li><a href="{{ route('admin.todayattendancereport') }}" ><i class="ti-check-box"></i> Today's Attendance</a></li>
-                    @endif
                     @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin')
 
                     <li><a href="{{ route('admin.trackattendance') }}" ><i class="ti-map"></i> Attendance Map View</a></li>
@@ -237,7 +221,7 @@
             @endif
 
             {{-- 8. Account / Settings --}}
-            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'inventory' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' || auth()->user()->role =='installation')
+            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'inventory' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' )
             <li class="terrasoft-nav-group">
                 <div class="terrasoft-nav-header" data-submenu="account">
                     <i class="ti-settings"></i>
@@ -252,7 +236,7 @@
                     <li><a href="{{ route('admin.password') }}"><i class="ti-key"></i> Change Password</a></li>
                     <li><a href="{{ route('admin.settings') }}" ><i class="ti-settings"></i> Site Settings</a></li>
                     @endif
-                   @if(auth()->user()->role == 'admin' || auth()->user()->role == 'inventory' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' || auth()->user()->role =='installation')
+                   @if(auth()->user()->role == 'admin' || auth()->user()->role == 'inventory' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' )
 
                     <li><a href="{{ url('/admin/logout') }}" onclick="event.preventDefault();document.getElementById('logout-form').submit();">
                         <i class="ti-power-off"></i> Logout

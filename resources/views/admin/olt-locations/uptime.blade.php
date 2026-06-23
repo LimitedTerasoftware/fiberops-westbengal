@@ -18,7 +18,7 @@
                         <p class="terrasoft-page-subtitle">Monitor ONT, OLT, and SAMRIDDH performance data</p>
                     </div>
                 </div>
-                @if(auth()->user()->role == 'admin' || (auth()->user()->role == 'zone_admin' && auth()->user()->name !== 'zonal manager'))
+                @if(auth()->user()->role == 'admin' || (auth()->user()->role == 'zone_admin' && auth()->user()->name == 'zonal manager'))
 
                 <div class="terrasoft-header-actions">
                     <button class="terrasoft-btn terrasoft-btn-success" id="uploadCsvBtn">
@@ -2475,6 +2475,7 @@ function calcAverage(data, cat, averages) {
     const total = data.reduce((sum, row) => sum + (parseFloat(row.total) || 0), 0);
    
     if (cat.isOverallAverage) {
+        
         if (averages && averages.avg_uptime !== undefined && averages.avg_uptime !== null) {
             return `${formatAverageValue(parseFloat(averages.avg_uptime) || 0)}%`;
         }
@@ -2503,9 +2504,15 @@ function calcAverage(data, cat, averages) {
         const gte98 = data.reduce((sum, row) => sum + (parseFloat(row.gte98) || 0), 0);
         return total > 0 ? `${formatAverageValue((gte98 / total) * 100)}%` : '0%';
     }
+    
 
     const categoryTotal = data.reduce((sum, row) => sum + (parseFloat(row[key]) || 0), 0);
-    return total > 0 ? `${formatAverageValue((categoryTotal / total) * 100)}%` : '0%';
+    const avgCount = data.length ? categoryTotal / data.length : 0;
+
+    return total > 0
+    ? `${formatAverageValue((categoryTotal / total) * 100)}% | ${formatAverageValue(avgCount)}`
+    : `0% | Count: ${formatAverageValue(avgCount)}`;
+    // return total > 0 ? `${formatAverageValue((categoryTotal / total) * 100)}%` : '0%';
 }
 function formatAverageValue(value) {
     return value % 1 === 0 ? value.toFixed(0) : value.toFixed(2).replace(/\.?0+$/, '');

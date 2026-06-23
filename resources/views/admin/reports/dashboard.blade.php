@@ -220,7 +220,6 @@
       </div>
     </div>
 
-    
 
 <div class="col-md-6 mb-2 frt-pat-section">
     <div class="canvas-card mt-4">
@@ -644,7 +643,6 @@ $(document).ready(function() {
                     console.error('Error fetching DI/MIS report:', error);
                 }
             });
-
         },
         error: function(xhr, status, error) {
             console.error('Error fetching report:', error);

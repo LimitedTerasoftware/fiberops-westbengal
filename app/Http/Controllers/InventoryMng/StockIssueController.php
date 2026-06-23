@@ -925,7 +925,8 @@ public function employeeStockReport(Request $request)
     // }
 
        if ($request->search) {
-            $search = $request->search;
+         
+            $search = trim($request->search);
 
             $ledgerQuery->where(function ($q) use ($search) {
 
@@ -940,7 +941,11 @@ public function employeeStockReport(Request $request)
                         $inner->where('first_name', 'like', "%{$search}%")
                             ->orWhere('last_name',  'like', "%{$search}%")
                             ->orWhere('email',      'like', "%{$search}%")
-                            ->orWhere('mobile',     'like', "%{$search}%");
+                            ->orWhere('mobile',     'like', "%{$search}%")
+                             ->orWhereRaw(
+                                    "CONCAT(first_name, ' ', last_name) LIKE ?",
+                                    ["%{$search}%"]
+                                );
                     });
                 })
 
@@ -977,6 +982,8 @@ public function employeeStockReport(Request $request)
                 'issued'      => 0,
                 'used'        => 0,
                 'balance'     => 0,
+                'transfer_in'=>0,
+                'transfer_out'=>0,
                 'issued_indents' => [],  
                 'serials'     => [],
                 'tickets'     => []
@@ -988,6 +995,8 @@ public function employeeStockReport(Request $request)
 
             if ($row->transaction_type === 'ISSUE') {
                 $report[$key]['issued'] += $row->quantity;
+                $report[$key]['transfer_in'] +=$row->transferred_in_qty;
+                $report[$key]['transfer_out'] +=$row->transferred_out_qty;
 
                  $indent = $row->indent_no ?: '-';
 
@@ -1040,6 +1049,8 @@ public function employeeStockReport(Request $request)
                     'issued'        => 0,
                     'used'          => 0,
                     'balance'       => 0,
+                    'transfer_in'=>0,
+                    'transfer_out'=>0,
                      'issued_indents'  => [],
                     'tickets'       => []
                 ];
@@ -1049,6 +1060,8 @@ public function employeeStockReport(Request $request)
                 $report[$key]['serials'][$serialKey]['issued'] += $row->quantity;
                 $report[$key]['issued'] += $row->quantity;
                 $indent = $row->indent_no ?: 'N/A';
+                $report[$key]['transfer_in'] +=$row->transferred_in_qty;
+                $report[$key]['transfer_out'] +=$row->transferred_out_qty;
 
                     if (!isset($report[$key]['serials'][$serialKey]['issued_indents'][$indent])) {
                         $report[$key]['serials'][$serialKey]['issued_indents'][$indent] = [
@@ -1182,6 +1195,8 @@ public function employeeStockReport(Request $request)
                     'Issued',
                     'Used',
                     'Balance',
+                    // 'Transfer In',
+                    'Transfer Out',
                     'Unit',
                     'Status'
                 ]);
@@ -1206,6 +1221,8 @@ public function employeeStockReport(Request $request)
                         number_format($item['issued'], 2),
                         number_format($item['used'], 2),
                         number_format($item['balance'], 2),
+                        // number_format($item['transfer_in'], 2),
+                        number_format($item['transfer_out'], 2),
                         $item['baseunit'],
                         $status
                     ]);
@@ -1253,8 +1270,8 @@ public function employeeStockReport(Request $request)
     $totalBalance = array_sum(array_column($reportArray, 'balance'));
     $emp = Provider::where([
                     'state_id' => $user->state_id,
-                    'type' => 2
-                ])
+                   
+                ])->whereIn('type',['2','4','5'])
                 ->when($request->district, function ($q) use ($request) {
                     return $q->where('district_id', $request->district);
                 }, function ($q) use ($user) {
@@ -1355,8 +1372,8 @@ public function employeeStockReport(Request $request)
             $districtKey = $row->district_id;
             if (!isset($districtWiseData[$districtKey])) {
                 $districtWiseData[$districtKey] = [
-                    'district_id' => $row->district_id,
                     'district_name' => $row->district->name ?? 'Unknown',
+                    'district_id'=>$row->district_id,
                     'issued' => 0,
                     'used' => 0,
                     'wastage' => 0,
@@ -1367,26 +1384,6 @@ public function employeeStockReport(Request $request)
             if ($row->transaction_type === 'ISSUE') {
                 $districtWiseData[$districtKey]['issued'] += $row->quantity;
                 $totalIssued += $row->quantity;
-                if ($row->has_serial && $row->serial_number) {
-                    $totalSerialIssued += $row->quantity;
-                }
-                $matKey = $row->material_id;
-                if (!isset($materialWiseData[$matKey])) {
-                    $materialWiseData[$matKey] = [
-                        'material_id' => $row->material_id,
-                        'material_name' => $row->material->name ?? 'Unknown',
-                        'material_code' => $row->material_code ?? '',
-                        'base_unit' => $row->material->base_unit ?? '',
-                        'issued' => 0,
-                        'used' => 0,
-                    ];
-                }
-                $materialWiseData[$matKey]['issued'] += $row->quantity;
-            }
-
-            if ($row->transaction_type === 'RETURN') {
-                $totalIssued += $row->quantity;
-                $districtWiseData[$districtKey]['issued'] += $row->quantity;
                 if ($row->has_serial && $row->serial_number) {
                     $totalSerialIssued += $row->quantity;
                 }
