@@ -2870,25 +2870,42 @@ function renderReasonCategoryTable(response) {
     }
 
     const zones = response.zones || [];
-    let html = '<table class="terrasoft-data-table" style="width:100%;"><thead><tr>';
+    let html = '<div class="terrasoft-table-container"><div class="terrasoft-table-wrapper">';
+    html += '<table class="terrasoft-data-table"><thead><tr>';
+    html += '<th class="terrasoft-th-fixed">SL.NO</th>';
     html += '<th class="terrasoft-th-description">Reason</th>';
     zones.forEach(function (zone) {
-        html += '<th class="terrasoft-th-fixed" style="width:auto;min-width:100px;">' + zone + '</th>';
+        html += '<th class="terrasoft-th-average" style="min-width:100px;">' + zone + '</th>';
     });
-    html += '<th class="terrasoft-th-average" style="width:80px;">Total</th>';
+    html += '<th class="terrasoft-th-average" style="min-width:80px;">Total</th>';
     html += '</tr></thead><tbody>';
 
-    response.data.forEach(function (row) {
+    response.data.forEach(function (row, index) {
         html += '<tr class="terrasoft-data-row">';
+        html += '<td class="terrasoft-td-number">' + (index + 1) + '</td>';
         html += '<td class="terrasoft-td-description">' + (row.reason || 'N/A') + '</td>';
         zones.forEach(function (zone) {
-            html += '<td class="terrasoft-td-number">' + (row[zone] || 0) + '</td>';
+            html += '<td class="terrasoft-td-value">' + (row[zone] || 0) + '</td>';
         });
-        html += '<td class="terrasoft-td-average" style="font-weight:700;">' + (row.total || 0) + '</td>';
+        html += '<td class="terrasoft-td-average">' + (row.total || 0) + '</td>';
         html += '</tr>';
     });
 
-    html += '</tbody></table>';
+    // Total row
+    html += '<tr class="terrasoft-total-row">';
+    html += '<td class="terrasoft-td-total"></td>';
+    html += '<td class="terrasoft-td-total"><strong>Total</strong></td>';
+    var grandTotal = 0;
+    zones.forEach(function (zone) {
+        var zoneTotal = 0;
+        response.data.forEach(function (row) { zoneTotal += (row[zone] || 0); });
+        grandTotal += zoneTotal;
+        html += '<td class="terrasoft-td-total-value"><strong>' + zoneTotal + '</strong></td>';
+    });
+    html += '<td class="terrasoft-td-total-value"><strong>' + grandTotal + '</strong></td>';
+    html += '</tr>';
+
+    html += '</tbody></table></div></div>';
     container.html(html);
 }
 

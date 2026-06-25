@@ -529,6 +529,8 @@ public function getReasonData(Request $request)
         case 'olt':
             $query = DB::table('olt_uptime')
                 ->join('olt_locations', 'olt_locations.lgd_code', '=', 'olt_uptime.lgd_code')
+                ->leftJoin('gp_list', 'gp_list.olt_lgdcode', '=', 'olt_locations.lgd_code')
+                ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
                 ->where('olt_locations.state_id', $state_id);
             if (!empty($district_id)) {
                 $query->where('olt_locations.district_id', $district_id);
@@ -552,6 +554,8 @@ public function getReasonData(Request $request)
             $query = DB::table('block_router_uptime')
                 ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
                 ->join('districts', 'blocks.district_id', '=', 'districts.id')
+                ->leftJoin('gp_list', 'gp_list.block_id', '=', 'blocks.id')
+                ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
                 ->where('districts.state_id', $state_id);
             if (!empty($district_id)) {
                 $query->where('blocks.district_id', $district_id);
@@ -583,9 +587,7 @@ public function getReasonData(Request $request)
         ]);
     }
 
-    $zoneExpr = in_array($type, ['olt', 'blockrouter'])
-        ? DB::raw("'N/A' as zone_name")
-        : DB::raw('COALESCE(zonal_managers.name, "Unassigned") as zone_name');
+    $zoneExpr = DB::raw('COALESCE(zonal_managers.name, "Unassigned") as zone_name');
 
     $rows = $query
         ->select(DB::raw("$reasonCol as reason"), $zoneExpr)
