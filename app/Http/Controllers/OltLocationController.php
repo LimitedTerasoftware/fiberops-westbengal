@@ -306,11 +306,15 @@ public function OntUpload(Request $request)
                 }
             }
 
+            if (strlen($row[0]) !== 6 || !preg_match('/^\d{6}$/', $row[0])) {
+                throw new \Exception("LGD code must be exactly 6 digits. Invalid value: " . $row[0]);
+            }
+
             $data = [
                 'lgd_code' => $row[0],
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
-                'reason'=>$row[3],
+                'reason'=>$row[3] ?? null,
             ];
 
             OntUptime::create($data);
@@ -356,11 +360,15 @@ public function OltUpload(Request $request)
                 }
             }
 
+            if (strlen($row[0]) !== 6 || !preg_match('/^\d{6}$/', $row[0])) {
+                throw new \Exception("LGD code must be exactly 6 digits. Invalid value: " . $row[0]);
+            }
+
             $data = [
                 'lgd_code' => $row[0],
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
-                 'reason'=>$row[3],
+                 'reason'=>$row[3] ?? null,
             ];
 
             OltUptime::create($data);
@@ -408,11 +416,15 @@ public function GprouterUpload(Request $request)
                 }
             }
 
+            if (strlen($row[0]) !== 6 || !preg_match('/^\d{6}$/', $row[0])) {
+                throw new \Exception("LGD code must be exactly 6 digits. Invalid value: " . $row[0]);
+            }
+
             $data = [
                 'lgd_code' => $row[0],
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
-                 'reason'=>$row[3],
+                 'reason'=>$row[3] ?? null,
             ];
 
             GpRouterUptime::create($data);
@@ -460,11 +472,15 @@ public function BlockrouterUpload(Request $request)
                 }
             }
 
+            if (strlen($row[0]) !== 6 || !preg_match('/^\d{6}$/', $row[0])) {
+                throw new \Exception("LGD code must be exactly 6 digits. Invalid value: " . $row[0]);
+            }
+
             $data = [
                 'lgd_code' => $row[0],
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
-                 'reason'=>$row[3],
+                 'reason'=>$row[3] ?? null,
             ];
 
             BlockRouterUptime::create($data);
@@ -481,6 +497,136 @@ public function BlockrouterUpload(Request $request)
         'status' => 'success',
         'message' => 'Block Router CSV uploaded successfully!',
         'records' => $records
+    ]);
+}
+
+public function getReasonData(Request $request)
+{
+    $type = $request->get('type', 'ont');
+    Session::put('user', Auth::user());
+    $user = Session::get('user');
+    $company_id = $user->company_id;
+    $state_id = $user->state_id;
+    $district_id = $user->district_id;
+
+    $month = $request->get('month');
+    $fromDate = $request->get('fromDate');
+    $toDate = $request->get('toDate');
+
+    switch ($type) {
+        case 'ont':
+            $query = DB::table('ont_uptime')
+                ->join('gp_list', 'gp_list.lgd_code', '=', 'ont_uptime.lgd_code')
+                ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
+                ->where('gp_list.company_id', $company_id)
+                ->where('gp_list.state_id', $state_id);
+            if (!empty($district_id)) {
+                $query->where('gp_list.district_id', $district_id);
+            }
+            $reasonCol = 'ont_uptime.reason';
+            break;
+
+        case 'olt':
+            $query = DB::table('olt_uptime')
+                ->join('olt_locations', 'olt_locations.lgd_code', '=', 'olt_uptime.lgd_code')
+                ->where('olt_locations.state_id', $state_id);
+            if (!empty($district_id)) {
+                $query->where('olt_locations.district_id', $district_id);
+            }
+            $reasonCol = 'olt_uptime.reason';
+            break;
+
+        case 'gprouter':
+            $query = DB::table('gp_router_uptime')
+                ->join('gp_list', 'gp_list.lgd_code', '=', 'gp_router_uptime.lgd_code')
+                ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
+                ->where('gp_list.company_id', $company_id)
+                ->where('gp_list.state_id', $state_id);
+            if (!empty($district_id)) {
+                $query->where('gp_list.district_id', $district_id);
+            }
+            $reasonCol = 'gp_router_uptime.reason';
+            break;
+
+        case 'blockrouter':
+            $query = DB::table('block_router_uptime')
+                ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
+                ->join('districts', 'blocks.district_id', '=', 'districts.id')
+                ->where('districts.state_id', $state_id);
+            if (!empty($district_id)) {
+                $query->where('blocks.district_id', $district_id);
+            }
+            $reasonCol = 'block_router_uptime.reason';
+            break;
+
+        default:
+            return response()->json(['data' => [], 'zones' => []]);
+    }
+
+    if (!empty($month)) {
+        try {
+            $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+            $end   = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+            $query->whereBetween('record_date', [$start, $end]);
+        } catch (\Exception $e) {
+            $query->whereBetween('record_date', [
+                Carbon::now()->subDays(6)->toDateString(),
+                Carbon::now()->toDateString()
+            ]);
+        }
+    } elseif (!empty($fromDate) && !empty($toDate)) {
+        $query->whereBetween('record_date', [$fromDate, $toDate]);
+    } else {
+        $query->whereBetween('record_date', [
+            Carbon::now()->subDays(6)->toDateString(),
+            Carbon::now()->toDateString()
+        ]);
+    }
+
+    $zoneExpr = in_array($type, ['olt', 'blockrouter'])
+        ? DB::raw("'N/A' as zone_name")
+        : DB::raw('COALESCE(zonal_managers.name, "Unassigned") as zone_name');
+
+    $rows = $query
+        ->select(DB::raw("$reasonCol as reason"), $zoneExpr)
+        ->selectRaw('COUNT(*) as total')
+        ->whereNotNull("$reasonCol")
+        ->where("$reasonCol", '!=', '')
+        ->groupBy(DB::raw("$reasonCol"), DB::raw('zone_name'))
+        ->orderBy(DB::raw("$reasonCol"))
+        ->get();
+
+    $zones = $rows->pluck('zone_name')->unique()->sort()->values()->toArray();
+    $reasons = $rows->pluck('reason')->unique()->sort()->values()->toArray();
+
+    $pivot = [];
+    foreach ($reasons as $reason) {
+        $pivot[$reason] = [];
+        foreach ($zones as $zone) {
+            $pivot[$reason][$zone] = 0;
+        }
+    }
+
+    foreach ($rows as $row) {
+        $pivot[$row->reason][$row->zone_name] = (int) $row->total;
+    }
+
+    $data = [];
+    foreach ($reasons as $reason) {
+        $rowData = ['reason' => $reason];
+        $rowTotal = 0;
+        foreach ($zones as $zone) {
+            $count = $pivot[$reason][$zone];
+            $rowData[$zone] = $count;
+            $rowTotal += $count;
+        }
+        $rowData['total'] = $rowTotal;
+        $data[] = $rowData;
+    }
+
+    return response()->json([
+        'data' => $data,
+        'zones' => $zones,
     ]);
 }
 

@@ -453,7 +453,29 @@
                 </div>
             </div>
         </div>
-       
+
+        {{-- Reasons Category Card --}}
+        <div class="canvas-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                <h6 class="fw-bold mb-0">Reasons Category <span id="reasonCategorySubtitle" style="font-size:12px;font-weight:400;color:#64748b;">ONT</span></h6>
+                <div class="gap-1" style="display:flex; align-items:center;">
+                    <label class="small fw-bold me-1">From:</label>
+                    <input type="date" id="reason_from_date" class="form-control form-control-sm px-1"
+                        style="width: 105px; font-size: 12px; border-radius: 4px;">
+                    <label class="small fw-bold me-1">To:</label>
+                    <input type="date" id="reason_to_date" class="form-control form-control-sm px-1"
+                        style="width: 105px; font-size: 12px; border-radius: 4px;">
+                    <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-reason-filter"
+                        style="font-size: 12px; border-radius: 4px;">Go</button>
+                </div>
+            </div>
+            <div id="reasonCategoryTableWrapper" style="overflow-x:auto; width:100%;">
+                <div id="reasonCategoryContainer" style="min-height: 100px;">
+                    <div class="terrasoft-no-data">Select filters and click Go to load data.</div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
     
@@ -1594,6 +1616,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Load data for the selected main tab
             loadMainTabData(tabId);
+            fetchReasonCategoryData();
         });
     });
     
@@ -1639,11 +1662,19 @@ document.addEventListener('DOMContentLoaded', function() {
     $('#recurring_from_date').val(lastWeekStr);
     $('#recurring_to_date').val(todayStr);
 
+    // Reasons Category Defaults
+    $('#reason_from_date').val(lastWeekStr);
+    $('#reason_to_date').val(todayStr);
+
     fetchRecurringGpTrends();
     loadAverageUptimeChart();
+    fetchReasonCategoryData();
 
     $('#btn-recurring-filter').click(function () {
                     fetchRecurringGpTrends();
+    });
+    $('#btn-reason-filter').click(function () {
+                    fetchReasonCategoryData();
     });
     // Link to Frequently Down GPs Report
     $('#recurringGpCount').css('cursor', 'pointer').click(function () {
@@ -2797,6 +2828,68 @@ function fetchRecurringGpTrends() {
             console.error("Error fetching recurring GP data:", err);
         }
     });
+}
+
+function fetchReasonCategoryData() {
+    const fromDate = $('#reason_from_date').val();
+    const toDate   = $('#reason_to_date').val();
+    const typeMap  = {
+        Ontdashboard:        'ont',
+        Oltdashboard:        'olt',
+        Samriddhdashboard:   'ont',
+        Gprouterdashboard:   'gprouter',
+        Blockrouterdashboard:'blockrouter',
+    };
+    const type = typeMap[currentMainTab] || 'ont';
+
+    $('#reasonCategorySubtitle').text(currentMainTab.replace('dashboard', '').toUpperCase());
+    $('#reasonCategoryContainer').html('<div class="terrasoft-loading" style="display:flex;position:relative;bottom:0;"><div class="terrasoft-spinner"></div><span>Loading reasons...</span></div>');
+
+    $.ajax({
+        url: "{{ route('admin.reason_data') }}",
+        method: "GET",
+        data: {
+            from_date: fromDate,
+            to_date:   toDate,
+            type:      type,
+        },
+        success: function (response) {
+            renderReasonCategoryTable(response);
+        },
+        error: function () {
+            $('#reasonCategoryContainer').html('<div class="terrasoft-error-message">Failed to load reasons data.</div>');
+        }
+    });
+}
+
+function renderReasonCategoryTable(response) {
+    const container = $('#reasonCategoryContainer');
+    if (!response || !response.data || !response.data.length) {
+        container.html('<div class="terrasoft-no-data">No reasons data available for the selected period.</div>');
+        return;
+    }
+
+    const zones = response.zones || [];
+    let html = '<table class="terrasoft-data-table" style="width:100%;"><thead><tr>';
+    html += '<th class="terrasoft-th-description">Reason</th>';
+    zones.forEach(function (zone) {
+        html += '<th class="terrasoft-th-fixed" style="width:auto;min-width:100px;">' + zone + '</th>';
+    });
+    html += '<th class="terrasoft-th-average" style="width:80px;">Total</th>';
+    html += '</tr></thead><tbody>';
+
+    response.data.forEach(function (row) {
+        html += '<tr class="terrasoft-data-row">';
+        html += '<td class="terrasoft-td-description">' + (row.reason || 'N/A') + '</td>';
+        zones.forEach(function (zone) {
+            html += '<td class="terrasoft-td-number">' + (row[zone] || 0) + '</td>';
+        });
+        html += '<td class="terrasoft-td-average" style="font-weight:700;">' + (row.total || 0) + '</td>';
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    container.html(html);
 }
 
 function renderRecurringGpsChart(data) {
