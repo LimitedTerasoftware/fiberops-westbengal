@@ -510,8 +510,8 @@ public function getReasonData(Request $request)
     $district_id = $user->district_id;
 
     $month = $request->get('month');
-    $fromDate = $request->get('fromDate');
-    $toDate = $request->get('toDate');
+    $fromDate = $request->get('from_date');
+    $toDate = $request->get('to_date');
 
     switch ($type) {
         case 'ont':

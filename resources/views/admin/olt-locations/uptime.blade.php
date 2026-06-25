@@ -2869,6 +2869,18 @@ function renderReasonCategoryTable(response) {
         return;
     }
 
+    const fromDate = $('#reason_from_date').val();
+    const toDate   = $('#reason_to_date').val();
+    const typeMap  = {
+        Ontdashboard:        { ticket: 'ont',       cat: 'uptime_category'        },
+        Oltdashboard:        { ticket: 'olt',       cat: 'OLT_category'           },
+        Samriddhdashboard:   { ticket: 'ont',       cat: 'uptime_category'        },
+        Gprouterdashboard:   { ticket: 'gprouter',  cat: 'router_category'        },
+        Blockrouterdashboard:{ ticket: 'blockrouter',cat: 'Blockrouter_category'  },
+    };
+    const map = typeMap[currentMainTab] || typeMap.Ontdashboard;
+    const baseUrl = "{{ route('admin.frequently_down_gps') }}";
+
     const zones = response.zones || [];
     let html = '<div class="terrasoft-table-container"><div class="terrasoft-table-wrapper">';
     html += '<table class="terrasoft-data-table"><thead><tr>';
@@ -2884,10 +2896,16 @@ function renderReasonCategoryTable(response) {
         html += '<tr class="terrasoft-data-row">';
         html += '<td class="terrasoft-td-number">' + (index + 1) + '</td>';
         html += '<td class="terrasoft-td-description">' + (row.reason || 'N/A') + '</td>';
+        var reasonEnc = encodeURIComponent(row.reason);
+        var baseParams = '?from_date=' + fromDate + '&to_date=' + toDate + '&ticket_type=' + map.ticket + '&' + map.cat + '=all&reason_view=1&reason=' + reasonEnc + '&';
         zones.forEach(function (zone) {
-            html += '<td class="terrasoft-td-value">' + (row[zone] || 0) + '</td>';
+            var count = row[zone] || 0;
+            var url = baseUrl + baseParams + 'zone=' + encodeURIComponent(zone);
+            html += '<td class="terrasoft-td-value"><a href="' + url + '" target="_blank" style="text-decoration:underline;color:inherit;font-weight:600;">' + count + '</a></td>';
         });
-        html += '<td class="terrasoft-td-average">' + (row.total || 0) + '</td>';
+        var total = row.total || 0;
+        var totalUrl = baseUrl + baseParams + 'zone=all';
+        html += '<td class="terrasoft-td-average"><a href="' + totalUrl + '" target="_blank" style="text-decoration:underline;color:inherit;font-weight:700;">' + total + '</a></td>';
         html += '</tr>';
     });
 

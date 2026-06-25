@@ -365,6 +365,82 @@ private function attachEmptyBreakdowns($results)
     return $items;
 }
 
+private function attachReasonBreakdowns($results, $state_id, $ticket_type = 'router', $reason = null)
+{
+    if (!$reason) {
+        return $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
+    }
+
+    $items = method_exists($results, 'getCollection')
+        ? $results->getCollection()
+        : collect($results);
+
+    if ($items->isEmpty()) {
+        return $results;
+    }
+
+    $lgdCodes = $items->pluck('lgd_code')->unique()->values();
+
+    $dates = $items->pluck('record_date')
+        ->map(function ($date) {
+            return Carbon::parse($date)->toDateString();
+        })
+        ->unique()
+        ->values();
+
+    $breakdownRows = DB::table('master_tickets')
+        ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
+        ->select(
+            'master_tickets.lgd_code',
+            DB::raw('DATE(master_tickets.downdate) as day'),
+            'master_tickets.downreason',
+            DB::raw('COUNT(*) as count')
+        )
+        ->where('user_requests.state_id', $state_id)
+        ->whereIn('master_tickets.lgd_code', $lgdCodes)
+        ->where('master_tickets.downreason', $reason)
+        ->whereBetween('master_tickets.downdate', [
+            $dates->min() . ' 00:00:00',
+            $dates->max() . ' 23:59:59',
+        ])
+        ->whereNotNull('master_tickets.downreason');
+
+    if ($ticket_type === 'router') {
+        $breakdownRows->where('user_requests.booking_id', 'like', 'INC%');
+    } else {
+        $breakdownRows->where('user_requests.booking_id', 'not like', 'INC%');
+    }
+
+    $breakdownRows = $breakdownRows
+        ->groupBy(
+            'master_tickets.lgd_code',
+            DB::raw('DATE(master_tickets.downdate)'),
+            'master_tickets.downreason'
+        )
+        ->orderBy('count', 'desc')
+        ->get()
+        ->groupBy(function ($row) {
+            return $row->lgd_code . '|' . $row->day;
+        });
+
+    $items->transform(function ($row) use ($breakdownRows) {
+        $day = Carbon::parse($row->record_date)->toDateString();
+        $key = $row->lgd_code . '|' . $day;
+
+        $row->breakdown = $breakdownRows->get($key, collect());
+        $row->ticket_count = $row->breakdown->sum('count');
+
+        return $row;
+    });
+
+    if (method_exists($results, 'setCollection')) {
+        $results->setCollection($items);
+        return $results;
+    }
+
+    return $items;
+}
+
 
  public function getFrequentlyDownGps(Request $request)
 {
@@ -377,6 +453,9 @@ private function attachEmptyBreakdowns($results)
         $district_id = $request->get('district_id');
         $block_id    = $request->get('block_id');
         $issue_filter = $request->get('issue_filter');
+        $reason = $request->get('reason');
+        $zone = $request->get('zone');
+        $reasonView = $request->get('reason_view');
         $uptime_category = $request->get('uptime_category');
         $ticket_type = $request->get('ticket_type', 'ont'); // 'ont',gprouter or 'router'
         $sammriddh = $request->get('samriddh', false);
@@ -394,6 +473,8 @@ private function attachEmptyBreakdowns($results)
               $query = BlockRouterUptime::query()
                         ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
                         ->join('districts', 'blocks.district_id', '=', 'districts.id')
+                        ->leftJoin('gp_list', 'gp_list.block_id', '=', 'blocks.id')
+                        ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
                         ->where('districts.state_id', $state_id);
                if ($from_date && $to_date) {
                     $query->whereBetween('block_router_uptime.record_date', [$from_date, $to_date]);
@@ -406,6 +487,14 @@ private function attachEmptyBreakdowns($results)
                 if ($block_id) {
                     $query->where('blocks.id', $block_id);
                 }
+                $reasonVal = $reason ?: $issue_filter;
+                if ($reasonVal) {
+                     $query->where('block_router_uptime.reason', $reasonVal);
+                 }
+                if ($zone && $zone !== 'all') {
+                    $query->where('zonal_managers.name', $zone);
+                }
+
 
                 switch ($Blockrouter_category) {
                     case 'all':
@@ -426,18 +515,32 @@ private function attachEmptyBreakdowns($results)
 
                  }
                 if ($Blockrouter_category === 'all') {
-                    $results = $query->select(
-                        'block_router_uptime.lgd_code',
-                        'districts.name as district',
-                        'blocks.name as mandal',
-                        'blocks.name as gpname',
-                        DB::raw('ROUND(AVG(block_router_uptime.uptime_percent), 2) as uptime_percent'),
-                        DB::raw('MIN(block_router_uptime.record_date) as record_date')
-                    )
-                    ->groupBy('block_router_uptime.lgd_code', 'districts.name', 'blocks.name')
-                    ->orderBy('uptime_percent', 'asc')
-                    ->paginate(15);
-                    $results = $this->attachEmptyBreakdowns($results);
+                    if ($reasonView) {
+                        $results = $query->select(
+                            'block_router_uptime.lgd_code',
+                            'districts.name as district',
+                            'blocks.name as mandal',
+                            'blocks.name as gpname',
+                            'block_router_uptime.uptime_percent',
+                            'block_router_uptime.record_date',
+                            'block_router_uptime.reason'
+                        )
+                        ->orderBy('block_router_uptime.record_date', 'desc')
+                        ->paginate(15);
+                    } else {
+                        $results = $query->select(
+                            'block_router_uptime.lgd_code',
+                            'districts.name as district',
+                            'blocks.name as mandal',
+                            'blocks.name as gpname',
+                            DB::raw('ROUND(AVG(block_router_uptime.uptime_percent), 2) as uptime_percent'),
+                            DB::raw('MIN(block_router_uptime.record_date) as record_date')
+                        )
+                        ->groupBy('block_router_uptime.lgd_code', 'districts.name', 'blocks.name')
+                        ->orderBy('uptime_percent', 'asc')
+                        ->paginate(15);
+                        $results = $this->attachEmptyBreakdowns($results);
+                    }
                 } else {
                 $results = $query->select(
                     'block_router_uptime.lgd_code',
@@ -463,6 +566,8 @@ private function attachEmptyBreakdowns($results)
                         ->join('olt_locations', 'olt_locations.lgd_code', '=', 'olt_uptime.lgd_code')
                         ->join('districts','olt_locations.district_id','=','districts.id')
                         ->join('blocks','olt_locations.block_id','=','blocks.id')
+                        ->leftJoin('gp_list', 'gp_list.olt_lgdcode', '=', 'olt_locations.lgd_code')
+                        ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
                         ->where('olt_locations.state_id', $state_id);
                        
                if ($from_date && $to_date) {
@@ -475,6 +580,13 @@ private function attachEmptyBreakdowns($results)
 
                 if ($block_id) {
                     $query->where('blocks.id', $block_id);
+                }
+                  $reasonVal = $reason ?: $issue_filter;
+                if ($reasonVal) {
+                     $query->where('olt_uptime.reason', $reasonVal);
+                 }
+                if ($zone && $zone !== 'all') {
+                    $query->where('zonal_managers.name', $zone);
                 }
 
                 switch ($OLT_category) {
@@ -500,19 +612,33 @@ private function attachEmptyBreakdowns($results)
                         $query->where('olt_uptime.uptime_percent', '<', 20);
                         break;
                  }
-                   if ($OLT_category === 'all') {
-                    $results = $query->select(
-                        'olt_uptime.lgd_code',
-                        'olt_locations.olt_location as gpname',
-                        'districts.name as district',
-                        'blocks.name as mandal',
-                        DB::raw('ROUND(AVG(olt_uptime.uptime_percent), 2) as uptime_percent'),
-                        DB::raw('MIN(olt_uptime.record_date) as record_date')
-                    )
-                    ->groupBy('olt_uptime.lgd_code', 'olt_locations.olt_location', 'districts.name', 'blocks.name')
-                    ->orderBy('uptime_percent', 'asc')
-                    ->paginate(15);
-                    $results = $this->attachEmptyBreakdowns($results);
+                    if ($OLT_category === 'all') {
+                    if ($reasonView) {
+                        $results = $query->select(
+                            'olt_uptime.lgd_code',
+                            'olt_locations.olt_location as gpname',
+                            'districts.name as district',
+                            'blocks.name as mandal',
+                            'olt_uptime.uptime_percent',
+                            'olt_uptime.record_date',
+                            'olt_uptime.reason'
+                        )
+                        ->orderBy('olt_uptime.record_date', 'desc')
+                        ->paginate(15);
+                    } else {
+                        $results = $query->select(
+                            'olt_uptime.lgd_code',
+                            'olt_locations.olt_location as gpname',
+                            'districts.name as district',
+                            'blocks.name as mandal',
+                            DB::raw('ROUND(AVG(olt_uptime.uptime_percent), 2) as uptime_percent'),
+                            DB::raw('MIN(olt_uptime.record_date) as record_date')
+                        )
+                        ->groupBy('olt_uptime.lgd_code', 'olt_locations.olt_location', 'districts.name', 'blocks.name')
+                        ->orderBy('uptime_percent', 'asc')
+                        ->paginate(15);
+                        $results = $this->attachEmptyBreakdowns($results);
+                    }
                 } else {
                 $results = $query->select(
                     'olt_uptime.lgd_code',
@@ -558,6 +684,7 @@ private function attachEmptyBreakdowns($results)
                     ->join('gp_list', 'ont_uptime.lgd_code', '=', 'gp_list.lgd_code')
                     ->join('districts', 'gp_list.district_id', '=', 'districts.id')
                     ->join('blocks', 'gp_list.block_id', '=', 'blocks.id')
+                    ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
                     ->where('gp_list.state_id', $state_id);
                 if ($sammriddh) {
                     $query->where('gp_list.samridh_stat', 1);
@@ -598,6 +725,16 @@ private function attachEmptyBreakdowns($results)
                         $query->where('ont_uptime.uptime_percent', '<', 20);
                         break;
                 }
+               
+                $reasonVal = $reason ?: $issue_filter;
+                if ($reasonVal) {
+                    $query->where('ont_uptime.reason', $reasonVal);
+                }
+                if ($zone && $zone !== 'all') {
+                    $query->where('zonal_managers.name', $zone);
+                }
+                
+
                 if ($issue_filter) {
                     $query->whereExists(function ($sub) use ($issue_filter, $state_id, $ticket_type) {
                         $sub->select(DB::raw(1))
@@ -617,18 +754,32 @@ private function attachEmptyBreakdowns($results)
                 }
 
                if ($uptime_category === 'all') {
-                    $results = $query->select(
-                        'gp_list.lgd_code',
-                        'gp_list.gp_name as gpname',
-                        'districts.name as district',
-                        'blocks.name as mandal',
-                        DB::raw('ROUND(AVG(ont_uptime.uptime_percent), 2) as uptime_percent'),
-                        DB::raw('MIN(ont_uptime.record_date) as record_date')
-                    )
-                    ->groupBy('gp_list.lgd_code', 'gp_list.gp_name', 'districts.name', 'blocks.name')
-                    ->orderBy('uptime_percent', 'asc')
-                    ->paginate(15);
-                    $results = $this->attachEmptyBreakdowns($results);
+                    if ($reasonView) {
+                        $results = $query->select(
+                            'gp_list.lgd_code',
+                            'gp_list.gp_name as gpname',
+                            'districts.name as district',
+                            'blocks.name as mandal',
+                            'ont_uptime.uptime_percent',
+                            'ont_uptime.record_date',
+                            'ont_uptime.reason'
+                        )
+                        ->orderBy('ont_uptime.record_date', 'desc')
+                        ->paginate(15);
+                    } else {
+                        $results = $query->select(
+                            'gp_list.lgd_code',
+                            'gp_list.gp_name as gpname',
+                            'districts.name as district',
+                            'blocks.name as mandal',
+                            DB::raw('ROUND(AVG(ont_uptime.uptime_percent), 2) as uptime_percent'),
+                            DB::raw('MIN(ont_uptime.record_date) as record_date')
+                        )
+                        ->groupBy('gp_list.lgd_code', 'gp_list.gp_name', 'districts.name', 'blocks.name')
+                        ->orderBy('uptime_percent', 'asc')
+                        ->paginate(15);
+                        $results = $this->attachEmptyBreakdowns($results);
+                    }
                 } else {
                 $results = $query->select(
                     'gp_list.lgd_code',
@@ -642,7 +793,9 @@ private function attachEmptyBreakdowns($results)
                     ->paginate(15);
             }
 
-               $results = $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
+               $results = $reasonView
+                    ? $this->attachReasonBreakdowns($results, $state_id, $ticket_type, $reason)
+                    : $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
 
                 $is_uptime_report = true;
 
@@ -654,6 +807,7 @@ private function attachEmptyBreakdowns($results)
                         ->join('gp_list', 'gp_list.lgd_code', '=', 'gp_router_uptime.lgd_code')
                         ->join('districts', 'gp_list.district_id', '=', 'districts.id')
                         ->join('blocks', 'gp_list.block_id', '=', 'blocks.id')
+                        ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
                         ->where('gp_list.state_id', $state_id);
                if ($from_date && $to_date) {
                     $query->whereBetween('gp_router_uptime.record_date', [$from_date, $to_date]);
@@ -685,6 +839,14 @@ private function attachEmptyBreakdowns($results)
                     break;
                  }
             
+               $reasonVal = $reason ?: $issue_filter;
+                if ($reasonVal) {
+                    $query->where('gp_router_uptime.reason', $reasonVal);
+                }
+                if ($zone && $zone !== 'all') {
+                    $query->where('zonal_managers.name', $zone);
+                }
+
 
                 if ($issue_filter) {
                     $query->whereExists(function ($sub) use ($issue_filter, $state_id) {
@@ -700,18 +862,32 @@ private function attachEmptyBreakdowns($results)
                 }
 
                 if ($router_category === 'all') {
-                    $results = $query->select(
-                        'gp_list.lgd_code',
-                        'gp_list.gp_name as gpname',
-                        'districts.name as district',
-                        'blocks.name as mandal',
-                        DB::raw('ROUND(AVG(gp_router_uptime.uptime_percent), 2) as uptime_percent'),
-                        DB::raw('MIN(gp_router_uptime.record_date) as record_date')
-                    )
-                    ->groupBy('gp_list.lgd_code', 'gp_list.gp_name', 'districts.name', 'blocks.name')
-                    ->orderBy('uptime_percent', 'asc')
-                    ->paginate(15);
-                    $results = $this->attachEmptyBreakdowns($results);
+                    if ($reasonView) {
+                        $results = $query->select(
+                            'gp_list.lgd_code',
+                            'gp_list.gp_name as gpname',
+                            'districts.name as district',
+                            'blocks.name as mandal',
+                            'gp_router_uptime.uptime_percent',
+                            'gp_router_uptime.record_date',
+                            'gp_router_uptime.reason'
+                        )
+                        ->orderBy('gp_router_uptime.record_date', 'desc')
+                        ->paginate(15);
+                    } else {
+                        $results = $query->select(
+                            'gp_list.lgd_code',
+                            'gp_list.gp_name as gpname',
+                            'districts.name as district',
+                            'blocks.name as mandal',
+                            DB::raw('ROUND(AVG(gp_router_uptime.uptime_percent), 2) as uptime_percent'),
+                            DB::raw('MIN(gp_router_uptime.record_date) as record_date')
+                        )
+                        ->groupBy('gp_list.lgd_code', 'gp_list.gp_name', 'districts.name', 'blocks.name')
+                        ->orderBy('uptime_percent', 'asc')
+                        ->paginate(15);
+                        $results = $this->attachEmptyBreakdowns($results);
+                    }
                 } else {
                 $results = $query->select(
                     'gp_list.lgd_code',
@@ -725,7 +901,9 @@ private function attachEmptyBreakdowns($results)
                     ->paginate(15);
                 }
 
-                $results = $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
+                $results = $reasonView
+                    ? $this->attachReasonBreakdowns($results, $state_id, $ticket_type, $reason)
+                    : $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
 
 
                 $is_uptime_report = true;
@@ -734,7 +912,7 @@ private function attachEmptyBreakdowns($results)
 
 
         }
-       
+        
         $expectedWeeks = DB::table('master_tickets')
             ->join('user_requests', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
             ->where('user_requests.state_id', $state_id)
@@ -1041,6 +1219,8 @@ private function attachEmptyBreakdowns($results)
         $district_id = $request->get('district_id');
         $block_id    = $request->get('block_id');
         $issue_filter = $request->get('issue_filter');
+        $reason = $request->get('reason');
+
         $uptime_category = $request->get('uptime_category');
         $ticket_type = $request->get('ticket_type', 'ont'); // 'ont' or 'router'
         $sammriddh = $request->get('samriddh', false);
@@ -1071,6 +1251,9 @@ private function attachEmptyBreakdowns($results)
                 if ($block_id) {
                     $query->where('gp_list.block_id', $block_id);
                 }
+                  if ($reason) {
+                     $query->where('ont_uptime.reason', $reason);
+                 }
 
 
                 switch ($uptime_category) {
@@ -1237,7 +1420,10 @@ private function attachEmptyBreakdowns($results)
                     $this->applyIntegrationFilter($query, 'gp_router_uptime');
                     break;
                  }
-            
+                   if ($reason) {
+                     $query->where('gp_router_uptime.reason', $reason);
+                 }
+
 
                 if ($issue_filter) {
                     $query->whereExists(function ($sub) use ($issue_filter, $state_id) {
@@ -1348,6 +1534,9 @@ private function attachEmptyBreakdowns($results)
                 if ($block_id) {
                     $query->where('blocks.id', $block_id);
                 }
+                  if ($reason) {
+                     $query->where('block_router_uptime.reason', $reason);
+                 }
 
                 switch ($Blockrouter_category) {
                     case 'all':
@@ -1432,6 +1621,9 @@ private function attachEmptyBreakdowns($results)
                 if ($block_id) {
                     $query->where('blocks.id', $block_id);
                 }
+                  if ($reason) {
+                     $query->where('olt_locations.reason', $reason);
+                 }
 
                 switch ($OLT_category) {
                     case 'all':
