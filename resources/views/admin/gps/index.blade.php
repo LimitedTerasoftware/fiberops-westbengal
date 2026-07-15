@@ -54,8 +54,8 @@
                         <th>@lang('Contact No')</th>
                         <th>Patroller Name</th>
                         <th>@lang('Contact No')</th>
-                        <th>Zonal Incharge</th>
-                        <th>Zonal Incharge Contact</th>
+                        <th>Host Name</th>
+                        <th>Router IP</th>
                         @if(auth()->user()->role == 'admin')
                         <th>@lang('admin.action')</th>
                         @endif
@@ -75,8 +75,8 @@
                         <td>{{ $gp->contact_no }}</td>
                         <td>{{ $gp->petroller}}</td>
                         <td>{{ $gp->petroller_contact_no }}</td>
-                        <td>{{ $gp->zonal_incharge_name }}</td>
-                        <td>{{ $gp->zonal_incharge_ph }}</td>
+                        <td>{{ $gp->host_name  }}</td>
+                        <td>{{ $gp->router_ip  }}</td>
 
                         @if(auth()->user()->role == 'admin')
                         <td>

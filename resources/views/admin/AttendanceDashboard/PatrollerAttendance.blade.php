@@ -251,7 +251,7 @@
                                     <a href="{{ route('admin.staff_details', $provider->id) }}" class="action-btn action-btn-secondary" title="View Profile">
                                         <i class="fas fa-calendar-alt"></i> 
                                     </a>
-                                    @if(auth()->user()->role != 'client' )
+                                    @if(auth()->user()->role != 'client' && auth()->user()->role !='employee')
                                   
                                     
                                         @if($provider->leave_id)

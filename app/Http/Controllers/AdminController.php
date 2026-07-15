@@ -7984,10 +7984,11 @@ public function exportProviders(Request $request)
     $company_id = $user->company_id;
     $state_id = $user->state_id;
     $district_id = $user->district_id;
+    $role = $request->role;
 
     // Build same query as your index
     $providersQuery = Provider::join('zonal_managers', 'providers.zone_id', '=', 'zonal_managers.id')
-        ->join('districts', 'providers.district_id', '=', 'districts.id')
+        ->leftJoin('districts', 'providers.district_id', '=', 'districts.id')
         ->select(
             'providers.*',
             'zonal_managers.Name as zone_name',
@@ -7998,6 +7999,7 @@ public function exportProviders(Request $request)
          if (!empty($district_id)) {
                 $providersQuery->where('providers.district_id', $district_id);
          }
+         
 
     if ($request->has('search') && $request->search != '') {
         $search = $request->search;

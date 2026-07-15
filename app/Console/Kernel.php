@@ -19,6 +19,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\AutoLogoutProviders::class,
         \App\Console\Commands\SyncEmployeeMaterialLedger::class,
         \App\Console\Commands\ClearLogsWeekly::class,
+        \App\Console\Commands\BiometricSync::class,
 
 
     ];
@@ -45,9 +46,10 @@ class Kernel extends ConsoleKernel
              ->runInBackground();
              
         $schedule->command('logs:clear-old')->dailyAt('02:00'); 
-     
-  
-                         
+        $schedule->command('ledger:sync-biometric')->everyTenMinutes()
+             ->withoutOverlapping()
+             ->runInBackground();
+             
     }
 
     /**

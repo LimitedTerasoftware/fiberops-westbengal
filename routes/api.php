@@ -126,6 +126,8 @@ Route::get('/auto_assign_tickets', 'UserApiController@auto_assign_tickets');
 Route::post('/userperformance', 'UserApiController@userPerformance');
 Route::post('/gpperformance', 'UserApiController@gpperformance');
 Route::post('/userhistory' , 	'UserApiController@userhistory');
+Route::post('/userwisehistory' , 	'UserApiController@userwisehistory');
+
 Route::post('/raise_ticket', 'UserApiController@raise_ticket');
 Route::post('/patroller_checklist', 'UserApiController@patroller_checklist');
 Route::get('/patroller_checklist/recent', 'UserApiController@patrollerChecklistRecent');

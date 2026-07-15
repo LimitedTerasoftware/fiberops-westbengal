@@ -2074,7 +2074,7 @@ public function gp_mapping_update(Request $request)
   
         // ? Use Validator instead of $request->validate()
         $validator = Validator::make($request->all(), [
-            'type' => 'required|in:1,2,3',
+            'type' => 'required|in:1,2,3,10',
             'import_file' => 'required|mimes:csv,txt',
         ]);
 
@@ -2084,7 +2084,6 @@ public function gp_mapping_update(Request $request)
                 ->withInput()
                 ->with('error', 'Validation failed. Please check your inputs.');
         }
-//dd('rahul');
         $file = $request->file('import_file');
         if (!$file->isValid()) {
             return back()->with('error', 'Invalid file uploaded.');
@@ -2134,6 +2133,12 @@ public function gp_mapping_update(Request $request)
                         'zonal_incharge_name' => $name,
                         'zonal_incharge_ph' => $phone,
                        
+                    ];
+                    break;
+                case '10':
+                    $updated=[
+                         'host_name' => $name,
+                        'router_ip' => $phone,
                     ];
                     break;
                 default:

@@ -1274,12 +1274,12 @@ $(document).ready(function() {
         btnText.hide();
         btnLoading.show();
 
-        fetch(`{{ route('admin.provider-export', [
+      fetch(`{!! route('admin.provider-export', [
             'district_id' => request('district_id'),
-        'zone_id' => request('zone_id'),
-        'role' => request('role'),
-        'search' => request('search')
-        ]) }}`)
+            'zone_id' => request('zone_id'),
+            'role' => request('role'),
+            'search' => request('search')
+        ]) !!}`)
         .then(response => {
             if (!response.ok) throw new Error('Network response was not ok');
             return response.blob();

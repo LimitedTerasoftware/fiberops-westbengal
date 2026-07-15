@@ -35,7 +35,7 @@
         <ul class="terrasoft-nav-menu">
             {{-- 1. Executive Dashboard --}}
             @if(auth()->user()->role == 'admin' || auth()->user()->role == 'inventory' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge'
-                || auth()->user()->role=='client')
+                || auth()->user()->role=='client' || auth()->user()->role=='employee') 
             <li class="terrasoft-nav-group">
                 <div class="terrasoft-nav-header" data-submenu="dashboard">
                     <i class="ti-bar-chart"></i>
@@ -66,7 +66,8 @@
             @endif
 
             {{-- 2. Tickets & Dispatch --}}
-            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' )
+            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client'
+            || auth()->user()->role=='employee' )
             <li class="terrasoft-nav-group">
                 <div class="terrasoft-nav-header" data-submenu="tickets">
                     <i class="ti-ticket"></i>
@@ -98,7 +99,8 @@
                 
 
             {{-- 4. Attendance --}}
-            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client')
+            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client'
+            || auth()->user()->role=='employee')
 
             <li class="terrasoft-nav-group">
                 <div class="terrasoft-nav-header" data-submenu="attendance">
@@ -221,7 +223,8 @@
             @endif
 
             {{-- 8. Account / Settings --}}
-            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'inventory' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' )
+            @if(auth()->user()->role == 'admin' || auth()->user()->role == 'inventory' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' 
+            || auth()->user()->role=='employee')
             <li class="terrasoft-nav-group">
                 <div class="terrasoft-nav-header" data-submenu="account">
                     <i class="ti-settings"></i>
@@ -236,7 +239,8 @@
                     <li><a href="{{ route('admin.password') }}"><i class="ti-key"></i> Change Password</a></li>
                     <li><a href="{{ route('admin.settings') }}" ><i class="ti-settings"></i> Site Settings</a></li>
                     @endif
-                   @if(auth()->user()->role == 'admin' || auth()->user()->role == 'inventory' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client' )
+                   @if(auth()->user()->role == 'admin' || auth()->user()->role == 'inventory' || auth()->user()->role == 'super_admin' || auth()->user()->role == 'zone_admin' || auth()->user()->role=='district_incharge' || auth()->user()->role=='client'
+                   || auth()->user()->role=='employee' )
 
                     <li><a href="{{ url('/admin/logout') }}" onclick="event.preventDefault();document.getElementById('logout-form').submit();">
                         <i class="ti-power-off"></i> Logout
@@ -247,7 +251,7 @@
             </li>
          
             @endif
-            @if(auth()->user()->role !='client')
+            @if(auth()->user()->role !='client' && auth()->user()->role !='employee')
             {{-- AI Assistant --}}
             <li class="terrasoft-ai-assistant">
                 <a href="#" id="openChatbot">

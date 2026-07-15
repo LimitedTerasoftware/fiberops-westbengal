@@ -328,12 +328,12 @@ Route::post('/ont-upload', "OltLocationController@OntUpload")->name('ont-upload'
 Route::post('/olt-upload', "OltLocationController@OltUpload")->name('olt-upload');
 Route::post('/gprouter-upload', "OltLocationController@GprouterUpload")->name('gprouter-upload');
 Route::post('/blockrouter-upload', "OltLocationController@BlockrouterUpload")->name('blockrouter-upload');
+Route::get('/reason_data', "OltLocationController@getReasonData")->name('reason_data');
 
 Route::get('/olt-export', 'OltLocationController@ExportOlt')->name('olt-export');
 
 
 Route::get('/blocks', "OltLocationController@getBlocks")->name('blocks');
-Route::get('/reason_data', "OltLocationController@getReasonData")->name('reason_data');
 
 Route::get('/php-test', 'AdminController@php_test')->name('php-test');
 

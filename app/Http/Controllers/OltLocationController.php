@@ -306,7 +306,7 @@ public function OntUpload(Request $request)
                 }
             }
 
-            if (strlen($row[0]) !== 6 || !preg_match('/^\d{6}$/', $row[0])) {
+            if (strlen($row[0]) !== 6) {
                 throw new \Exception("LGD code must be exactly 6 digits. Invalid value: " . $row[0]);
             }
 
@@ -316,6 +316,15 @@ public function OntUpload(Request $request)
                 'record_date' => $date,
                 'reason'=>$row[3] ?? null,
             ];
+          
+            $exists = OntUptime::where('lgd_code', $data['lgd_code'])
+                ->where('record_date', $data['record_date'])
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
 
             OntUptime::create($data);
             $records[] = $data;
@@ -360,7 +369,7 @@ public function OltUpload(Request $request)
                 }
             }
 
-            if (strlen($row[0]) !== 6 || !preg_match('/^\d{6}$/', $row[0])) {
+            if (strlen($row[0]) !== 6 ) {
                 throw new \Exception("LGD code must be exactly 6 digits. Invalid value: " . $row[0]);
             }
 
@@ -370,6 +379,13 @@ public function OltUpload(Request $request)
                 'record_date' => $date,
                  'reason'=>$row[3] ?? null,
             ];
+               $exists = OltUptime::where('lgd_code', $data['lgd_code'])
+                ->where('record_date', $data['record_date'])
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
 
             OltUptime::create($data);
             $records[] = $data;
@@ -416,7 +432,7 @@ public function GprouterUpload(Request $request)
                 }
             }
 
-            if (strlen($row[0]) !== 6 || !preg_match('/^\d{6}$/', $row[0])) {
+            if (strlen($row[0]) !== 6 ) {
                 throw new \Exception("LGD code must be exactly 6 digits. Invalid value: " . $row[0]);
             }
 
@@ -426,6 +442,14 @@ public function GprouterUpload(Request $request)
                 'record_date' => $date,
                  'reason'=>$row[3] ?? null,
             ];
+              $exists = GpRouterUptime::where('lgd_code', $data['lgd_code'])
+                ->where('record_date', $data['record_date'])
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
 
             GpRouterUptime::create($data);
             $records[] = $data;
@@ -472,7 +496,7 @@ public function BlockrouterUpload(Request $request)
                 }
             }
 
-            if (strlen($row[0]) !== 6 || !preg_match('/^\d{6}$/', $row[0])) {
+            if (strlen($row[0]) !== 6 ) {
                 throw new \Exception("LGD code must be exactly 6 digits. Invalid value: " . $row[0]);
             }
 
@@ -483,6 +507,13 @@ public function BlockrouterUpload(Request $request)
                  'reason'=>$row[3] ?? null,
             ];
 
+            $exists = BlockRouterUptime::where('lgd_code', $data['lgd_code'])
+                ->where('record_date', $data['record_date'])
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
             BlockRouterUptime::create($data);
             $records[] = $data;
         }
@@ -525,19 +556,38 @@ public function getReasonData(Request $request)
             }
             $reasonCol = 'ont_uptime.reason';
             break;
+        case 'samriddh':
+            $query = DB::table('ont_uptime')
+                ->join('gp_list', 'gp_list.lgd_code', '=', 'ont_uptime.lgd_code')
+                ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
+                 ->where('gp_list.samridh_stat',1)
+                ->where('gp_list.company_id', $company_id)
+                ->where('gp_list.state_id', $state_id);
+            if (!empty($district_id)) {
+                $query->where('gp_list.district_id', $district_id);
+            }
+            $reasonCol = 'ont_uptime.reason';
+            break;
+    
 
         case 'olt':
-            $query = DB::table('olt_uptime')
-                ->join('olt_locations', 'olt_locations.lgd_code', '=', 'olt_uptime.lgd_code')
-                ->leftJoin('gp_list', 'gp_list.olt_lgdcode', '=', 'olt_locations.lgd_code')
-                ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
-                ->where('olt_locations.state_id', $state_id);
-            if (!empty($district_id)) {
-                $query->where('olt_locations.district_id', $district_id);
-            }
-            $reasonCol = 'olt_uptime.reason';
-            break;
-
+        $query = DB::table('olt_uptime')
+            ->join('olt_locations', 'olt_locations.lgd_code', '=', 'olt_uptime.lgd_code')
+            ->leftJoin(DB::raw("(
+                SELECT olt_lgdcode, MIN(zonal_id) as zonal_id
+                FROM gp_list
+                WHERE olt_lgdcode IS NOT NULL
+                GROUP BY olt_lgdcode
+            ) as gp_zone"), function ($join) {
+                $join->on('gp_zone.olt_lgdcode', '=', 'olt_locations.lgd_code');
+            })
+            ->leftJoin('zonal_managers', 'gp_zone.zonal_id', '=', 'zonal_managers.id')
+            ->where('olt_locations.state_id', $state_id);
+        if (!empty($district_id)) {
+            $query->where('olt_locations.district_id', $district_id);
+        }
+        $reasonCol = 'olt_uptime.reason';
+        break;
         case 'gprouter':
             $query = DB::table('gp_router_uptime')
                 ->join('gp_list', 'gp_list.lgd_code', '=', 'gp_router_uptime.lgd_code')
@@ -550,23 +600,29 @@ public function getReasonData(Request $request)
             $reasonCol = 'gp_router_uptime.reason';
             break;
 
-        case 'blockrouter':
-            $query = DB::table('block_router_uptime')
-                ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
-                ->join('districts', 'blocks.district_id', '=', 'districts.id')
-                ->leftJoin('gp_list', 'gp_list.block_id', '=', 'blocks.id')
-                ->leftJoin('zonal_managers', 'gp_list.zonal_id', '=', 'zonal_managers.id')
-                ->where('districts.state_id', $state_id);
-            if (!empty($district_id)) {
-                $query->where('blocks.district_id', $district_id);
-            }
-            $reasonCol = 'block_router_uptime.reason';
-            break;
+     case 'blockrouter':
+        $query = DB::table('block_router_uptime')
+            ->join('blocks', 'blocks.routercode', '=', 'block_router_uptime.lgd_code')
+            ->join('districts', 'blocks.district_id', '=', 'districts.id')
+            ->leftJoin(DB::raw("(
+                SELECT block_id, MIN(zonal_id) as zonal_id
+                FROM gp_list
+                WHERE block_id IS NOT NULL
+                GROUP BY block_id
+            ) as gp_zone"), function ($join) {
+                $join->on('gp_zone.block_id', '=', 'blocks.id');
+            })
+            ->leftJoin('zonal_managers', 'gp_zone.zonal_id', '=', 'zonal_managers.id')
+            ->where('districts.state_id', $state_id);
+        if (!empty($district_id)) {
+            $query->where('blocks.district_id', $district_id);
+        }
+        $reasonCol = 'block_router_uptime.reason';
+        break;
 
         default:
             return response()->json(['data' => [], 'zones' => []]);
     }
-
     if (!empty($month)) {
         try {
             $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
@@ -580,6 +636,7 @@ public function getReasonData(Request $request)
         }
     } elseif (!empty($fromDate) && !empty($toDate)) {
         $query->whereBetween('record_date', [$fromDate, $toDate]);
+       
     } else {
         $query->whereBetween('record_date', [
             Carbon::now()->subDays(6)->toDateString(),

@@ -2836,9 +2836,10 @@ function fetchReasonCategoryData() {
     const typeMap  = {
         Ontdashboard:        'ont',
         Oltdashboard:        'olt',
-        Samriddhdashboard:   'ont',
+        Samriddhdashboard:   'samriddh',
         Gprouterdashboard:   'gprouter',
         Blockrouterdashboard:'blockrouter',
+
     };
     const type = typeMap[currentMainTab] || 'ont';
 
@@ -2872,11 +2873,11 @@ function renderReasonCategoryTable(response) {
     const fromDate = $('#reason_from_date').val();
     const toDate   = $('#reason_to_date').val();
     const typeMap  = {
-        Ontdashboard:        { ticket: 'ont',       cat: 'uptime_category'        },
-        Oltdashboard:        { ticket: 'olt',       cat: 'OLT_category'           },
-        Samriddhdashboard:   { ticket: 'ont',       cat: 'uptime_category'        },
-        Gprouterdashboard:   { ticket: 'gprouter',  cat: 'router_category'        },
-        Blockrouterdashboard:{ ticket: 'blockrouter',cat: 'Blockrouter_category'  },
+        Ontdashboard:        { ticket: 'ont',       cat: 'uptime_category',  samriddh: false },    
+        Oltdashboard:        { ticket: 'olt',       cat: 'OLT_category' , samriddh: false },       
+        Samriddhdashboard:   { ticket: 'ont',  cat: 'uptime_category', samriddh: true },
+        Gprouterdashboard:   { ticket: 'gprouter',  cat: 'router_category' , samriddh: false },    
+        Blockrouterdashboard:{ ticket: 'blockrouter',cat: 'Blockrouter_category', samriddh: false },
     };
     const map = typeMap[currentMainTab] || typeMap.Ontdashboard;
     const baseUrl = "{{ route('admin.frequently_down_gps') }}";
@@ -2897,7 +2898,7 @@ function renderReasonCategoryTable(response) {
         html += '<td class="terrasoft-td-number">' + (index + 1) + '</td>';
         html += '<td class="terrasoft-td-description">' + (row.reason || 'N/A') + '</td>';
         var reasonEnc = encodeURIComponent(row.reason);
-        var baseParams = '?from_date=' + fromDate + '&to_date=' + toDate + '&ticket_type=' + map.ticket + '&' + map.cat + '=all&reason_view=1&reason=' + reasonEnc + '&';
+        var baseParams = '?from_date=' + fromDate + '&to_date=' + toDate + '&samriddh=' + map.samriddh +'&ticket_type=' + map.ticket + '&' + map.cat + '=all&reason_view=1&reason=' + reasonEnc + '&';
         zones.forEach(function (zone) {
             var count = row[zone] || 0;
             var url = baseUrl + baseParams + 'zone=' + encodeURIComponent(zone);

@@ -2606,7 +2606,7 @@ public function updateJointImages(Request $request, $id)
 
 public function userhistory(Request $request){
             try{
-           
+           \Log::info('userhistory API called', $request->all());
             $user_id = $request->input('user_id');
             $baseQuery = UserRequests::join('master_tickets', 
                     'user_requests.booking_id', '=', 'master_tickets.ticketid')
@@ -2634,12 +2634,80 @@ public function userhistory(Request $request){
              "hold" =>  $hold_tickets,
              //"hold_data" =>  $hold_tickets_data
              );
+              \Log::info('userhistory API Response Completed',$request->all());
             return response()->json(['success' => 'true','data'=>$data,'status'=>1]);
 
         } catch(Exception $e) {
+            \Log::error($e);
             return response()->json(['error' => $e->getMessage()], 500);
         }
 
+    }
+    public function userwisehistory(Request $request)
+    {
+        try {
+
+            $user_id = $request->input('user_id');
+            $perPage = $request->input('per_page', 20); // Default 20 records
+            $page = $request->input('page', 1);
+
+            $baseQuery = UserRequests::join(
+                    'master_tickets',
+                    'user_requests.booking_id',
+                    '=',
+                    'master_tickets.ticketid'
+                )
+                ->where('user_requests.provider_id', $user_id)
+                ->select('user_requests.*');
+
+            // Counts
+            $total = (clone $baseQuery)->count();
+            $open = (clone $baseQuery)->where('user_requests.status', 'INCOMING')->count();
+            $ongoing = (clone $baseQuery)->where('user_requests.status', 'PICKEDUP')->count();
+            $completed = (clone $baseQuery)->where('user_requests.status', 'COMPLETED')->count();
+            $hold = (clone $baseQuery)->where('user_requests.status', 'HOLD')->count();
+
+            // Paginated ticket list
+            $tickets = (clone $baseQuery)
+                ->orderBy('user_requests.id', 'desc')
+                ->paginate($perPage, ['*'], 'page', $page);
+
+            $data = [
+                'total' => $total,
+                'ongoing' => $ongoing,
+                'completed' => $completed,
+                'open' => $open,
+                'hold' => $hold,
+
+                // Paginated Data
+                'total_data' => $tickets->items(),
+
+                // Pagination Info
+                'pagination' => [
+                    'current_page' => $tickets->currentPage(),
+                    'last_page' => $tickets->lastPage(),
+                    'per_page' => $tickets->perPage(),
+                    'total_records' => $tickets->total(),
+                    'has_more_pages' => $tickets->hasMorePages(),
+                ]
+            ];
+
+            return response()->json([
+                'success' => true,
+                'status' => 1,
+                'data' => $data
+            ]);
+
+        } catch (\Exception $e) {
+
+            \Log::error($e);
+
+            return response()->json([
+                'success' => false,
+                'status' => 0,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
 

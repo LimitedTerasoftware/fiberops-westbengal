@@ -52,18 +52,23 @@ class SyncEmployeeMaterialLedger extends Command
                     $skipped++;
                     continue;
                 }
+                $isDrum   = !empty($row['drum_no']);
+                $isSerial = !empty($row['serial_no']);
+                $isLengthBased = ($row['issued_length'] > 0);
+
+                $resolvedSerial = $isDrum
+                    ? $row['drum_no']
+                    : ($isSerial ? $row['serial_no'] : null);
+
                 //    One ISSUE ledger row per (employee + material + indent)
                 $matchKey = [
                     'employee_id'      => $employee->id,
                     'material_code'    => $row['mat_code'],
                     'indent_no'        => $row['indent_no'] ?? null,
-                    'serial_number'=>    $row['serial_no'] ?? null,
+                    'serial_number'    => $resolvedSerial, 
                     'transaction_type' => 'ISSUE',
                 ];
 
-                $isLengthBased = ($row['issued_length'] > 0);
-                $isDrum   = !empty($row['drum_no']);
-                $isSerial = !empty($row['serial_no']);
                 $syncPayload = [
                     'indent_no'       =>  $row['indent_no'] ?? null,
                     'employee_id'         => $employee->id,
@@ -72,9 +77,7 @@ class SyncEmployeeMaterialLedger extends Command
                     'material_id'         => $material->id,
                     'material_code'       => $row['mat_code'],
                     'has_serial'    => ($isDrum || $isSerial) ? 1 : 0,
-                    'serial_number' => $isDrum
-                                        ? $row['drum_no']      
-                                        : ($isSerial ? $row['serial_no'] : null),
+                    'serial_number' => $resolvedSerial,
                   
                     'quantity'            => $isLengthBased
                                                 ? $row['balance_length']
