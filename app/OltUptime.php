@@ -13,6 +13,7 @@ class OltUptime extends Model
         'uptime_percent',
         'record_date',
          'reason',
+         'rca',
     ];
 
     protected $casts = [

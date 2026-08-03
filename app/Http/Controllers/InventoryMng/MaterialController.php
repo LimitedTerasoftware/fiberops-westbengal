@@ -442,6 +442,73 @@ private function attachReasonBreakdowns($results, $state_id, $ticket_type = 'rou
     return $items;
 }
 
+/**
+ * Attaches $row->uptime_reason_breakdown with issue counts sourced from the
+ * uptime table's own reason and rca columns (combined into one line
+ * per reason+rca pair), alongside (not replacing) $row->breakdown /
+ * $row->ticket_count which come from master_tickets.downreason.
+ */
+private function attachUptimeReasonBreakdowns($results, string $table)
+{
+    $items = method_exists($results, 'getCollection')
+        ? $results->getCollection()
+        : collect($results);
+
+    if ($items->isEmpty()) {
+        return $results;
+    }
+
+    $lgdCodes = $items->pluck('lgd_code')->unique()->values();
+
+    $dates = $items->pluck('record_date')
+        ->map(function ($date) {
+            return Carbon::parse($date)->toDateString();
+        })
+        ->unique()
+        ->values();
+
+    $breakdownRows = DB::table($table)
+        ->select(
+            'lgd_code',
+            DB::raw('DATE(record_date) as day'),
+            'reason',
+            'rca',
+            DB::raw('COUNT(*) as count')
+        )
+        ->whereIn('lgd_code', $lgdCodes)
+        ->whereBetween('record_date', [$dates->min(), $dates->max()])
+        ->whereNotNull('reason')
+        ->groupBy('lgd_code', DB::raw('DATE(record_date)'), 'reason', 'rca')
+        ->orderBy('count', 'desc')
+        ->get()
+        ->each(function ($row) {
+            $row->downreason = $row->rca ? "{$row->reason} ({$row->rca})" : $row->reason;
+        })
+        ->groupBy(function ($row) {
+            return $row->lgd_code . '|' . $row->day;
+        });
+
+    $items->transform(function ($row) use ($breakdownRows) {
+        $day = Carbon::parse($row->record_date)->toDateString();
+        $key = $row->lgd_code . '|' . $day;
+
+        $row->uptime_reason_breakdown = $breakdownRows->get($key, collect());
+
+        if (!isset($row->ticket_count)) {
+            $row->ticket_count = 0;
+        }
+
+        return $row;
+    });
+
+    if (method_exists($results, 'setCollection')) {
+        $results->setCollection($items);
+        return $results;
+    }
+
+    return $items;
+}
+
 
  public function getFrequentlyDownGps(Request $request)
 {
@@ -547,7 +614,6 @@ private function attachReasonBreakdowns($results, $state_id, $ticket_type = 'rou
                         ->groupBy('block_router_uptime.lgd_code', 'districts.name', 'blocks.name')
                         ->orderBy('uptime_percent', 'asc')
                         ->paginate(15);
-                        $results = $this->attachEmptyBreakdowns($results);
                     }
                 } else {
                 $results = $query->select(
@@ -561,6 +627,9 @@ private function attachReasonBreakdowns($results, $state_id, $ticket_type = 'rou
                 ->orderBy('block_router_uptime.uptime_percent', 'asc')
                 ->paginate(15);
                 }
+
+                $results = $this->attachEmptyBreakdowns($results);
+                $results = $this->attachUptimeReasonBreakdowns($results, 'block_router_uptime');
 
                 $is_uptime_report = true;
                 $allIssues = [];
@@ -652,7 +721,6 @@ private function attachReasonBreakdowns($results, $state_id, $ticket_type = 'rou
                         ->groupBy('olt_uptime.lgd_code', 'olt_locations.olt_location', 'districts.name', 'blocks.name')
                         ->orderBy('uptime_percent', 'asc')
                         ->paginate(15);
-                        $results = $this->attachEmptyBreakdowns($results);
                     }
                 } else {
                 $results = $query->select(
@@ -666,6 +734,9 @@ private function attachReasonBreakdowns($results, $state_id, $ticket_type = 'rou
                 ->orderBy('olt_uptime.uptime_percent', 'asc')
                 ->paginate(15);
                 }
+
+                $results = $this->attachEmptyBreakdowns($results);
+                $results = $this->attachUptimeReasonBreakdowns($results, 'olt_uptime');
 
                 $is_uptime_report = true;
                 $allIssues = [];
@@ -811,6 +882,7 @@ private function attachReasonBreakdowns($results, $state_id, $ticket_type = 'rou
                $results = $reasonView
                     ? $this->attachReasonBreakdowns($results, $state_id, $ticket_type, $reason)
                     : $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
+                $results = $this->attachUptimeReasonBreakdowns($results, 'ont_uptime');
 
                 $is_uptime_report = true;
 
@@ -919,6 +991,7 @@ private function attachReasonBreakdowns($results, $state_id, $ticket_type = 'rou
                 $results = $reasonView
                     ? $this->attachReasonBreakdowns($results, $state_id, $ticket_type, $reason)
                     : $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
+                $results = $this->attachUptimeReasonBreakdowns($results, 'gp_router_uptime');
 
 
                 $is_uptime_report = true;

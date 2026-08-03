@@ -111,8 +111,11 @@
                                     <th>Total Tickets</th>
                                     <th>Issue Breakdown</th>
                                     <th>Issue %</th>
-                              
-                                
+                                    @if(isset($is_uptime_report) && $is_uptime_report)
+                                        <th>Uptime Issue (Reason-RCA)</th>
+                                    @endif
+
+
                             </tr>
                         </thead>
                         <tbody>
@@ -173,12 +176,27 @@
                                             <span class="text-muted">-</span>
                                         @endif
                                     </td>
-                                  
+                                    @if(isset($is_uptime_report) && $is_uptime_report)
+                                        <td>
+                                            @if(isset($row->uptime_reason_breakdown) && count($row->uptime_reason_breakdown) > 0)
+                                                <ul style="list-style: none; padding: 0; margin: 0; font-size: 11px;">
+                                                    @foreach($row->uptime_reason_breakdown as $bd)
+                                                        <li class="mb-1 d-flex justify-content-between">
+                                                            <span>{{ $bd->downreason }}:</span>
+                                                            <span class="fw-bold">{{ $bd->count }}</span>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
+                                    @endif
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ (isset($is_uptime_report) && $is_uptime_report) ? 6 : 7 }}"
-                                        class="text-center">No records found.</td>  
+                                    <td colspan="7"
+                                        class="text-center">No records found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

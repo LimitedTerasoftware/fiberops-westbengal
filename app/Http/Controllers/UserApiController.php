@@ -2608,9 +2608,12 @@ public function userhistory(Request $request){
             try{
            \Log::info('userhistory API called', $request->all());
             $user_id = $request->input('user_id');
-            $baseQuery = UserRequests::join('master_tickets', 
+            $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
+            $endOfMonth = \Carbon\Carbon::now()->endOfMonth();
+            $baseQuery = UserRequests::join('master_tickets',
                     'user_requests.booking_id', '=', 'master_tickets.ticketid')
-                ->where('user_requests.provider_id', $user_id);
+                ->where('user_requests.provider_id', $user_id)
+                ->whereBetween('user_requests.created_at', [$startOfMonth, $endOfMonth]);
             $total_tickets = (clone $baseQuery)->count();
             $total_tickets_data = (clone $baseQuery)->select('user_requests.*')->get();
             $income_tickets =  (clone $baseQuery)->where('user_requests.status','INCOMING')->count();
