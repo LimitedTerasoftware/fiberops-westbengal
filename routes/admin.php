@@ -311,14 +311,18 @@ Route::resource('olt-locations', "OltLocationController");
 Route::get('/uptime', "OltLocationController@UptimeMng")->name('uptime');
 Route::get('/ont_data', "OltLocationController@OntData")->name('ont_data');
 Route::get('/uptime_data', "OltLocationController@OntDataList")->name('uptime_data');
+Route::get('/uptime_data/export', "OltLocationController@OntDataListExport")->name('uptime_data.export');
 Route::get('/olt_dashboard', "OltLocationController@OltData")->name('olt_dashboard');
 Route::get('/olt_performance', "OltLocationController@OltDataList")->name('olt_performance');
+Route::get('/olt_performance/export', "OltLocationController@OltDataListExport")->name('olt_performance.export');
 Route::get('/samriddh_dashboard', "OltLocationController@SamriddhData")->name('samriddh_dashboard');
 Route::get('/samriddh_analytics', "OltLocationController@SamriddhDataList")->name('samriddh_analytics');
 Route::get('/gprouter_dashboard', "OltLocationController@GprouterData")->name('gprouter_dashboard');
 Route::get('/gprouter_performance', "OltLocationController@GprouterDataList")->name('gprouter_performance');
+Route::get('/gprouter_performance/export', "OltLocationController@GprouterDataListExport")->name('gprouter_performance.export');
 Route::get('/blockrouter_dashboard', "OltLocationController@BlockrouterData")->name('blockrouter_dashboard');
 Route::get('/blockrouter_performance', "OltLocationController@BlockrouterDataList")->name('blockrouter_performance');
+Route::get('/blockrouter_performance/export', "OltLocationController@BlockrouterDataListExport")->name('blockrouter_performance.export');
 
 Route::post('upload-otdr-images', 'AdminController@uploadImages')->name('upload-otdr-images');
 

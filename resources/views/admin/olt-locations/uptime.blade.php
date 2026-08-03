@@ -120,13 +120,18 @@
 
                     {{-- Uptime Data Table --}}
                     <div class="terrasoft-data-tab-content" id="uptime-data-tab">
+                        <div class="terrasoft-export-buttons">
+                            <button class="terrasoft-export-btn" id="exportUptimeDataBtn">
+                                <i class="ti-download"></i> Export to Excel
+                            </button>
+                        </div>
                         <div class="terrasoft-loading" id="loadingIndicatorUptime" style="display: none;">
                             <div class="terrasoft-spinner"></div>
                             <span>Loading uptime data...</span>
                         </div>
                         <div id="uptimeTableContainer">
                         </div>
-                        
+
                     </div>
                 </div>
             </div>
@@ -180,6 +185,11 @@
                     </div>
 
                     <div class="terrasoft-data-tab-content" id="olt-performance-tab">
+                        <div class="terrasoft-export-buttons">
+                            <button class="terrasoft-export-btn" id="exportOltPerformanceBtn">
+                                <i class="ti-download"></i> Export to Excel
+                            </button>
+                        </div>
                         <div class="terrasoft-loading" id="loadingIndicatorOltPerf" style="display: none;">
                             <div class="terrasoft-spinner"></div>
                             <span>Loading OLT performance data...</span>
@@ -295,6 +305,11 @@
                     </div>
 
                     <div class="terrasoft-data-tab-content" id="gprouter-performance-tab">
+                        <div class="terrasoft-export-buttons">
+                            <button class="terrasoft-export-btn" id="exportGprouterPerformanceBtn">
+                                <i class="ti-download"></i> Export to Excel
+                            </button>
+                        </div>
                         <div class="terrasoft-loading" id="loadingIndicatorGprouterPerf" style="display: none;">
                             <div class="terrasoft-spinner"></div>
                             <span>Loading GP Router performance data...</span>
@@ -352,6 +367,11 @@
                     </div>
 
                     <div class="terrasoft-data-tab-content" id="blockrouter-performance-tab">
+                        <div class="terrasoft-export-buttons">
+                            <button class="terrasoft-export-btn" id="exportBlockrouterPerformanceBtn">
+                                <i class="ti-download"></i> Export to Excel
+                            </button>
+                        </div>
                         <div class="terrasoft-loading" id="loadingIndicatorBlockrouterPerf" style="display: none;">
                             <div class="terrasoft-spinner"></div>
                             <span>Loading Block Router performance data...</span>
@@ -1692,22 +1712,46 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     document.getElementById('applyOltFilters').addEventListener('click', function() {
-        loadDataTabData('Oltdashboard', 'olt-dashboard');
+        loadDataTabData('Oltdashboard', currentDataTab);
 
     });
-    
+
     document.getElementById('applySamriddhFilters').addEventListener('click', function() {
         loadDataTabData('Samriddhdashboard', 'samriddh-dashboard');
 
     });
         document.getElementById('applyGprouterFilters').addEventListener('click', function() {
-        loadDataTabData('Gprouterdashboard', 'gprouter-dashboard');
+        loadDataTabData('Gprouterdashboard', currentDataTab);
    });
-    
+
     document.getElementById('applyBlockrouterFilters').addEventListener('click', function() {
-        loadDataTabData('Blockrouterdashboard', 'blockrouter-dashboard');
+        loadDataTabData('Blockrouterdashboard', currentDataTab);
     });
-   
+
+    // Export to Excel — honours whatever date filter is currently applied
+    function exportTabularData(mainTab, dataTab) {
+        const filters = getFilters(mainTab);
+        const apiEndpoint = getApiEndpoint(mainTab, dataTab);
+        const queryParams = new URLSearchParams(filters).toString();
+        window.location.href = `${apiEndpoint}/export?${queryParams}`;
+    }
+
+    document.getElementById('exportUptimeDataBtn').addEventListener('click', function() {
+        exportTabularData('Ontdashboard', 'uptime-data');
+    });
+
+    document.getElementById('exportOltPerformanceBtn').addEventListener('click', function() {
+        exportTabularData('Oltdashboard', 'olt-performance');
+    });
+
+    document.getElementById('exportGprouterPerformanceBtn').addEventListener('click', function() {
+        exportTabularData('Gprouterdashboard', 'gprouter-performance');
+    });
+
+    document.getElementById('exportBlockrouterPerformanceBtn').addEventListener('click', function() {
+        exportTabularData('Blockrouterdashboard', 'blockrouter-performance');
+    });
+
         // Trend chart – independent date filter
     document.getElementById('applyTrendFilters').addEventListener('click', function () {
         loadAverageUptimeChart();
