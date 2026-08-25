@@ -13,6 +13,8 @@ use Setting;
 use Storage;
 use Session;
 use Auth;
+use Cache;
+use App\Traits\CachesDashboardQueries;
 
 use App\Helpers\Helper;
 use Mail;
@@ -36,6 +38,8 @@ use Illuminate\Support\Facades\File;
 
 class GPResource extends Controller
 {
+    use CachesDashboardQueries;
+
     /**
      * Create a new controller instance.
      *
@@ -1313,17 +1317,18 @@ private function haversine($lat1, $lon1, $lat2, $lon2)
 
 public function gettodayFrtReport(Request $request)
 {
-    $user = Session::get('user');
-    $company_id = $user->company_id;
-    $state_id   = $user->state_id;
-    $district_id = $user->district_id;
-
+    $scope = $this->dashboardScope();
+    $company_id  = $scope['company_id'];
+    $state_id    = $scope['state_id'];
+    $district_id = $scope['district_id'];
 
     $inputFromDate = request()->input('from_date');
     $inputToDate   = request()->input('to_date');
 
     $fromDate = $inputFromDate !== null ? $inputFromDate : date('Y-m-d');
     $toDate   = $inputToDate !== null ? $inputToDate : date('Y-m-d');
+
+    $result = $this->dashboardCache('today_frt_report', 15, function () use ($company_id, $state_id, $district_id, $fromDate, $toDate) {
     // // Pending tickets query
     // $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
     // if ($inputFromDate && $inputToDate) {
@@ -1521,19 +1526,22 @@ public function gettodayFrtReport(Request $request)
         ];
     }
 
-    return response()->json([
+    return array(
         'from_date' => $fromDate,
         'to_date' => $toDate,
         'zones' => $zoneReport
-    ]);
+    );
+    });
+
+    return response()->json($result);
 }
 
 public function getDiMisReport(Request $request)
 {
-    $user = Session::get('user');
-    $company_id = $user->company_id;
-    $state_id   = $user->state_id;
-    $district_id = $user->district_id;
+    $scope = $this->dashboardScope();
+    $company_id  = $scope['company_id'];
+    $state_id    = $scope['state_id'];
+    $district_id = $scope['district_id'];
 
     $inputFromDate = request()->input('from_date');
     $inputToDate   = request()->input('to_date');
@@ -1541,6 +1549,7 @@ public function getDiMisReport(Request $request)
     $fromDate = $inputFromDate !== null ? $inputFromDate : date('Y-m-d');
     $toDate   = $inputToDate !== null ? $inputToDate : date('Y-m-d');
 
+    $result = $this->dashboardCache('dimis_report', 15, function () use ($company_id, $state_id, $district_id, $fromDate, $toDate) {
     // $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
     // if ($inputFromDate && $inputToDate) {
     //     $pendingTicketsQuery .= ' AND DATE(master_tickets.downdate) BETWEEN "' . $fromDate . '" AND "' . $toDate . '"';
@@ -1702,11 +1711,14 @@ public function getDiMisReport(Request $request)
         ];
     }
 
-    return response()->json([
+    return array(
         'from_date' => $fromDate,
         'to_date' => $toDate,
         'zones' => $zoneReport
-    ]);
+    );
+    });
+
+    return response()->json($result);
 }
 
  // --- Helper: Determine provider stage ---
@@ -2442,11 +2454,12 @@ public function ongoingTicketData(Request $request)
 {
 
     $filter = $request->input('filter', 'all');
+    $scope = $this->dashboardScope();
+    $company_id  = $scope['company_id'];
+    $state_id    = $scope['state_id'];
+    $district_id = $scope['district_id'];
 
-    $user = Session::get('user');
-    $company_id  = $user->company_id;
-    $state_id    = $user->state_id;
-    $district_id = $user->district_id;
+    $zones = $this->dashboardCache('ongoing_ticket_data', 10, function () use ($company_id, $state_id, $district_id, $filter) {
 
     // --- Get only PICKEDUP Tickets with provider & zone info ---
     $query = DB::table('user_requests')
@@ -2526,6 +2539,9 @@ public function ongoingTicketData(Request $request)
             $zones[$t->zone_id]['patrollers'][$bucket]++;
         }
     }
+
+    return $zones;
+    });
 
     return response()->json([
         'zones' => $zones
@@ -3279,17 +3295,19 @@ public function jointEnclosureDownload_old2(Request $request)
         }
     }
   public function getCompletionTrend(Request $request) {
-        $user = Session::get('user');
-        $company_id = $user->company_id;
-        $state_id = $user->state_id;
-        $district_id = $user->district_id;
+        $scope = $this->dashboardScope();
+        $company_id  = $scope['company_id'];
+        $state_id    = $scope['state_id'];
+        $district_id = $scope['district_id'];
         $today = Carbon::today();
         // Default last 7 days including today
         $startDate = $request->input('from_date') ? Carbon::parse($request->input('from_date')) : $today->copy()->subDays(6);
         $endDate = $request->input('to_date') ? Carbon::parse($request->input('to_date')) : $today->copy();
         $fromDate = $startDate->toDateString();
         $toDate = $endDate->toDateString();
-        
+
+        $dates = $this->dashboardCache('completion_trend', 30, function () use ($company_id, $state_id, $district_id, $fromDate, $toDate) {
+
         // Generate Date Range Array
         $period = new DatePeriod(
              new DateTime($fromDate),
@@ -3370,6 +3388,10 @@ public function jointEnclosureDownload_old2(Request $request)
                  }
              }
         }
+
+        return $dates;
+        });
+
         return response()->json(array_values($dates));
     }
 

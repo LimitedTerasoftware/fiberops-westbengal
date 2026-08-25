@@ -38,6 +38,8 @@ use App\MasterTicket;
 use ZipArchive;
 use DB;
 use Session;
+use Cache;
+use App\Traits\CachesDashboardQueries;
 use App\Block;
 use App\Document;
 use App\District;
@@ -49,6 +51,8 @@ use App\Services\GoogleMapsService;
 
 class AdminController extends Controller
 {
+    use CachesDashboardQueries;
+
     /**
      * Create a new controller instance.
      *
@@ -4846,9 +4850,11 @@ public function process(Request $request)
                             $getproviderdetails = DB::table('providers')->select( 'providers.id', 'providers.mobile', 'providers.latitude', 'providers.longitude','provider_devices.token')->leftjoin('provider_devices','providers.id','=','provider_devices.provider_id')->where('mobile','=',$mobile)->first();
                             }
                             //dd($getproviderdetails);
-                            \Log::error("Provider not found for mobile: {$mobile}, import_type: {$import_type}");
-                             Log::error('Provider detailsManual: ' . json_encode($getproviderdetails));
-                 
+                            if (!$getproviderdetails) {
+                                \Log::error("Provider not found for mobile: {$mobile}, import_type: {$import_type}");
+                                continue;
+                            }
+                            Log::error('Provider detailsManual: ' . json_encode($getproviderdetails));
 
                             $provider_id = $getproviderdetails->id;
                             $latitude = $check_lgd_code->latitude;
@@ -6736,14 +6742,12 @@ public function getDashboardData_old(Request $request)
 
 public function getDashboardData(Request $request)
 {
+    $scope = $this->dashboardScope();
+    $company_id  = $scope['company_id'];
+    $state_id    = $scope['state_id'];
+    $district_id = $scope['district_id'];
 
-// Get current user
-   Session::put('user', Auth::User());
-    $user = Session::get('user');
-    $company_id = $user->company_id;
-    $state_id = $user->state_id;
-    $district_id = $user->district_id;
-   
+    $data = $this->dashboardCache('dashboard_data', 15, function () use ($company_id, $state_id, $district_id) {
     // Master tickets summary
    $masterTicketsquery = DB::table('user_requests')
     ->selectRaw("
@@ -6933,30 +6937,32 @@ $getCategorySummary = function($pattern, $useRegexp = false) use ($company_id, $
         }
        $totalGp =   $totalGpquery->count();   
 
-    return response()->json([
+    return array(
         'tickets' => $masterTickets,
         'unique_lgd' => $uniqueLgdCount,
         'gp_total' => $totalGp,
         'categories' => $categories
-    ]);
+    );
+    });
 
-
+    return response()->json($data);
  }
 
 
 public function getTeamStatus(Request $request)
 {
-    Session::put('user', Auth::User());
-    $user = Session::get('user');
-    $company_id = $user->company_id;
-    $state_id   = $user->state_id;
-    $district_id = $user->district_id;
+    $scope = $this->dashboardScope();
+    $company_id  = $scope['company_id'];
+    $state_id    = $scope['state_id'];
+    $district_id = $scope['district_id'];
 
     $inputFromDate = request()->input('from_date');
     $inputToDate = request()->input('to_date');
 
     $fromDate = $inputFromDate !== null ? $inputFromDate : date('Y-m-d'); // Default to today's date
     $toDate   = $inputToDate !== null ? $inputToDate : date('Y-m-d');     // Default to today's date
+
+    $result = $this->dashboardCache('team_status', 15, function () use ($company_id, $state_id, $district_id, $fromDate, $toDate, $inputFromDate, $inputToDate) {
 
     // Build your existing query
     $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
@@ -7071,7 +7077,7 @@ public function getTeamStatus(Request $request)
 
     }
 
-    return response()->json([
+    return array(
         'from_date'       => $fromDate,
         'to_date'         => $toDate,
         'total_teams'     => $totalTeams,
@@ -7084,7 +7090,10 @@ public function getTeamStatus(Request $request)
         'teams_working_on_old_tickets' => $teamsWorkingOnOldTickets,
         'sla_failed_teams' => $slaFailedTeams,
 
-    ]);
+    );
+    });
+
+    return response()->json($result);
 }
 
 
@@ -7251,82 +7260,78 @@ public function dashboardMap_old(Request $request)
 
 public function dashboardMap(Request $request)
 {
-    // Get the logged-in user from session
-    Session::put('user', Auth::User());
-    $user = Session::get('user');
-
-    //if (!$user) {
-    //    return response()->json(['error' => 'User not authenticated'], 401);
-    //}
-
-    $company_id = $user->company_id;
-    $state_id   = $user->state_id;
-    $district_id = $user->district_id;
-
+    $scope = $this->dashboardScope();
+    $company_id  = $scope['company_id'];
+    $state_id    = $scope['state_id'];
+    $district_id = $scope['district_id'];
 
     try {
-        // Today range for index-friendly queries
-        $todayStart = Carbon::today()->startOfDay();
-        $todayEnd   = Carbon::today()->endOfDay();
+        $providers = $this->dashboardCache('map', 10, function () use ($company_id, $state_id, $district_id) {
+            // Today range for index-friendly queries
+            $todayStart = Carbon::today()->startOfDay();
+            $todayEnd   = Carbon::today()->endOfDay();
 
-        // Fetch latest attendance for today using ID for speed
-        $latestAttendance = DB::table('attendance as a')
-            ->select('a.provider_id', 'a.status', 'a.address', 'a.created_at')
-            ->join(DB::raw('(SELECT provider_id, MAX(id) as max_id
-                              FROM attendance
-                              WHERE created_at BETWEEN ? AND ?
-                              GROUP BY provider_id) sub'), function ($join) {
-                $join->on('a.id', '=', 'sub.max_id');
-            })
-            ->setBindings([$todayStart, $todayEnd])
-            ->get()
-            ->keyBy('provider_id');
+            // Fetch latest attendance for today using ID for speed
+            $latestAttendance = DB::table('attendance as a')
+                ->select('a.provider_id', 'a.status', 'a.address', 'a.created_at')
+                ->join(DB::raw('(SELECT provider_id, MAX(id) as max_id
+                                  FROM attendance
+                                  WHERE created_at BETWEEN ? AND ?
+                                  GROUP BY provider_id) sub'), function ($join) {
+                    $join->on('a.id', '=', 'sub.max_id');
+                })
+                ->setBindings([$todayStart, $todayEnd])
+                ->get()
+                ->keyBy('provider_id');
 
-        $attendanceProviderIds = $latestAttendance->keys();
+            $attendanceProviderIds = $latestAttendance->keys();
 
-        if (empty($attendanceProviderIds) || count($attendanceProviderIds) == 0) {
-            return response()->json([]); // No attendance today
-        }
+            if ($attendanceProviderIds->isEmpty()) {
+                return array(); // No attendance today
+            }
 
-        // Fetch latest provider_tracking IDs for those providers today
-        $latestTrackingIds = DB::table('provider_tracking')
-            ->selectRaw('MAX(id) as id')
-            ->whereIn('provider_id', $attendanceProviderIds)
-            ->whereBetween('created_at', [$todayStart, $todayEnd])
-            ->groupBy('provider_id')
-            ->pluck('id');
+            // Fetch latest provider_tracking IDs for those providers today
+            $latestTrackingIds = DB::table('provider_tracking')
+                ->selectRaw('MAX(id) as id')
+                ->whereIn('provider_id', $attendanceProviderIds)
+                ->whereBetween('created_at', [$todayStart, $todayEnd])
+                ->groupBy('provider_id')
+                ->pluck('id');
 
-        if (empty($latestTrackingIds) || count($latestTrackingIds) == 0) {
-            return response()->json([]); // No tracking data today
-        }
+            if ($latestTrackingIds->isEmpty()) {
+                return array(); // No tracking data today
+            }
 
-        // Fetch providers with tracking data
-        $providersquery = Provider::where('company_id', $company_id)
-            ->where('state_id', $state_id)
-            ->join('provider_tracking', 'provider_tracking.provider_id', '=', 'providers.id')
-            ->whereIn('provider_tracking.id', $latestTrackingIds);
-             if (!empty($district_id)) {
-            $providersquery->where('providers.district_id', $district_id);
-        }
-          
-        $providers = $providersquery->get(array(
-                'providers.id',
-                'providers.first_name',
-                'providers.last_name',
-                'providers.type',
-                'provider_tracking.latitude',
-                'provider_tracking.longitude',
-                'provider_tracking.created_at as tracking_time',
-            ));
+            // Fetch providers with tracking data
+            $providersquery = Provider::where('company_id', $company_id)
+                ->where('state_id', $state_id)
+                ->join('provider_tracking', 'provider_tracking.provider_id', '=', 'providers.id')
+                ->whereIn('provider_tracking.id', $latestTrackingIds);
+                 if (!empty($district_id)) {
+                $providersquery->where('providers.district_id', $district_id);
+            }
 
-        // Attach attendance info (PHP 5 compatible)
-        foreach ($providers as $provider) {
-            $attendance = isset($latestAttendance[$provider->id]) ? $latestAttendance[$provider->id] : null;
+            $providers = $providersquery->get(array(
+                    'providers.id',
+                    'providers.first_name',
+                    'providers.last_name',
+                    'providers.type',
+                    'provider_tracking.latitude',
+                    'provider_tracking.longitude',
+                    'provider_tracking.created_at as tracking_time',
+                ));
 
-            $provider->status = isset($attendance->status) ? $attendance->status : null;
-            $provider->address = isset($attendance->address) ? $attendance->address : null;
-            $provider->attendance_time = isset($attendance->created_at) ? $attendance->created_at : null;
-        }
+            // Attach attendance info (PHP 5 compatible)
+            foreach ($providers as $provider) {
+                $attendance = isset($latestAttendance[$provider->id]) ? $latestAttendance[$provider->id] : null;
+
+                $provider->status = isset($attendance->status) ? $attendance->status : null;
+                $provider->address = isset($attendance->address) ? $attendance->address : null;
+                $provider->attendance_time = isset($attendance->created_at) ? $attendance->created_at : null;
+            }
+
+            return $providers;
+        });
 
         return response()->json($providers);
 
@@ -8927,10 +8932,10 @@ public function velocityTrend(Request $request)
 
 public function districtHeatmap(Request $request)
 {
-    $user = Session::get('user');
-    $company_id  = $user->company_id;
-    $state_id    = $user->state_id;
-    $district_id = isset($user->district_id) ? $user->district_id : null;
+    $scope = $this->dashboardScope();
+    $company_id  = $scope['company_id'];
+    $state_id    = $scope['state_id'];
+    $district_id = $scope['district_id'];
 
     $range  = $request->range ? $request->range : '7days';
     $type   = $request->type ? $request->type : 'all';      // close type
@@ -8948,142 +8953,96 @@ public function districtHeatmap(Request $request)
         $to   = date('Y-m-d 23:59:59');
     }
 
-    /* ================= BASE QUERY (START FROM DISTRICTS) ================= */
-    $query = DB::table('districts')
-        ->leftJoin('user_requests', function ($join) use (
-            $from, $to, $company_id, $state_id, $type, $g_type
-        ) {
-            $join->on('districts.id', '=', 'user_requests.district_id')
-                 ->whereBetween('user_requests.created_at', array($from, $to))
-                 ->where('user_requests.company_id', $company_id)
-                 ->where('user_requests.state_id', $state_id);
+    $data = $this->dashboardCache("heatmap:$range:$type:$g_type", 30, function () use (
+        $company_id, $state_id, $district_id, $from, $to, $type, $g_type
+    ) {
+        /* ================= BASE QUERY (START FROM DISTRICTS) ================= */
+        $query = DB::table('districts')
+            ->leftJoin('user_requests', function ($join) use (
+                $from, $to, $company_id, $state_id, $type, $g_type
+            ) {
+                $join->on('districts.id', '=', 'user_requests.district_id')
+                     ->whereBetween('user_requests.created_at', array($from, $to))
+                     ->where('user_requests.company_id', $company_id)
+                     ->where('user_requests.state_id', $state_id);
 
-            /* CLOSE TYPE */
-            if ($type == 'auto') {
-                $join->where('user_requests.autoclose', 'Auto');
-            } elseif ($type == 'manual') {
-                $join->where('user_requests.autoclose', 'Manual');
-            }
-
-            /* GENERATE TYPE */
-            if ($g_type == 'auto') {
-                $join->where('user_requests.default_autoclose', 'Auto');
-            } elseif ($g_type == 'manual') {
-                $join->where('user_requests.default_autoclose', 'Manual');
-            }
-        })
-        ->leftJoin('master_tickets', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
-        ->where('districts.state_id', $state_id);
-
-    if (!empty($district_id)) {
-        $query->where('districts.id', $district_id);
-    }
-
-    /* ================= RAW DATA ================= */
-    $rows = $query
-        ->select(
-            'districts.id as district_id',
-            'districts.name as district',
-            'user_requests.status',
-            'user_requests.finished_at as closed_at',
-            'master_tickets.downdate',
-            'master_tickets.downtime'
-        )
-        ->orderBy('districts.name', 'ASC')
-        ->get();
-
-    /* ================= PROCESS ================= */
-    $summary = array();
-
-    foreach ($rows as $r) {
-
-        if (!isset($summary[$r->district])) {
-            $summary[$r->district] = array(
-                'district_id'  => $r->district_id,
-                'assigned'     => 0,
-                'closed'       => 0,
-                'backlog'      => 0,
-                'hold'         => 0,
-                'not_started'  => 0,
-                'ongoing'      => 0,
-                'sla_pass'     => 0,
-                'sla_fail'     => 0
-            );
-        }
-
-        /* If no ticket row */
-        if (empty($r->status)) {
-            continue;
-        }
-
-        /* Assigned */
-        $summary[$r->district]['assigned']++;
-
-        /* STATUS COUNTS */
-        if ($r->status == 'ONHOLD') {
-            $summary[$r->district]['hold']++;
-        }
-
-        if ($r->status == 'INCOMING') {
-            $summary[$r->district]['not_started']++;
-        }
-
-        if ($r->status == 'PICKEDUP') {
-            $summary[$r->district]['ongoing']++;
-        }
-
-        /* CLOSED & SLA */
-        if ($r->status == 'COMPLETED' && !empty($r->closed_at)) {
-
-            $summary[$r->district]['closed']++;
-
-            $startTime = strtotime(
-                date('Y-m-d H:i:s', strtotime($r->downdate . ' ' . $r->downtime))
-            );
-            $closeTime = strtotime($r->closed_at);
-
-            if ($startTime && $closeTime) {
-                $diffHours = ($closeTime - $startTime) / 3600;
-
-                if ($diffHours <= 8) {
-                    $summary[$r->district]['sla_pass']++;
-                } else {
-                    $summary[$r->district]['sla_fail']++;
+                /* CLOSE TYPE */
+                if ($type == 'auto') {
+                    $join->where('user_requests.autoclose', 'Auto');
+                } elseif ($type == 'manual') {
+                    $join->where('user_requests.autoclose', 'Manual');
                 }
-            }
 
-        } else {
-            $summary[$r->district]['backlog']++;
+                /* GENERATE TYPE */
+                if ($g_type == 'auto') {
+                    $join->where('user_requests.default_autoclose', 'Auto');
+                } elseif ($g_type == 'manual') {
+                    $join->where('user_requests.default_autoclose', 'Manual');
+                }
+            })
+            ->leftJoin('master_tickets', 'master_tickets.ticketid', '=', 'user_requests.booking_id')
+            ->where('districts.state_id', $state_id);
+
+        if (!empty($district_id)) {
+            $query->where('districts.id', $district_id);
         }
-    }
 
-    /* ================= RESPONSE ================= */
-    $data = array();
+        /* SLA hours expressed in SQL instead of parsing every row in PHP */
+        $slaHoursExpr = "TIMESTAMPDIFF(HOUR, STR_TO_DATE(CONCAT(master_tickets.downdate, ' ', master_tickets.downtime), '%Y-%m-%d %h:%i:%s %p'), user_requests.finished_at)";
 
-    foreach ($summary as $district => $v) {
+        /* ================= AGGREGATE IN SQL (ONE ROW PER DISTRICT) ================= */
+        $rows = $query
+            ->selectRaw("
+                districts.id as district_id,
+                districts.name as district,
+                SUM(IF(user_requests.status IS NOT NULL, 1, 0)) as assigned,
+                SUM(IF(user_requests.status = 'COMPLETED' AND user_requests.finished_at IS NOT NULL, 1, 0)) as closed,
+                SUM(IF(user_requests.status = 'ONHOLD', 1, 0)) as hold,
+                SUM(IF(user_requests.status = 'INCOMING', 1, 0)) as not_started,
+                SUM(IF(user_requests.status = 'PICKEDUP', 1, 0)) as ongoing,
+                SUM(IF(
+                    user_requests.status = 'COMPLETED' AND user_requests.finished_at IS NOT NULL
+                    AND $slaHoursExpr <= 8, 1, 0
+                )) as sla_pass,
+                SUM(IF(
+                    user_requests.status = 'COMPLETED' AND user_requests.finished_at IS NOT NULL
+                    AND $slaHoursExpr > 8, 1, 0
+                )) as sla_fail
+            ")
+            ->groupBy('districts.id', 'districts.name')
+            ->orderBy('districts.name', 'ASC')
+            ->get();
 
-        $closed = $v['closed'];
+        /* ================= RESPONSE ================= */
+        $data = array();
 
-        $slaPct = $closed > 0
-            ? round(($v['sla_fail'] / $closed) * 100, 1)
-            : 0;
-        $districtId = $v['district_id'] ?? null;
+        foreach ($rows as $v) {
 
-        $data[] = array(
-            'district'      => $district,
-            'district_id'   => $districtId,
-            'assigned'      => $v['assigned'],
-            'closed'        => $closed,
-            'backlog'       => $v['backlog'],
-            'hold'          => $v['hold'],
-            'not_started'   => $v['not_started'],
-            'ongoing'       => $v['ongoing'],
-            'sla_percent'   => $slaPct,
-            'sla_pass'      => $v['sla_pass'],
-            'sla_fail'      => $v['sla_fail'],
-            'net_velocity'  => $closed - $v['assigned']
-        );
-    }
+            $closed = (int) $v->closed;
+            $assigned = (int) $v->assigned;
+
+            $slaPct = $closed > 0
+                ? round(($v->sla_fail / $closed) * 100, 1)
+                : 0;
+
+            $data[] = array(
+                'district'      => $v->district,
+                'district_id'   => $v->district_id,
+                'assigned'      => $assigned,
+                'closed'        => $closed,
+                'backlog'       => $assigned - $closed,
+                'hold'          => (int) $v->hold,
+                'not_started'   => (int) $v->not_started,
+                'ongoing'       => (int) $v->ongoing,
+                'sla_percent'   => $slaPct,
+                'sla_pass'      => (int) $v->sla_pass,
+                'sla_fail'      => (int) $v->sla_fail,
+                'net_velocity'  => $closed - $assigned
+            );
+        }
+
+        return $data;
+    });
 
     return response()->json($data);
 }
