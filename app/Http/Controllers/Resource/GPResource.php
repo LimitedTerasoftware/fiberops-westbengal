@@ -36,6 +36,7 @@ use Illuminate\Support\Facades\File;
 
 class GPResource extends Controller
 {
+
     /**
      * Create a new controller instance.
      *
@@ -1324,6 +1325,7 @@ public function gettodayFrtReport(Request $request)
 
     $fromDate = $inputFromDate !== null ? $inputFromDate : date('Y-m-d');
     $toDate   = $inputToDate !== null ? $inputToDate : date('Y-m-d');
+
     // // Pending tickets query
     // $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
     // if ($inputFromDate && $inputToDate) {
@@ -1521,16 +1523,17 @@ public function gettodayFrtReport(Request $request)
         ];
     }
 
-    return response()->json([
+     return response()->json([
         'from_date' => $fromDate,
         'to_date' => $toDate,
         'zones' => $zoneReport
-    ]);
+      ]);
+
 }
 
 public function getDiMisReport(Request $request)
 {
-    $user = Session::get('user');
+   $user = Session::get('user');
     $company_id = $user->company_id;
     $state_id   = $user->state_id;
     $district_id = $user->district_id;
@@ -1540,6 +1543,7 @@ public function getDiMisReport(Request $request)
 
     $fromDate = $inputFromDate !== null ? $inputFromDate : date('Y-m-d');
     $toDate   = $inputToDate !== null ? $inputToDate : date('Y-m-d');
+
 
     // $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
     // if ($inputFromDate && $inputToDate) {
@@ -1702,11 +1706,12 @@ public function getDiMisReport(Request $request)
         ];
     }
 
-    return response()->json([
+      return response()->json([
         'from_date' => $fromDate,
         'to_date' => $toDate,
         'zones' => $zoneReport
-    ]);
+      ]);
+
 }
 
  // --- Helper: Determine provider stage ---
@@ -2128,15 +2133,15 @@ public function gp_mapping_update(Request $request)
                         'petroller_contact_no' => $phone,
                     ];
                     break;
-                case '3': // Zonal Incharge
+                case '3': // block Incharge
                     $updateData = [
-                        'zonal_incharge_name' => $name,
-                        'zonal_incharge_ph' => $phone,
+                        'block_engineer_name' => $name,
+                        'block_engineer_ph' => $phone,
                        
                     ];
                     break;
                 case '10':
-                    $updated=[
+                    $updateData=[
                          'host_name' => $name,
                         'router_ip' => $phone,
                     ];
@@ -2526,6 +2531,7 @@ public function ongoingTicketData(Request $request)
             $zones[$t->zone_id]['patrollers'][$bucket]++;
         }
     }
+   
 
     return response()->json([
         'zones' => $zones
@@ -3289,6 +3295,7 @@ public function jointEnclosureDownload_old2(Request $request)
         $endDate = $request->input('to_date') ? Carbon::parse($request->input('to_date')) : $today->copy();
         $fromDate = $startDate->toDateString();
         $toDate = $endDate->toDateString();
+
         
         // Generate Date Range Array
         $period = new DatePeriod(
@@ -3370,6 +3377,7 @@ public function jointEnclosureDownload_old2(Request $request)
                  }
              }
         }
+       
         return response()->json(array_values($dates));
     }
 

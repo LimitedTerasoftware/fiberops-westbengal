@@ -49,6 +49,7 @@ use App\Services\GoogleMapsService;
 
 class AdminController extends Controller
 {
+
     /**
      * Create a new controller instance.
      *
@@ -4846,7 +4847,10 @@ public function process(Request $request)
                             $getproviderdetails = DB::table('providers')->select( 'providers.id', 'providers.mobile', 'providers.latitude', 'providers.longitude','provider_devices.token')->leftjoin('provider_devices','providers.id','=','provider_devices.provider_id')->where('mobile','=',$mobile)->first();
                             }
                             //dd($getproviderdetails);
-                            \Log::error("Provider not found for mobile: {$mobile}, import_type: {$import_type}");
+                             if (!$getproviderdetails) {
+                                 \Log::error("Provider not found for mobile: {$mobile}, import_type: {$import_type}");
+                               continue;
+                             }
                              Log::error('Provider detailsManual: ' . json_encode($getproviderdetails));
                  
 
@@ -6736,13 +6740,20 @@ public function getDashboardData_old(Request $request)
 
 public function getDashboardData(Request $request)
 {
-
-// Get current user
-   Session::put('user', Auth::User());
+    Session::put('user', Auth::User());
     $user = Session::get('user');
     $company_id = $user->company_id;
     $state_id = $user->state_id;
     $district_id = $user->district_id;
+
+
+
+// Get current user
+//    Session::put('user', Auth::User());
+//     $user = Session::get('user');
+//     $company_id = $user->company_id;
+//     $state_id = $user->state_id;
+//     $district_id = $user->district_id;
    
     // Master tickets summary
    $masterTicketsquery = DB::table('user_requests')
@@ -6939,14 +6950,12 @@ $getCategorySummary = function($pattern, $useRegexp = false) use ($company_id, $
         'gp_total' => $totalGp,
         'categories' => $categories
     ]);
-
-
- }
+}
 
 
 public function getTeamStatus(Request $request)
 {
-    Session::put('user', Auth::User());
+     Session::put('user', Auth::User());
     $user = Session::get('user');
     $company_id = $user->company_id;
     $state_id   = $user->state_id;
@@ -6957,6 +6966,8 @@ public function getTeamStatus(Request $request)
 
     $fromDate = $inputFromDate !== null ? $inputFromDate : date('Y-m-d'); // Default to today's date
     $toDate   = $inputToDate !== null ? $inputToDate : date('Y-m-d');     // Default to today's date
+
+
 
     // Build your existing query
     $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
@@ -7071,7 +7082,7 @@ public function getTeamStatus(Request $request)
 
     }
 
-    return response()->json([
+     return response()->json([
         'from_date'       => $fromDate,
         'to_date'         => $toDate,
         'total_teams'     => $totalTeams,
@@ -7084,7 +7095,7 @@ public function getTeamStatus(Request $request)
         'teams_working_on_old_tickets' => $teamsWorkingOnOldTickets,
         'sla_failed_teams' => $slaFailedTeams,
 
-    ]);
+     ]);
 }
 
 
@@ -7251,20 +7262,15 @@ public function dashboardMap_old(Request $request)
 
 public function dashboardMap(Request $request)
 {
-    // Get the logged-in user from session
     Session::put('user', Auth::User());
     $user = Session::get('user');
-
-    //if (!$user) {
-    //    return response()->json(['error' => 'User not authenticated'], 401);
-    //}
-
     $company_id = $user->company_id;
     $state_id   = $user->state_id;
     $district_id = $user->district_id;
 
 
     try {
+
         // Today range for index-friendly queries
         $todayStart = Carbon::today()->startOfDay();
         $todayEnd   = Carbon::today()->endOfDay();
@@ -7284,10 +7290,9 @@ public function dashboardMap(Request $request)
 
         $attendanceProviderIds = $latestAttendance->keys();
 
-        if (empty($attendanceProviderIds) || count($attendanceProviderIds) == 0) {
-            return response()->json([]); // No attendance today
-        }
-
+          if (empty($attendanceProviderIds) || count($attendanceProviderIds) == 0) {
+            return response()->json([]); 
+          }
         // Fetch latest provider_tracking IDs for those providers today
         $latestTrackingIds = DB::table('provider_tracking')
             ->selectRaw('MAX(id) as id')
@@ -7297,9 +7302,8 @@ public function dashboardMap(Request $request)
             ->pluck('id');
 
         if (empty($latestTrackingIds) || count($latestTrackingIds) == 0) {
-            return response()->json([]); // No tracking data today
+            return response()->json([]);
         }
-
         // Fetch providers with tracking data
         $providersquery = Provider::where('company_id', $company_id)
             ->where('state_id', $state_id)
@@ -7327,6 +7331,8 @@ public function dashboardMap(Request $request)
             $provider->address = isset($attendance->address) ? $attendance->address : null;
             $provider->attendance_time = isset($attendance->created_at) ? $attendance->created_at : null;
         }
+
+   
 
         return response()->json($providers);
 
@@ -9087,8 +9093,5 @@ public function districtHeatmap(Request $request)
 
     return response()->json($data);
 }
-
-
-  
 
 }
