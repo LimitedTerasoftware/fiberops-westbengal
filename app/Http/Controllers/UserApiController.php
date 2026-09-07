@@ -4425,6 +4425,10 @@ private function processTicketData(array $jsonData)
         if (
             stripos($problemType, 'host') === false 
         ) {
+            Log::info('ProblemType', [
+                'ProblemType' => $problemType,
+                'ticketId'=>$ticketId,
+            ]);
             continue;
         }
 
@@ -4491,11 +4495,74 @@ private function processTicketData(array $jsonData)
                 }
 
             }
+            $normalizeBCode = function ($code) {
+                if (!$code) {
+                    return null;
+                }
+                $code = strtoupper(trim($code));
+                if (strlen($code) > 1 && $code[0] === 'B' && ($code[1] === 'O' || $code[1] === '0')) {
+                    $code = 'B0' . substr($code, 2);
+                }
+                return $code;
+            };
             if (!$lgd_code) {
                 $popKey = $keyvalue['pop_map_key'] ?? '';
 
              if (preg_match('/-(B[A-Z]*\d+|\d{5,})-/', $popKey, $matches)) {
+                Log::info('DEBUG raw bytes', [
+                    'ticketid' => $ticketId,
+                    'pop_map_key_hex' => bin2hex($keyvalue['pop_map_key'] ?? ''),
+                    'lgd_code'=>$matches[1],
+                ]);
                 $lgd_code = $matches[1];
+                $isBCode = strtoupper(substr($lgd_code, 0, 1)) === 'B';
+                if ($isBCode) {
+                     $normalizedCode = $normalizeBCode($lgd_code);
+
+                    $gpData = DB::table('gp_list')
+                        ->leftJoin('districts', 'districts.id', '=', 'gp_list.district_id')
+                        ->leftJoin('blocks', 'blocks.id', '=', 'gp_list.block_id')
+                       ->whereRaw(
+                            "CASE 
+                                WHEN UPPER(gp_list.olt_lgdcode) LIKE 'BO%' OR UPPER(gp_list.olt_lgdcode) LIKE 'B0%' 
+                                THEN CONCAT('B0', SUBSTRING(UPPER(TRIM(gp_list.olt_lgdcode)), 3))
+                                ELSE UPPER(TRIM(gp_list.olt_lgdcode))
+                            END = ?",
+                            [$normalizedCode]
+                        )
+                        ->select(
+                            'gp_list.lgd_code',
+                            'gp_list.olt_lgdcode',
+                            'gp_list.district_id',
+                            'gp_list.block_id',
+                            'gp_list.state_id',
+                            'gp_list.gp_name',
+                            'districts.name as district_name',
+                            'blocks.name as block_name'
+                        )
+                        ->first();  
+                     $gpDisplayName = 'BLOCK ROUTER';
+                     $gpname = 'block router';
+
+                    if ($gpData) {
+                        $district_id = $gpData->district_id;
+                        $block_id    = $gpData->block_id;
+                        $stateId     = $gpData->state_id;
+                        $lgd_code    = $gpData->olt_lgdcode; 
+
+                        $districtDisplayName = $gpData->district_name;
+                        $blockDisplayName    = $gpData->block_name;
+
+                        $districtName = strtolower(trim($gpData->district_name));
+                        $blockName    = strtolower(trim($gpData->block_name));
+                        }else {
+                            Log::warning('Block router code not found in gp_list', [
+                                'raw_code' => $lgd_code,
+                                'normalized' => $normalizedCode,
+                            ]);
+                        }
+                    } else {
+
 
                     $gpData = DB::table('gp_list')
                         ->leftJoin('districts', 'districts.id', '=', 'gp_list.district_id')
@@ -4508,14 +4575,13 @@ private function processTicketData(array $jsonData)
                             'gp_list.gp_name',
                             'districts.name as district_name',
                             'blocks.name as block_name'
-                        )
+                           )
                         ->first();
 
                     if ($gpData) {
                         $district_id = $gpData->district_id;
                         $block_id    = $gpData->block_id;
                         $stateId     = $gpData->state_id;
-
                         $districtDisplayName = $gpData->district_name;
                         $blockDisplayName    = $gpData->block_name;
                         $gpDisplayName       = $gpData->gp_name;
@@ -4524,7 +4590,9 @@ private function processTicketData(array $jsonData)
                         $blockName    = strtolower(trim($gpData->block_name));
                         $gpname       = strtolower(trim($gpData->gp_name));
                     }
+
                 }
+             }
             }
 
 
@@ -4537,6 +4605,13 @@ private function processTicketData(array $jsonData)
                     'pop_key'  => $keyvalue['pop_map_key'] ?? null
                 ]);
             }
+            Log::info('DEBUG lgd_code before insert', [
+                    'ticketid' => $ticketId,
+                    'lgd_code' => $lgd_code,
+                    'pop_map_key' => $keyvalue['pop_map_key'] ?? null,
+                    'pop_map_key_hex' => bin2hex($keyvalue['pop_map_key'] ?? ''),
+
+                ]);
 
             //  Prepare master ticket data
             $data = [
@@ -4621,6 +4696,8 @@ private function processTicketData(array $jsonData)
             $UserRequest->d_longitude = $lng;
             $UserRequest->otp = mt_rand(1000, 9999);
             $UserRequest->assigned_at = Carbon::now();
+            $UserRequest->autoclose = 'Auto';
+            $UserRequest->default_autoclose = 'Auto';
             $UserRequest->save();
 
             // Request filter

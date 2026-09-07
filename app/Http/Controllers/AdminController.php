@@ -4643,13 +4643,13 @@ public function process(Request $request)
                 }
                 if(empty($filedata[0]) && empty($filedata[1]) && empty($filedata[2]))
                     break;
-                if ($import_type == 4) {
+                if ($import_type == 3 || $import_type == 4) {
                     $check_lgd_code = DB::table('gp_list')
                         ->where('lgd_code', $filedata[0])
                         ->orWhere('olt_lgdcode', $filedata[0])
                         ->first();
                 } else {
-                
+
                 $check_lgd_code = DB::table('gp_list')->where('lgd_code', $filedata[0])->first();
                 }
                    if(isset($filedata[3]) && $filedata[3] == 'Auto') {
@@ -4657,7 +4657,7 @@ public function process(Request $request)
                    }
 
                 if($check_lgd_code){
-                    $isOltMatch = ($import_type == 4 && !empty($check_lgd_code->olt_lgdcode) && $check_lgd_code->olt_lgdcode == $filedata[0]);
+                    $isOltMatch = (($import_type == 3 || $import_type == 4) && !empty($check_lgd_code->olt_lgdcode) && $check_lgd_code->olt_lgdcode == $filedata[0]);
 
                     if ($isOltMatch) {
                         $oltLocation = DB::table('olt_locations')->where('lgd_code', $filedata[0])->first();
@@ -4686,16 +4686,16 @@ public function process(Request $request)
                       //  $tkt_id = 'TK26' . mt_rand(100000, 9999999);
                     //} while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
 
-                    if ($import_type == 3) { 
-   		 do {
-        	$date = date('Ymd');
-        	$tkt_id = 'INC/' . $date . '/' . mt_rand(10000, 99999);
-    		} while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
-		}else {
-    		do {
-        	$tkt_id = 'TK26' . mt_rand(100000, 9999999);
-    		} while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
-		}
+                    if ($import_type == 3 || $import_type == 5 || $import_type == 4 ) { 
+                    do {
+                        $date = date('Ymd');
+                        $tkt_id = 'INC/' . $date . '/' . mt_rand(10000, 99999);
+                        } while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
+                    }else {
+                        do {
+                        $tkt_id = 'TK26' . mt_rand(100000, 9999999);
+                        } while (DB::table('master_tickets')->where('ticketid', $tkt_id)->exists());
+                    }
 
                     // $tkt_id = 'TK26'.mt_rand(100000, 9999999);
                     $data['ticketid'] = $tkt_id;
@@ -4830,7 +4830,17 @@ public function process(Request $request)
                             $downReasonnew = strtolower(trim($filedata[2] ?? ''));
                             if ($import_type == 2) {  
                             $mobile = $check_lgd_code->petroller_contact_no;
-                            }else {
+                            }else if($import_type == 5){
+
+                               $mobile = $check_lgd_code->block_engineer_ph;
+                            }else if($import_type == 4 && strpos($downReasonnew, 'installation') !== false){
+
+                               $mobile = $check_lgd_code->block_engineer_ph;
+                            }else if($import_type == 3 && $isOltMatch && strpos($downReasonnew, 'installation') !== false){
+
+                               $mobile = $check_lgd_code->block_engineer_ph;
+                            }
+                            else {
                             
                                  if (strpos($downReasonnew, 'fiber') !== false) {
                                  $mobile = $check_lgd_code->contact_no;
@@ -6745,16 +6755,6 @@ public function getDashboardData(Request $request)
     $company_id = $user->company_id;
     $state_id = $user->state_id;
     $district_id = $user->district_id;
-
-
-
-// Get current user
-//    Session::put('user', Auth::User());
-//     $user = Session::get('user');
-//     $company_id = $user->company_id;
-//     $state_id = $user->state_id;
-//     $district_id = $user->district_id;
-   
     // Master tickets summary
    $masterTicketsquery = DB::table('user_requests')
     ->selectRaw("
@@ -6967,9 +6967,7 @@ public function getTeamStatus(Request $request)
     $fromDate = $inputFromDate !== null ? $inputFromDate : date('Y-m-d'); // Default to today's date
     $toDate   = $inputToDate !== null ? $inputToDate : date('Y-m-d');     // Default to today's date
 
-
-
-    // Build your existing query
+   // Build your existing query
     $pendingTicketsQuery = 'COUNT(CASE WHEN user_requests.status = "INCOMING"';
     if ($inputFromDate !== null && $inputToDate !== null) {
         $pendingTicketsQuery .= ' AND DATE(master_tickets.downdate) BETWEEN "' . $fromDate . '" AND "' . $toDate . '"';

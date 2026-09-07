@@ -243,6 +243,7 @@ public function exportProviders(Request $request)
         $districts = $districtQuery->get();
 
        
+        
         $blockQuery= Block::query();
           if (!empty($district_id)) {
             $blockQuery->where('district_id', $district_id);
