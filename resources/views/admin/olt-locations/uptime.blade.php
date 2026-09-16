@@ -131,7 +131,7 @@
                         </div>
                         <div id="uptimeTableContainer">
                         </div>
-
+                        
                     </div>
                 </div>
             </div>
@@ -1715,7 +1715,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadDataTabData('Oltdashboard', currentDataTab);
 
     });
-
+    
     document.getElementById('applySamriddhFilters').addEventListener('click', function() {
         loadDataTabData('Samriddhdashboard', 'samriddh-dashboard');
 
@@ -1723,12 +1723,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('applyGprouterFilters').addEventListener('click', function() {
         loadDataTabData('Gprouterdashboard', currentDataTab);
    });
-
+    
     document.getElementById('applyBlockrouterFilters').addEventListener('click', function() {
         loadDataTabData('Blockrouterdashboard', currentDataTab);
     });
-
-    // Export to Excel — honours whatever date filter is currently applied
+     // Export to Excel — honours whatever date filter is currently applied
     function exportTabularData(mainTab, dataTab) {
         const filters = getFilters(mainTab);
         const apiEndpoint = getApiEndpoint(mainTab, dataTab);
@@ -1752,6 +1751,7 @@ document.addEventListener('DOMContentLoaded', function() {
         exportTabularData('Blockrouterdashboard', 'blockrouter-performance');
     });
 
+   
         // Trend chart – independent date filter
     document.getElementById('applyTrendFilters').addEventListener('click', function () {
         loadAverageUptimeChart();

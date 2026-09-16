@@ -1562,7 +1562,7 @@ public function getDiMisReport(Request $request)
         ->where('providers.company_id', $company_id)
         ->where('providers.status', 'approved')
         ->where('providers.state_id', $state_id)
-        ->whereIn('providers.type', [4, 6]); // 4=District Incharge, 6=MIS
+        ->whereIn('providers.type', [4, 6, 7]); // 4=District Incharge, 6=MIS, 7=Block Engineer
         if (!empty($district_id)) {
             $providersquery->where('providers.district_id', $district_id);
         }
@@ -1686,6 +1686,7 @@ public function getDiMisReport(Request $request)
                 'zone_id' => $zoneId,
                 'di' => [],
                 'mis' => [],
+                'block' => [],
             ];
         }
 
@@ -1693,6 +1694,8 @@ public function getDiMisReport(Request $request)
             $zones[$zoneId]['di'][] = $prov;
         } else if ($prov->provider_type == 6) {
             $zones[$zoneId]['mis'][] = $prov;
+        } else if ($prov->provider_type == 7) {
+            $zones[$zoneId]['block'][] = $prov;
         }
     }
 
@@ -1702,7 +1705,8 @@ public function getDiMisReport(Request $request)
             'zone_name' => $data['zone_name'],
             'zone_id' => $data['zone_id'],
             'di' => summarizeDiMisProviders(collect($data['di']), $attendance, $leaves),
-            'mis' => summarizeDiMisProviders(collect($data['mis']), $attendance, $leaves)
+            'mis' => summarizeDiMisProviders(collect($data['mis']), $attendance, $leaves),
+            'block' => summarizeDiMisProviders(collect($data['block']), $attendance, $leaves)
         ];
     }
 

@@ -220,6 +220,22 @@
       </div>
     </div>
 
+    <div class="col-md-6 mb-2 frt-pat-section">
+       <div class="canvas-card mt-4">
+         <div class="heatmap-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h6 class="fw-bold mb-0">Zone Vs Block Engineer</h6>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+               <label class="small fw-bold me-1">From:</label>
+               <input type="date" id="block_zone_from_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <label class="small fw-bold me-1">To:</label>
+               <input type="date" id="block_zone_to_date" class="form-control form-control-sm px-1" style="width: 105px; font-size: 12px;border-radius: 4px;">
+               <button class="btn btn-primary btn-sm px-2 py-0 mx-1" id="btn-block-zone-filter" style="font-size: 12px; border-radius: 4px;">Go</button>
+            </div>
+         </div>
+         <div id="blockHeatmap" class="heatmap"></div>
+      </div>
+    </div>
+
 
 <div class="col-md-6 mb-2 frt-pat-section">
     <div class="canvas-card mt-4">
@@ -638,6 +654,7 @@ $(document).ready(function() {
                 success: function(dimisResponse) {
                     renderDiHeatmap(dimisResponse);
                     renderMisHeatmap(dimisResponse);
+                    renderBlockHeatmap(dimisResponse);
                 },
                 error: function(xhr, status, error) {
                     console.error('Error fetching DI/MIS report:', error);
@@ -1025,7 +1042,80 @@ function renderMisHeatmap(data, fromDate=null, toDate=null) {
      }
 
       const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=mis${dateParams}`;
-      row += `<a href="${url}" class="cell ${riskClass}" 
+      row += `<a href="${url}" class="cell ${riskClass}"
+     title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
+    ${value}
+  </a>`;
+    });
+
+    row += '</div>';
+    heatmapContainer.append(row);
+  });
+
+  const legend = `
+    <div class="heatmap-legend mt-2">
+      <span><span class="box good"></span> Healthy</span>
+      <span><span class="box medium"></span> Moderate Risk</span>
+      <span><span class="box bad"></span> High Risk</span>
+      <span><span class="box neutral"></span> Neutral</span>
+    </div>`;
+  heatmapContainer.append(legend);
+}
+
+function renderBlockHeatmap(data, fromDate=null, toDate=null) {
+  const heatmapContainer = $('#blockHeatmap');
+  heatmapContainer.empty();
+
+  const stages = ['working', 'only_hold', 'completed', 'not_started'];
+  const stageLabels = ['Ongoing', 'Hold', 'Completed', 'Not Started'];
+
+  let headerRow = `
+    <div class="heatmap-row header">
+      <div class="zone-name"></div>
+      ${stageLabels.map(label => `<div class="cell-header">${label}</div>`).join('')}
+    </div>`;
+  heatmapContainer.append(headerRow);
+
+  $.each(data.zones, function (zoneId, zoneData) {
+    const block = zoneData.block;
+    const zoneName = zoneData.zone_name;
+    const zone_id = zoneData.zone_id;
+    const total = block.total || 1;
+
+    let row = `<div class="heatmap-row">
+      <div class="zone-name">${zoneName} (${block.total})</div>`;
+
+    stages.forEach((stage, i) => {
+      const value = block[stage] ?? 0;
+      const percent = (value / total) * 100;
+
+      let riskClass = 'neutral';
+      switch (stage) {
+        case 'no_ticket':
+        case 'not_started':
+          riskClass = value === 0 ? 'good' : 'bad';
+          break;
+        case 'only_hold':
+          if (value === 0) riskClass = 'good';
+          else if (percent <= 10) riskClass = 'medium';
+          else riskClass = 'bad';
+          break;
+        case 'working':
+          riskClass = value > 0 ? 'good' : 'bad';
+          break;
+        case 'completed':
+          riskClass = value > 0 ? 'good' : 'neutral';
+          break;
+        default:
+          riskClass = 'neutral';
+      }
+
+      let dateParams = '';
+      if (fromDate && toDate) {
+          dateParams = `&from_date=${fromDate}&to_date=${toDate}`;
+      }
+      const url = `/admin/workforce_details?zone_id=${zone_id}&stage=${stage}&type=block_incharge${dateParams}`;
+      row += `<a href="${url}" class="cell ${riskClass}"
      title="${stageLabels[i]}: ${value} (${percent.toFixed(1)}%)">
     ${value}
   </a>`;
@@ -1586,6 +1676,16 @@ function loadHeatmapWithFilter(filterType) {
                 }
             });
 
+            $('#btn-block-zone-filter').on('click', function () {
+                const fromDate = $('#block_zone_from_date').val();
+                const toDate = $('#block_zone_to_date').val();
+                if (fromDate && toDate) {
+                    loadZoneHeatmapData(fromDate, toDate, 'block');
+                } else {
+                    alert('Please select both From and To dates');
+                }
+            });
+
             function loadZoneHeatmapData(fromDate, toDate, type) {
                 if (type === 'frt' || type === 'pat') {
                     $.ajax({
@@ -1603,7 +1703,7 @@ function loadHeatmapWithFilter(filterType) {
                             console.error("Error loading zone heatmap data:", err);
                         }
                     });
-                } else if (type === 'di' || type === 'mis') {
+                } else if (type === 'di' || type === 'mis' || type === 'block') {
                     $.ajax({
                         url: "{{ url('/admin/get_dimis_report') }}",
                         method: "GET",
@@ -1613,10 +1713,12 @@ function loadHeatmapWithFilter(filterType) {
                                 renderDiHeatmap(response, fromDate, toDate);
                             } else if (type === 'mis') {
                                 renderMisHeatmap(response, fromDate, toDate);
+                            } else if (type === 'block') {
+                                renderBlockHeatmap(response, fromDate, toDate);
                             }
                         },
                         error: function (err) {
-                            console.error("Error loading DI/MIS heatmap data:", err);
+                            console.error("Error loading DI/MIS/Block heatmap data:", err);
                         }
                     });
                 }

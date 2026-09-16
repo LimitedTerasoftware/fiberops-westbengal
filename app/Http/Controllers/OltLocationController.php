@@ -315,6 +315,7 @@ public function OntUpload(Request $request)
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
                 'reason'=>$row[3] ?? null,
+                'rca'=> $row[4] ?? null,
             ];
           
             $exists = OntUptime::where('lgd_code', $data['lgd_code'])
@@ -377,7 +378,9 @@ public function OltUpload(Request $request)
                 'lgd_code' => $row[0],
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
-                 'reason'=>$row[3] ?? null,
+                'reason'=>$row[3] ?? null,
+                'rca'=> $row[4] ?? null,
+
             ];
                $exists = OltUptime::where('lgd_code', $data['lgd_code'])
                 ->where('record_date', $data['record_date'])
@@ -440,7 +443,9 @@ public function GprouterUpload(Request $request)
                 'lgd_code' => $row[0],
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
-                 'reason'=>$row[3] ?? null,
+                'reason'=>$row[3] ?? null,
+                'rca'=> $row[4] ?? null,
+
             ];
               $exists = GpRouterUptime::where('lgd_code', $data['lgd_code'])
                 ->where('record_date', $data['record_date'])
@@ -505,6 +510,8 @@ public function BlockrouterUpload(Request $request)
                 'uptime_percent' => $row[1],
                 'record_date' => $date,
                  'reason'=>$row[3] ?? null,
+                'rca'=> $row[4] ?? null,
+
             ];
 
             $exists = BlockRouterUptime::where('lgd_code', $data['lgd_code'])
@@ -760,7 +767,6 @@ private function applyUptimeDateFilter($query, Request $request)
 
     return $query;
 }
-
 private function exportUptimeExcel(string $baseName, array $headings, $rows, callable $rowMapper)
 {
     $fileName = $baseName . '_' . Carbon::now()->format('Ymd_His') . '.xlsx';
@@ -780,8 +786,6 @@ private function exportUptimeExcel(string $baseName, array $headings, $rows, cal
         'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
     ]);
 }
-
-
 public function OntData(Request $request)
 {
     $month    = $request->get('month');
@@ -873,6 +877,7 @@ public function OntData(Request $request)
     $company_id = $user->company_id;
     $state_id   = $user->state_id;
     $district_id = $user->district_id;
+   
     $query = OntUptime::query()
         ->join('gp_list', 'gp_list.lgd_code', '=', 'ont_uptime.lgd_code')
         ->join('districts','gp_list.district_id','=','districts.id')
@@ -900,7 +905,6 @@ public function OntData(Request $request)
     ]);
 
 }
-
 public function OntDataListExport(Request $request)
 {
     Session::put('user', Auth::User());
@@ -949,7 +953,6 @@ public function OntDataListExport(Request $request)
         }
     );
 }
-
 public function OltData(Request $request)
 {
     $month    = $request->get('month');
@@ -1047,7 +1050,8 @@ public function OltData(Request $request)
         if (!empty($district_id)) {
             $query->where('olt_locations.district_id', $district_id);
         }
-        $this->applyUptimeDateFilter($query, $request);
+    $this->applyUptimeDateFilter($query, $request);
+      
 
     $records = $query->orderBy('olt_uptime.id', 'asc')
                 ->select(
@@ -1057,7 +1061,7 @@ public function OltData(Request $request)
                     'olt_locations.olt_location',
                     'olt_locations.olt_ip',
                     'olt_locations.no_of_gps'
-
+                    
                 )->paginate(10);
 
     return response()->json([
@@ -1065,7 +1069,6 @@ public function OltData(Request $request)
     ]);
 
 }
-
 public function OltDataListExport(Request $request)
 {
     Session::put('user', Auth::User());
@@ -1345,6 +1348,7 @@ public function GprouterDataList(Request $request)
     }
     $this->applyUptimeDateFilter($query, $request);
 
+
     $records = $query->orderBy('gp_router_uptime.id', 'asc')
         ->select(
             'gp_router_uptime.*',
@@ -1359,7 +1363,6 @@ public function GprouterDataList(Request $request)
         'data' => $records,
     ]);
 }
-
 public function GprouterDataListExport(Request $request)
 {
     Session::put('user', Auth::User());
@@ -1410,7 +1413,6 @@ public function GprouterDataListExport(Request $request)
         }
     );
 }
-
 public function BlockrouterData(Request $request)
 {
     $month    = $request->get('month');
@@ -1517,7 +1519,8 @@ public function BlockrouterDataList(Request $request)
     if (!empty($district_id)) {
         $query->where('blocks.district_id', $district_id);
     }
-    $this->applyUptimeDateFilter($query, $request);
+        $this->applyUptimeDateFilter($query, $request);
+
 
     $records = $query->orderBy('block_router_uptime.id', 'asc')
         ->select(
@@ -1530,7 +1533,6 @@ public function BlockrouterDataList(Request $request)
         'data' => $records,
     ]);
 }
-
 public function BlockrouterDataListExport(Request $request)
 {
     Session::put('user', Auth::User());
@@ -1572,5 +1574,4 @@ public function BlockrouterDataListExport(Request $request)
         }
     );
 }
-
 }
