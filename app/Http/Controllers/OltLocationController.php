@@ -1289,8 +1289,13 @@ public function GprouterData(Request $request)
         ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent < 50 THEN 1 ELSE 0 END) as lt50_total')
         ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent > 0 AND gp_router_uptime.uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
         ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent = 0 THEN 1 ELSE 0 END) as zero_availability')
+        ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent >= 90 AND gp_router_uptime.uptime_percent < 98 THEN 1 ELSE 0 END) as gte90')
+        ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent >= 75 AND gp_router_uptime.uptime_percent < 90 THEN 1 ELSE 0 END) as gte75')
+        ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent >= 50 AND gp_router_uptime.uptime_percent < 75 THEN 1 ELSE 0 END) as gte50')
+        ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent >= 20 AND gp_router_uptime.uptime_percent < 50 THEN 1 ELSE 0 END) as gte20')
+        ->selectRaw('SUM(CASE WHEN gp_router_uptime.uptime_percent < 20 THEN 1 ELSE 0 END) as lt20')
         ->selectRaw('ROUND(AVG(gp_router_uptime.uptime_percent), 2) as avg_uptime')
-        ->selectRaw('ROUND(AVG(gp_router_uptime.uptime_percent), 2) as pct_gte98')
+        ->selectRaw('ROUND(SUM(CASE WHEN gp_router_uptime.uptime_percent >= 98 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as pct_gte98')
         ->selectRaw("
                 SUM(
                     CASE
@@ -1314,6 +1319,11 @@ public function GprouterData(Request $request)
         'gte98'     => round($data->avg('gte98'), 2),
         'lt98'      => round($data->avg('lt98'), 2),
         'zero_availability' => round($data->avg('zero_availability'), 2),
+        'gte90'     => round($data->avg('gte90'), 2),
+        'gte75'     => round($data->avg('gte75'), 2),
+        'gte50'     => round($data->avg('gte50'), 2),
+        'gte20'     => round($data->avg('gte20'), 2),
+        'lt20'      => round($data->avg('lt20'), 2),
         'pct_gte98' => round($data->avg('pct_gte98'), 2),
         'integration' => round($data->avg('integration'), 2),
         'avg_uptime' => $uniqueAvgUptime,
@@ -1466,8 +1476,13 @@ public function BlockrouterData(Request $request)
         ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent < 50 THEN 1 ELSE 0 END) as lt50_total')
         ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent > 0 AND block_router_uptime.uptime_percent < 98 THEN 1 ELSE 0 END) as lt98')
         ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent = 0 THEN 1 ELSE 0 END) as zero_availability')
+        ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent >= 90 AND block_router_uptime.uptime_percent < 98 THEN 1 ELSE 0 END) as gte90')
+        ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent >= 75 AND block_router_uptime.uptime_percent < 90 THEN 1 ELSE 0 END) as gte75')
+        ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent >= 50 AND block_router_uptime.uptime_percent < 75 THEN 1 ELSE 0 END) as gte50')
+        ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent >= 20 AND block_router_uptime.uptime_percent < 50 THEN 1 ELSE 0 END) as gte20')
+        ->selectRaw('SUM(CASE WHEN block_router_uptime.uptime_percent < 20 THEN 1 ELSE 0 END) as lt20')
         ->selectRaw('ROUND(AVG(block_router_uptime.uptime_percent), 2) as avg_uptime')
-        ->selectRaw('ROUND(AVG(block_router_uptime.uptime_percent), 2) as pct_gte98')
+        ->selectRaw('ROUND(SUM(CASE WHEN block_router_uptime.uptime_percent >= 98 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as pct_gte98')
          ->selectRaw("
                 SUM(
                     CASE
@@ -1491,6 +1506,11 @@ public function BlockrouterData(Request $request)
         'total'     => round($data->avg('total'), 2),
         'gte98'     => round($data->avg('gte98'), 2),
         'lt98'      => round($data->avg('lt98'), 2),
+        'gte90'     => round($data->avg('gte90'), 2),
+        'gte75'     => round($data->avg('gte75'), 2),
+        'gte50'     => round($data->avg('gte50'), 2),
+        'gte20'     => round($data->avg('gte20'), 2),
+        'lt20'      => round($data->avg('lt20'), 2),
         'pct_gte98' => round($data->avg('pct_gte98'), 2),
         'zero_availability'  => round($data->avg('zero_availability'), 2),
         'integration' => round($data->avg('integration'), 2),

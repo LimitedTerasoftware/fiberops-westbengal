@@ -587,6 +587,21 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                    case 'integration':
                     $this->applyIntegrationFilter($query, 'block_router_uptime');
                     break;
+                    case 'gte90':
+                        $query->where('block_router_uptime.uptime_percent', '>=', 90)->where('block_router_uptime.uptime_percent', '<', 98);
+                        break;
+                    case 'gte75':
+                        $query->where('block_router_uptime.uptime_percent', '>=', 75)->where('block_router_uptime.uptime_percent', '<', 90);
+                        break;
+                    case 'gte50':
+                        $query->where('block_router_uptime.uptime_percent', '>=', 50)->where('block_router_uptime.uptime_percent', '<', 75);
+                        break;
+                    case 'gte20':
+                        $query->where('block_router_uptime.uptime_percent', '>=', 20)->where('block_router_uptime.uptime_percent', '<', 50);
+                        break;
+                    case 'lt20':
+                        $query->where('block_router_uptime.uptime_percent', '<', 20);
+                        break;
 
                  }
                 if ($Blockrouter_category === 'all') {
@@ -924,8 +939,23 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                    case 'integration':
                     $this->applyIntegrationFilter($query, 'gp_router_uptime');
                     break;
+                    case 'gte90':
+                        $query->where('gp_router_uptime.uptime_percent', '>=', 90)->where('gp_router_uptime.uptime_percent', '<', 98);
+                        break;
+                    case 'gte75':
+                        $query->where('gp_router_uptime.uptime_percent', '>=', 75)->where('gp_router_uptime.uptime_percent', '<', 90);
+                        break;
+                    case 'gte50':
+                        $query->where('gp_router_uptime.uptime_percent', '>=', 50)->where('gp_router_uptime.uptime_percent', '<', 75);
+                        break;
+                    case 'gte20':
+                        $query->where('gp_router_uptime.uptime_percent', '>=', 20)->where('gp_router_uptime.uptime_percent', '<', 50);
+                        break;
+                    case 'lt20':
+                        $query->where('gp_router_uptime.uptime_percent', '<', 20);
+                        break;
                  }
-            
+
                $reasonVal = $reason ?: $issue_filter;
                 if ($reasonVal) {
                     $query->where('gp_router_uptime.reason', $reasonVal);
@@ -1530,6 +1560,21 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                    case 'integration':
                     $this->applyIntegrationFilter($query, 'gp_router_uptime');
                     break;
+                    case 'gte90':
+                        $query->where('gp_router_uptime.uptime_percent', '>=', 90)->where('gp_router_uptime.uptime_percent', '<', 98);
+                        break;
+                    case 'gte75':
+                        $query->where('gp_router_uptime.uptime_percent', '>=', 75)->where('gp_router_uptime.uptime_percent', '<', 90);
+                        break;
+                    case 'gte50':
+                        $query->where('gp_router_uptime.uptime_percent', '>=', 50)->where('gp_router_uptime.uptime_percent', '<', 75);
+                        break;
+                    case 'gte20':
+                        $query->where('gp_router_uptime.uptime_percent', '>=', 20)->where('gp_router_uptime.uptime_percent', '<', 50);
+                        break;
+                    case 'lt20':
+                        $query->where('gp_router_uptime.uptime_percent', '<', 20);
+                        break;
                  }
                    if ($reason) {
                      $query->where('gp_router_uptime.reason', $reason);
@@ -1695,6 +1740,21 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                     case 'integration':
                             $this->applyIntegrationFilter($query, 'block_router_uptime');
                             break;
+                    case 'gte90':
+                        $query->where('block_router_uptime.uptime_percent', '>=', 90)->where('block_router_uptime.uptime_percent', '<', 98);
+                        break;
+                    case 'gte75':
+                        $query->where('block_router_uptime.uptime_percent', '>=', 75)->where('block_router_uptime.uptime_percent', '<', 90);
+                        break;
+                    case 'gte50':
+                        $query->where('block_router_uptime.uptime_percent', '>=', 50)->where('block_router_uptime.uptime_percent', '<', 75);
+                        break;
+                    case 'gte20':
+                        $query->where('block_router_uptime.uptime_percent', '>=', 20)->where('block_router_uptime.uptime_percent', '<', 50);
+                        break;
+                    case 'lt20':
+                        $query->where('block_router_uptime.uptime_percent', '<', 20);
+                        break;
                  }
                    if ($Blockrouter_category === 'all') {
                     if ($reasonView) {
