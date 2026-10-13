@@ -442,12 +442,6 @@ private function attachReasonBreakdowns($results, $state_id, $ticket_type = 'rou
     return $items;
 }
 
-/**
- * Attaches $row->uptime_reason_breakdown with issue counts sourced from the
- * uptime table's own reason and rca columns (combined into one line
- * per reason+rca pair), alongside (not replacing) $row->breakdown /
- * $row->ticket_count which come from master_tickets.downreason.
- */
 private function attachUptimeReasonBreakdowns($results, string $table)
 {
     $items = method_exists($results, 'getCollection')
@@ -457,7 +451,6 @@ private function attachUptimeReasonBreakdowns($results, string $table)
     if ($items->isEmpty()) {
         return $results;
     }
-
     $lgdCodes = $items->pluck('lgd_code')->unique()->values();
 
     $dates = $items->pluck('record_date')
@@ -466,6 +459,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
         })
         ->unique()
         ->values();
+      
 
     $breakdownRows = DB::table($table)
         ->select(
@@ -477,7 +471,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
         )
         ->whereIn('lgd_code', $lgdCodes)
         ->whereBetween('record_date', [$dates->min(), $dates->max()])
-        ->whereNotNull('reason')
+         ->whereNotNull('reason')
         ->groupBy('lgd_code', DB::raw('DATE(record_date)'), 'reason', 'rca')
         ->orderBy('count', 'desc')
         ->get()
@@ -487,6 +481,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
         ->groupBy(function ($row) {
             return $row->lgd_code . '|' . $row->day;
         });
+        
 
     $items->transform(function ($row) use ($breakdownRows) {
         $day = Carbon::parse($row->record_date)->toDateString();
@@ -509,6 +504,35 @@ private function attachUptimeReasonBreakdowns($results, string $table)
     return $items;
 }
 
+private function getUptimeReasonRcaString(string $table, $lgdCode, $recordDate = null, $fromDate = null, $toDate = null)
+{
+    $query = DB::table($table)
+        ->select('reason', 'rca', DB::raw('COUNT(*) as count'))
+        ->where('lgd_code', $lgdCode)
+        ->whereNotNull('reason');
+
+    if ($recordDate) {
+        $query->whereDate('record_date', $recordDate);
+    } elseif ($fromDate && $toDate) {
+        $query->whereBetween('record_date', [$fromDate, $toDate]);
+    }
+
+    $rows = $query->groupBy('reason', 'rca')
+        ->orderBy('count', 'desc')
+        ->get();
+
+    if ($rows->isEmpty()) {
+        return '-';
+    }
+
+    $lines = [];
+    foreach ($rows as $row) {
+        $label = $row->rca ? "{$row->reason} ({$row->rca})" : $row->reason;
+        $lines[] = $label . ': ' . $row->count;
+    }
+
+    return trim(implode("\n", $lines));
+}
 
  public function getFrequentlyDownGps(Request $request)
 {
@@ -587,7 +611,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                    case 'integration':
                     $this->applyIntegrationFilter($query, 'block_router_uptime');
                     break;
-                    case 'gte90':
+                                        case 'gte90':
                         $query->where('block_router_uptime.uptime_percent', '>=', 90)->where('block_router_uptime.uptime_percent', '<', 98);
                         break;
                     case 'gte75':
@@ -602,6 +626,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                     case 'lt20':
                         $query->where('block_router_uptime.uptime_percent', '<', 20);
                         break;
+
 
                  }
                 if ($Blockrouter_category === 'all') {
@@ -629,6 +654,9 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                         ->groupBy('block_router_uptime.lgd_code', 'districts.name', 'blocks.name')
                         ->orderBy('uptime_percent', 'asc')
                         ->paginate(15);
+                        //  $results = $this->attachEmptyBreakdowns($results);
+                        // $results = $this->attachUptimeReasonBreakdowns($results, 'block_router_uptime');
+
                     }
                 } else {
                 $results = $query->select(
@@ -642,9 +670,9 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                 ->orderBy('block_router_uptime.uptime_percent', 'asc')
                 ->paginate(15);
                 }
-
                 $results = $this->attachEmptyBreakdowns($results);
                 $results = $this->attachUptimeReasonBreakdowns($results, 'block_router_uptime');
+
 
                 $is_uptime_report = true;
                 $allIssues = [];
@@ -736,6 +764,9 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                         ->groupBy('olt_uptime.lgd_code', 'olt_locations.olt_location', 'districts.name', 'blocks.name')
                         ->orderBy('uptime_percent', 'asc')
                         ->paginate(15);
+                        //  $results = $this->attachEmptyBreakdowns($results);
+                        // $results = $this->attachUptimeReasonBreakdowns($results, 'olt_uptime');
+
                     }
                 } else {
                 $results = $query->select(
@@ -749,9 +780,9 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                 ->orderBy('olt_uptime.uptime_percent', 'asc')
                 ->paginate(15);
                 }
-
                 $results = $this->attachEmptyBreakdowns($results);
                 $results = $this->attachUptimeReasonBreakdowns($results, 'olt_uptime');
+
 
                 $is_uptime_report = true;
                 $allIssues = [];
@@ -897,7 +928,8 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                $results = $reasonView
                     ? $this->attachReasonBreakdowns($results, $state_id, $ticket_type, $reason)
                     : $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
-                $results = $this->attachUptimeReasonBreakdowns($results, 'ont_uptime');
+                 $results = $this->attachUptimeReasonBreakdowns($results, 'ont_uptime');
+
 
                 $is_uptime_report = true;
 
@@ -953,10 +985,12 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                         break;
                     case 'lt20':
                         $query->where('gp_router_uptime.uptime_percent', '<', 20);
-                        break;
-                 }
+                    break;
 
+                 }
+            
                $reasonVal = $reason ?: $issue_filter;
+              
                 if ($reasonVal) {
                     $query->where('gp_router_uptime.reason', $reasonVal);
                 }
@@ -987,7 +1021,8 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                             'blocks.name as mandal',
                             'gp_router_uptime.uptime_percent',
                             'gp_router_uptime.record_date',
-                            'gp_router_uptime.reason'
+                            'gp_router_uptime.reason',
+                            'gp_router_uptime.rca'
                         )
                         ->orderBy('gp_router_uptime.record_date', 'desc')
                         ->paginate(15);
@@ -1021,7 +1056,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                 $results = $reasonView
                     ? $this->attachReasonBreakdowns($results, $state_id, $ticket_type, $reason)
                     : $this->attachTicketBreakdowns($results, $state_id, $ticket_type);
-                $results = $this->attachUptimeReasonBreakdowns($results, 'gp_router_uptime');
+                 $results = $this->attachUptimeReasonBreakdowns($results, 'gp_router_uptime');
 
 
                 $is_uptime_report = true;
@@ -1461,7 +1496,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                 }
 
 
-            $data[] = ['District', 'Block', 'GP Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
+            $data[] = ['District', 'Block', 'GP Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %', 'Uptime Issue (Reason-RCA)'];
 
             foreach ($results as $row) {
                 // Fetch Ticket Data for breakdown
@@ -1512,6 +1547,8 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                 }
 
 
+                $rcaStr = $this->getUptimeReasonRcaString('ont_uptime', $row->lgd_code, $row->record_date, $from_date, $to_date);
+
                 $data[] = [
                     $row->district,
                     $row->mandal,
@@ -1521,7 +1558,8 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                     Carbon::parse($row->record_date)->format('d-m-Y'),
                     $ticket_count,
                     trim($breakdownStr),
-                    trim($issuePctStr)
+                    trim($issuePctStr),
+                    $rcaStr
                 ];
             }
             $filename = 'Uptime_Report_' . ($uptime_category) . '_' . date('Ymd_His');
@@ -1560,7 +1598,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                    case 'integration':
                     $this->applyIntegrationFilter($query, 'gp_router_uptime');
                     break;
-                    case 'gte90':
+                                        case 'gte90':
                         $query->where('gp_router_uptime.uptime_percent', '>=', 90)->where('gp_router_uptime.uptime_percent', '<', 98);
                         break;
                     case 'gte75':
@@ -1575,6 +1613,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                     case 'lt20':
                         $query->where('gp_router_uptime.uptime_percent', '<', 20);
                         break;
+
                  }
                    if ($reason) {
                      $query->where('gp_router_uptime.reason', $reason);
@@ -1635,7 +1674,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                     ->orderBy('gp_router_uptime.uptime_percent', 'asc')
                     ->get();
                 }
-            $data[] = ['District', 'Block', 'GP Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
+            $data[] = ['District', 'Block', 'GP Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %', 'Uptime Issue (Reason-RCA)'];
 
 
                 foreach ($results as $row) {
@@ -1677,6 +1716,8 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                 }
 
 
+                $rcaStr = $this->getUptimeReasonRcaString('gp_router_uptime', $row->lgd_code, $row->record_date, $from_date, $to_date);
+
                 $data[] = [
                     $row->district,
                     $row->mandal,
@@ -1686,7 +1727,8 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                     Carbon::parse($row->record_date)->format('d-m-Y'),
                     $ticket_count,
                     trim($breakdownStr),
-                    trim($issuePctStr)
+                    trim($issuePctStr),
+                    $rcaStr
                 ];
                 $filename = 'Router_Uptime_Report_' . ($router_category) . '_' . date('Ymd_His');
                 }
@@ -1740,7 +1782,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                     case 'integration':
                             $this->applyIntegrationFilter($query, 'block_router_uptime');
                             break;
-                    case 'gte90':
+                                                case 'gte90':
                         $query->where('block_router_uptime.uptime_percent', '>=', 90)->where('block_router_uptime.uptime_percent', '<', 98);
                         break;
                     case 'gte75':
@@ -1755,6 +1797,7 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                     case 'lt20':
                         $query->where('block_router_uptime.uptime_percent', '<', 20);
                         break;
+
                  }
                    if ($Blockrouter_category === 'all') {
                     if ($reasonView) {
@@ -1796,13 +1839,13 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                 ->get();
                 }
 
-                 $data[] = ['District', 'Block', 'Block Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
+                 $data[] = ['District', 'Block', 'Block Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %', 'Uptime Issue (Reason-RCA)'];
 
                 foreach ($results as $row) {
                     $ticket_count = 0;
                     $breakdownStr = '';
                     $issuePctStr = '';
-               
+                    $rcaStr = $this->getUptimeReasonRcaString('block_router_uptime', $row->lgd_code, $row->record_date, $from_date, $to_date);
 
                     $data[] = [
                         $row->district,
@@ -1813,9 +1856,10 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                         Carbon::parse($row->record_date)->format('d-m-Y'),
                         $ticket_count,
                         trim($breakdownStr),
-                        trim($issuePctStr)
-                    ];    
-               
+                        trim($issuePctStr),
+                        $rcaStr
+                    ];
+
                     $filename = 'Block_Router_Uptime_Report_' . ($Blockrouter_category) . '_' . date('Ymd_His');
                 }
 
@@ -1914,13 +1958,13 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                 ->get();
                 }
 
-                 $data[] = ['District', 'Block', 'OLT Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %'];
+                 $data[] = ['District', 'Block', 'OLT Name', 'LGD Code', 'Uptime %', 'Record Date', 'Total Tickets', 'Issue Breakdown', 'Issue %', 'Uptime Issue (Reason-RCA)'];
 
                 foreach ($results as $row) {
                     $ticket_count = 0;
                     $breakdownStr = '';
                     $issuePctStr = '';
-               
+                    $rcaStr = $this->getUptimeReasonRcaString('olt_uptime', $row->lgd_code, $row->record_date, $from_date, $to_date);
 
                     $data[] = [
                         $row->district,
@@ -1931,9 +1975,10 @@ private function attachUptimeReasonBreakdowns($results, string $table)
                         Carbon::parse($row->record_date)->format('d-m-Y'),
                         $ticket_count,
                         trim($breakdownStr),
-                        trim($issuePctStr)
-                    ];    
-               
+                        trim($issuePctStr),
+                        $rcaStr
+                    ];
+
                     $filename = 'OLT_Uptime_Report_' . ($OLT_category) . '_' . date('Ymd_His');
                 }
 

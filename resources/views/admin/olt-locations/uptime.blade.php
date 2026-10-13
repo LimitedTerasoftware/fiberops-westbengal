@@ -1636,6 +1636,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Load data for the selected main tab
             loadMainTabData(tabId);
+            syncReasonDates(tabId);
             fetchReasonCategoryData();
         });
     });
@@ -1682,9 +1683,41 @@ document.addEventListener('DOMContentLoaded', function() {
     $('#recurring_from_date').val(lastWeekStr);
     $('#recurring_to_date').val(todayStr);
 
-    // Reasons Category Defaults
-    $('#reason_from_date').val(lastWeekStr);
-    $('#reason_to_date').val(todayStr);
+    // Reasons Category Defaults: left empty so the server uses the last data date
+
+    // Keep Reasons Category dates in sync with the dashboard tab From/To dates
+    const dashboardDateInputs = {
+        Ontdashboard:         ['from_date', 'to_date'],
+        Oltdashboard:         ['olt_from_date', 'olt_to_date'],
+        Samriddhdashboard:    ['samriddh_from_date', 'samriddh_to_date'],
+        Gprouterdashboard:    ['gprouter_from_date', 'gprouter_to_date'],
+        Blockrouterdashboard: ['blockrouter_from_date', 'blockrouter_to_date'],
+    };
+
+    function syncReasonDates(mainTab) {
+        const ids = dashboardDateInputs[mainTab];
+        if (!ids) return;
+        const fromVal = $('#' + ids[0]).val();
+        const toVal   = $('#' + ids[1]).val();
+        if (fromVal && toVal) {
+            $('#reason_from_date').val(fromVal);
+            $('#reason_to_date').val(toVal);
+        } else {
+            // No dashboard range: clear so the server falls back to the last data date
+            $('#reason_from_date').val('');
+            $('#reason_to_date').val('');
+        }
+    }
+
+    Object.keys(dashboardDateInputs).forEach(function (mainTab) {
+        dashboardDateInputs[mainTab].forEach(function (id) {
+            $('#' + id).on('change', function () {
+                syncReasonDates(mainTab);
+            });
+        });
+    });
+
+    syncReasonDates(currentMainTab);
 
     fetchRecurringGpTrends();
     loadAverageUptimeChart();
@@ -1708,24 +1741,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Filter Apply Buttons
     document.getElementById('applyFilters').addEventListener('click', function() {
         loadDataTabData('Ontdashboard', currentDataTab);
-
+        syncReasonDates('Ontdashboard');
+        fetchReasonCategoryData();
     });
-    
+
     document.getElementById('applyOltFilters').addEventListener('click', function() {
         loadDataTabData('Oltdashboard', currentDataTab);
-
+        syncReasonDates('Oltdashboard');
+        fetchReasonCategoryData();
     });
-    
+
     document.getElementById('applySamriddhFilters').addEventListener('click', function() {
         loadDataTabData('Samriddhdashboard', 'samriddh-dashboard');
-
+        syncReasonDates('Samriddhdashboard');
+        fetchReasonCategoryData();
     });
         document.getElementById('applyGprouterFilters').addEventListener('click', function() {
         loadDataTabData('Gprouterdashboard', currentDataTab);
+        syncReasonDates('Gprouterdashboard');
+        fetchReasonCategoryData();
    });
-    
+
     document.getElementById('applyBlockrouterFilters').addEventListener('click', function() {
         loadDataTabData('Blockrouterdashboard', currentDataTab);
+        syncReasonDates('Blockrouterdashboard');
+        fetchReasonCategoryData();
     });
      // Export to Excel — honours whatever date filter is currently applied
     function exportTabularData(mainTab, dataTab) {
@@ -2904,6 +2944,10 @@ function fetchReasonCategoryData() {
             type:      type,
         },
         success: function (response) {
+            if (response && response.from_date && response.to_date) {
+                $('#reason_from_date').val(response.from_date);
+                $('#reason_to_date').val(response.to_date);
+            }
             renderReasonCategoryTable(response);
         },
         error: function () {

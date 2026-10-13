@@ -632,24 +632,23 @@ public function getReasonData(Request $request)
     }
     if (!empty($month)) {
         try {
-            $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
-            $end   = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
-            $query->whereBetween('record_date', [$start, $end]);
+            $fromDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth()->toDateString();
+            $toDate   = Carbon::createFromFormat('Y-m', $month)->endOfMonth()->toDateString();
         } catch (\Exception $e) {
-            $query->whereBetween('record_date', [
-                Carbon::now()->subDays(6)->toDateString(),
-                Carbon::now()->toDateString()
-            ]);
+            $fromDate = null;
+            $toDate   = null;
         }
-    } elseif (!empty($fromDate) && !empty($toDate)) {
-        $query->whereBetween('record_date', [$fromDate, $toDate]);
-       
-    } else {
-        $query->whereBetween('record_date', [
-            Carbon::now()->subDays(6)->toDateString(),
-            Carbon::now()->toDateString()
-        ]);
     }
+
+    if (empty($fromDate) || empty($toDate)) {
+        // Default to the last date that has data
+        $lastDate = (clone $query)->max('record_date');
+        $lastDate = $lastDate ? Carbon::parse($lastDate)->toDateString() : Carbon::now()->toDateString();
+        $fromDate = $lastDate;
+        $toDate   = $lastDate;
+    }
+
+    $query->whereBetween('record_date', [$fromDate, $toDate]);
 
     $zoneExpr = DB::raw('COALESCE(zonal_managers.name, "Unassigned") as zone_name');
 
@@ -693,6 +692,8 @@ public function getReasonData(Request $request)
     return response()->json([
         'data' => $data,
         'zones' => $zones,
+        'from_date' => $fromDate,
+        'to_date' => $toDate,
     ]);
 }
 
