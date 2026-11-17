@@ -183,26 +183,57 @@ class TopologyController extends Controller
 
     /* ---------- helpers ---------- */
 
-    private function countSql()
+        private function countSql()
     {
         return "COUNT(*) AS devices,
                 SUM(d.effective_status = 'up')      AS up,
                 SUM(d.effective_status = 'down')    AS down,
                 SUM(d.effective_status = 'unreach') AS unreach,
-                SUM(d.effective_status = 'unknown') AS unknown";
+                SUM(d.effective_status = 'unknown') AS unknown,
+
+                SUM(d.level LIKE '%Block%')                                      AS br_total,
+                SUM(d.level LIKE '%Block%' AND d.effective_status = 'up')        AS br_up,
+                SUM(d.level LIKE '%Block%' AND d.effective_status = 'down')      AS br_down,
+                SUM(d.level LIKE '%Block%' AND d.effective_status = 'unreach')   AS br_unreach,
+                SUM(d.level LIKE '%Block%' AND d.effective_status = 'unknown')   AS br_unknown,
+
+                SUM(d.level LIKE '%GP%')                                         AS gp_total,
+                SUM(d.level LIKE '%GP%' AND d.effective_status = 'up')           AS gp_up,
+                SUM(d.level LIKE '%GP%' AND d.effective_status = 'down')         AS gp_down,
+                SUM(d.level LIKE '%GP%' AND d.effective_status = 'unreach')      AS gp_unreach,
+                SUM(d.level LIKE '%GP%' AND d.effective_status = 'unknown')      AS gp_unknown";
     }
 
     private function counts($r)
     {
-        $devices = (int) $r->devices;
-        $up      = (int) $r->up;
+        $pct = function ($up, $total) {
+            return $total ? round($up * 100 / $total, 1) : 0;
+        };
+
         return [
-            'devices' => $devices,
-            'up'      => $up,
+            'devices' => (int) $r->devices,
+            'up'      => (int) $r->up,
             'down'    => (int) $r->down,
             'unreach' => (int) $r->unreach,
             'unknown' => (int) $r->unknown,
-            'up_pct'  => $devices ? round($up * 100 / $devices, 1) : 0,
+            'up_pct'  => $pct((int) $r->up, (int) $r->devices),
+
+            'block_routers' => [
+                'total'   => (int) $r->br_total,
+                'up'      => (int) $r->br_up,
+                'down'    => (int) $r->br_down,
+                'unreach' => (int) $r->br_unreach,
+                'unknown' => (int) $r->br_unknown,
+                'up_pct'  => $pct((int) $r->br_up, (int) $r->br_total),
+            ],
+            'gps' => [
+                'total'   => (int) $r->gp_total,
+                'up'      => (int) $r->gp_up,
+                'down'    => (int) $r->gp_down,
+                'unreach' => (int) $r->gp_unreach,
+                'unknown' => (int) $r->gp_unknown,
+                'up_pct'  => $pct((int) $r->gp_up, (int) $r->gp_total),
+            ],
         ];
     }
 

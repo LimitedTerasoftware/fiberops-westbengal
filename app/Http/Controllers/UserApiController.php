@@ -4692,12 +4692,16 @@ private function processTicketData(array $jsonData)
             $lat = $keyvalue['lat'];
             $lng = $keyvalue['log'];
 
-            $provider = $this->getNearestProvider($lat, $lng);
+            // Fiber RFMS (EXFO) -> FRT (type 2), all others -> type 5
+            $providerType = (trim($keyvalue['host_group_name'] ?? '') === 'Fiber RFMS (EXFO)') ? 2 : 5;
+
+            $provider = $this->getNearestProvider($lat, $lng, $providerType);
 
             Log::info('Nearest provider lookup', [
                 'ticketid' => $ticketId,
                 'lat' => $lat,
                 'lng' => $lng,
+                'provider_type' => $providerType,
                 'provider_found' => $provider ? $provider->id : null
             ]);
 
@@ -4794,7 +4798,7 @@ private function processTicketData(array $jsonData)
     }
 }
 
-private function getNearestProvider($lat, $lng, $radius = 150)
+private function getNearestProvider($lat, $lng, $providerType, $radius = 150)
 {
     return DB::table('providers')
         ->select(
@@ -4812,7 +4816,7 @@ private function getNearestProvider($lat, $lng, $radius = 150)
             ")
         )
         ->having('distance', '<=', $radius)
-        ->whereIN('providers.type',['2','5']) 
+        ->where('providers.type', $providerType)
         ->where('providers.status', 'approved') 
         ->orderBy('distance', 'ASC')
         ->first();

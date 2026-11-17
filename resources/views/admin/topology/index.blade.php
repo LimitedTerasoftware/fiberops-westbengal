@@ -18,8 +18,10 @@
     .topo-crumb .cur { font-weight: 600; color: #1e293b; }
 
     /* Metric cards — same look as .terrasoft-metric-card on the uptime page */
-    .topo-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 20px; margin-bottom: 24px; }
-    .topo-card { background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    /* One row on normal screens: simple cards take 1 share, BR/GP split cards 2 shares */
+    .topo-cards { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+    .topo-cards > .alert { flex: 1 1 100%; }
+    .topo-card { flex: 1 1 120px; min-width: 120px; background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
     .topo-card .lbl { font-size: 14px; font-weight: 500; color: #64748b; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .topo-card .lbl i { font-size: 18px; }
     .topo-card .val { font-size: 30px; font-weight: 700; color: #1e293b; line-height: 1.1; margin-bottom: 6px; }
@@ -30,6 +32,20 @@
     .topo-card.c-unreach .lbl i, .topo-card.c-unreach .val { color: #fd7e14; }
     .topo-card.c-pct .lbl i     { color: #17a2b8; }
     .topo-card.c-alarm .lbl i,   .topo-card.c-alarm .val   { color: #6f42c1; }
+    /* Block Router / GP split cards */
+    .topo-card.c-split { flex: 2 1 250px; min-width: 250px; }
+    .topo-card.c-split .val small { font-size: 14px; font-weight: 700; margin-left: 6px; }
+    .topo-card.c-split .topo-block-counts { margin-top: 6px; }
+    .topo-card .val .topo-sdot { width: 14px; height: 14px; vertical-align: middle; margin-right: 6px; }
+    .topo-cards-foot { flex: 1 1 100%; margin-top: -6px; font-size: 12px; color: #64748b; }
+    @media (max-width: 576px) { .topo-card, .topo-card.c-split { flex-basis: 100%; min-width: 0; } }
+
+    /* Compact BR / GP rows (district table, block cards) */
+    .topo-mini { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; margin-top: 4px; white-space: nowrap; }
+    .topo-mini .k { display: inline-block; min-width: 22px; font-size: 10px; font-weight: 700; color: #475569; background: #f1f5f9; border-radius: 4px; padding: 0 4px; text-align: center; }
+    .topo-mini b { font-weight: 700; }
+    .topo-mini .pct { margin-left: auto; font-weight: 700; }
+    .topo-sdot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 
     /* Panels — same look as .terrasoft-chart-card / tab container */
     .topo-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.1); margin-bottom: 24px; overflow: hidden; }
@@ -441,50 +457,117 @@
 
     /* ---------------- summary cards (shared by all levels) ---------------- */
 
-    Topo.renderCards = function (t) {
+    /* ---- Block Router / GP split: {total, up, down, unreach, unknown, up_pct} ---- */
+
+    function emptySplit() { return { total: 0, up: 0, down: 0, unreach: 0, unknown: 0, up_pct: 0 }; }
+    function splitOf(r, key) { return (r && r[key]) ? r[key] : emptySplit(); }
+    function addSplit(acc, s) {
+        acc.total += s.total || 0; acc.up += s.up || 0; acc.down += s.down || 0;
+        acc.unreach += s.unreach || 0; acc.unknown += s.unknown || 0;
+        return acc;
+    }
+    function finishSplit(s) { s.up_pct = s.total ? Math.round(s.up * 1000 / s.total) / 10 : 0; return s; }
+    /* Status of a single device from a split with total 1 */
+    function splitStatus(s) {
+        if (s.up) return 'up';
+        if (s.down) return 'down';
+        if (s.unreach) return 'unreach';
+        return 'unknown';
+    }
+    function statusDot(st) {
+        return '<span class="topo-sdot" style="background:' + (Topo.colors[st] || Topo.colors.unknown) + '"></span>';
+    }
+    Topo.splitOf = splitOf;
+
+    /* ---- KPI cards (shared by all levels) ---- */
+
+    function simpleCard(cls, label, icon, value, hint, valColor) {
+        return '<div class="topo-card ' + cls + '">'
+            + '<div class="lbl"><span>' + esc(label) + '</span><i class="' + icon + '"></i></div>'
+            + '<div class="val"' + (valColor ? ' style="color:' + valColor + '"' : '') + '>' + value + '</div>'
+            + '<div class="hint">' + esc(hint || '') + '</div></div>';
+    }
+
+    function splitCounts(s) {
+        return '<div class="topo-block-counts">'
+            + '<div><b class="s-up">' + num(s.up) + '</b>Up</div>'
+            + '<div><b class="s-down">' + num(s.down) + '</b>Down</div>'
+            + '<div><b class="s-unreach">' + num(s.unreach) + '</b>Unreach</div>'
+            + '<div><b class="s-unknown">' + num(s.unknown) + '</b>Unknown</div></div>';
+    }
+
+    function splitCard(label, icon, s) {
+        return '<div class="topo-card c-total c-split">'
+            + '<div class="lbl"><span>' + esc(label) + '</span><i class="' + icon + '"></i></div>'
+            + '<div class="val">' + num(s.total)
+            + (s.total ? '<small style="color:' + pctColor(s.up_pct) + '">' + s.up_pct + '% up</small>' : '<small class="text-muted">none</small>')
+            + '</div>' + splitCounts(s) + '</div>';
+    }
+
+    /* Single block router: status dot instead of numbers */
+    function routerCard(s, name) {
+        if (s.total !== 1) return splitCard('Block Routers', 'ti-server', s);
+        var st = splitStatus(s);
+        return '<div class="topo-card c-total">'
+            + '<div class="lbl"><span>Block Router</span><i class="ti-server"></i></div>'
+            + '<div class="val" style="color:' + (Topo.colors[st] || Topo.colors.unknown) + ';text-transform:uppercase">'
+            + statusDot(st) + st + '</div>'
+            + '<div class="hint">' + esc(name || '') + '</div></div>';
+    }
+
+    function devicesFoot(t) {
         var pct = t.devices ? Math.round(t.up * 1000 / t.devices) / 10 : 0;
-        var cards = [
-            ['c-total',   'Devices', num(t.devices), t.blocksLabel || '',                        'ti-server'],
-            ['c-up',      'Up',      num(t.up),      '',                                         'ti-check-box'],
-            ['c-down',    'Down',    num(t.down),    'Root cause / isolated',                    'ti-close'],
-            ['c-unreach', 'Unreach', num(t.unreach), 'Behind a down device',                     'ti-unlink'],
-            ['c-pct',     'Up %',    pct + '%',      t.unknown ? num(t.unknown) + ' unknown' : '', 'ti-stats-up'],
-            ['c-alarm',   'Active alarms', num(t.alarms), '',                                    'ti-bell']
-        ];
-        if (t.linksDown !== undefined) {   // Level 3: Unknown and Links down get their own cards
-            cards = [
-                cards[0],
-                ['c-up', 'Up', num(t.up), pct + '% of devices', 'ti-check-box'],
-                cards[2], cards[3],
-                ['c-pct', 'Unknown', num(t.unknown), 'No status from HFCL', 'ti-help-alt'],
-                cards[5],
-                ['c-down', 'Links down', num(t.linksDown), t.linksHint || '', 'ti-unlink']
-            ];
-        }
-        var html = '';
-        for (var i = 0; i < cards.length; i++) {
-            html += '<div class="topo-card ' + cards[i][0] + '">'
-                  + '<div class="lbl"><span>' + cards[i][1] + '</span><i class="' + cards[i][4] + '"></i></div>'
-                  + '<div class="val"' + (cards[i][1] === 'Up %' ? ' style="color:' + pctColor(pct) + '"' : '') + '>' + cards[i][2] + '</div>'
-                  + '<div class="hint">' + esc(cards[i][3]) + '</div></div>';
-        }
-        $('#topo-cards').html(html);
+        return '<div class="topo-cards-foot">All devices: <b>' + num(t.devices) + '</b> &middot; '
+            + '<span class="s-up">' + num(t.up) + ' up</span> &middot; '
+            + '<span class="s-down">' + num(t.down) + ' down</span> &middot; '
+            + '<span class="s-unreach">' + num(t.unreach) + ' unreach</span> &middot; '
+            + '<span class="s-unknown">' + num(t.unknown) + ' unknown</span> &middot; ' + pct + '% up'
+            + (t.footExtra ? ' &middot; ' + esc(t.footExtra) : '') + '</div>';
+    }
+
+    Topo.renderKpis = function (cardsHtml, t) {
+        $('#topo-cards').html(cardsHtml.join('') + (t ? devicesFoot(t) : ''));
     };
+    Topo.simpleCard = simpleCard;
+    Topo.splitCard = splitCard;
 
     function sumRows(rows) {
-        var t = { devices: 0, up: 0, down: 0, unreach: 0, unknown: 0, alarms: 0, blocks: 0 };
+        var t = { devices: 0, up: 0, down: 0, unreach: 0, unknown: 0, alarms: 0, blocks: 0,
+                  block_routers: emptySplit(), gps: emptySplit() };
         for (var i = 0; i < rows.length; i++) {
             t.devices += rows[i].devices; t.up += rows[i].up; t.down += rows[i].down;
             t.unreach += rows[i].unreach; t.unknown += rows[i].unknown; t.alarms += rows[i].alarms;
             t.blocks  += rows[i].blocks || 0;
+            addSplit(t.block_routers, splitOf(rows[i], 'block_routers'));
+            addSplit(t.gps, splitOf(rows[i], 'gps'));
         }
+        finishSplit(t.block_routers);
+        finishSplit(t.gps);
         return t;
     }
     Topo.sumRows = sumRows;
 
+    /* Compact "BR" / "GP" row: up / down / unreach (+ unknown) and up %; single BR shows a status dot */
+    function miniRow(key, s, dotIfSingle) {
+        var html = '<div class="topo-mini"><span class="k">' + key + '</span>';
+        if (!s.total) return html + '<span>none</span></div>';
+        if (dotIfSingle && s.total === 1) {
+            var st = splitStatus(s);
+            return html + statusDot(st) + '<span style="color:' + (Topo.colors[st] || Topo.colors.unknown) + ';font-weight:700">' + st + '</span></div>';
+        }
+        return html
+            + '<span title="Up"><b class="s-up">' + num(s.up) + '</b> up</span>'
+            + '<span title="Down"><b class="s-down">' + num(s.down) + '</b> dn</span>'
+            + '<span title="Unreach"><b class="s-unreach">' + num(s.unreach) + '</b> unr</span>'
+            + (s.unknown ? '<span title="Unknown"><b class="s-unknown">' + num(s.unknown) + '</b> unk</span>' : '')
+            + '<span class="pct" style="color:' + pctColor(s.up_pct) + '">' + s.up_pct + '%</span></div>';
+    }
+    Topo.miniRow = miniRow;
+
     /* ---------------- tooltip ---------------- */
 
     function showTip($tip, html, pos, $container) {
+        pos = pos || { x: 10, y: 10 };
         var w = $container.width(), x = pos.x + 14, y = pos.y + 14;
         $tip.html(html).show();
         if (x + $tip.outerWidth() > w) x = pos.x - $tip.outerWidth() - 14;
@@ -495,15 +578,29 @@
     Topo.showTip = showTip;
     Topo.hideTip = hideTip;
 
+    /* Tooltip text for a BR / GP split (dark background colours) */
+    var TIP = { up: '#5cd87a', down: '#ff6b7a', unreach: '#ffa94d', unknown: '#ced4da' };
+    function splitTip(s) {
+        if (!s.total) return 'none';
+        if (s.total === 1) {
+            var st = splitStatus(s);
+            return '<b style="color:' + TIP[st] + '">' + st + '</b>';
+        }
+        return num(s.total) + ': '
+            + '<span style="color:' + TIP.up + '">' + num(s.up) + ' up</span> / '
+            + '<span style="color:' + TIP.down + '">' + num(s.down) + ' down</span> / '
+            + '<span style="color:' + TIP.unreach + '">' + num(s.unreach) + ' unr</span>'
+            + (s.unknown ? ' / <span style="color:' + TIP.unknown + '">' + num(s.unknown) + ' unk</span>' : '')
+            + ' &middot; ' + s.up_pct + '%';
+    }
+
     function countsTip(title, d) {
+        var br = splitOf(d, 'block_routers'), gp = splitOf(d, 'gps');
         return '<b>' + esc(title) + '</b><table>'
             + (d.blocks !== undefined ? '<tr><td>Blocks</td><td>' + num(d.blocks) + '</td></tr>' : '')
-            + '<tr><td>Devices</td><td>' + num(d.devices) + '</td></tr>'
-            + '<tr><td style="color:#5cd87a">Up</td><td>' + num(d.up) + '</td></tr>'
-            + '<tr><td style="color:#ff6b7a">Down</td><td>' + num(d.down) + '</td></tr>'
-            + '<tr><td style="color:#ffa94d">Unreach</td><td>' + num(d.unreach) + '</td></tr>'
-            + (d.unknown ? '<tr><td>Unknown</td><td>' + num(d.unknown) + '</td></tr>' : '')
-            + '<tr><td>Up %</td><td>' + d.up_pct + '%</td></tr>'
+            + '<tr><td>' + (br.total === 1 ? 'Block router' : 'Block routers') + '</td><td>' + splitTip(br) + '</td></tr>'
+            + '<tr><td>GPs</td><td>' + splitTip(gp) + '</td></tr>'
+            + '<tr><td>All devices</td><td>' + num(d.devices) + ' &middot; ' + d.up_pct + '% up</td></tr>'
             + '<tr><td>Alarms</td><td>' + num(d.alarms) + '</td></tr></table>';
     }
     Topo.countsTip = countsTip;
@@ -524,8 +621,13 @@
         setLastSync(res.last_sync);
 
         var t = sumRows(rows);
-        t.blocksLabel = rows.length + ' districts · ' + t.blocks + ' blocks';
-        Topo.renderCards(t);
+        Topo.renderKpis([
+            simpleCard('c-total', 'Districts', 'ti-map', num(rows.length), Topo.stateName),
+            simpleCard('c-total', 'Blocks', 'ti-layout-grid2', num(t.blocks), ''),
+            splitCard('Block Routers', 'ti-server', t.block_routers),
+            splitCard('GPs', 'ti-signal', t.gps),
+            simpleCard('c-alarm', 'Active alarms', 'ti-bell', num(t.alarms), '')
+        ], t);
 
         drawLevel1Graph(rows, t);
         drawLevel1Table();
@@ -679,7 +781,10 @@
                 +   '<div style="width:' + (r.down * 100 / d) + '%;background:' + Topo.colors.down + '"></div>'
                 +   '<div style="width:' + (r.unreach * 100 / d) + '%;background:' + Topo.colors.unreach + '"></div>'
                 +   '<div style="width:' + (r.unknown * 100 / d) + '%;background:' + Topo.colors.unknown + '"></div>'
-                + '</div></td>'
+                + '</div>'
+                + miniRow('BR', splitOf(r, 'block_routers'), false)
+                + miniRow('GP', splitOf(r, 'gps'), false)
+                + '</td>'
                 + '<td class="text-right">' + num(r.blocks) + '</td>'
                 + '<td class="text-right">' + num(r.devices) + '</td>'
                 + '<td class="text-right s-up">' + num(r.up) + '</td>'
@@ -748,10 +853,15 @@
         setLastSync(res.last_sync);
 
         var t = sumRows(blocks);
-        var routersDown = 0;
-        for (var i = 0; i < blocks.length; i++) if (blocks[i].router_status === 'down') routersDown++;
-        t.blocksLabel = blocks.length + ' blocks' + (routersDown ? ' \u00b7 ' + routersDown + ' block router(s) down' : '');
-        Topo.renderCards(t);
+        var noRouter = 0;
+        for (var i = 0; i < blocks.length; i++) if (!splitOf(blocks[i], 'block_routers').total) noRouter++;
+        Topo.renderKpis([
+            simpleCard('c-total', 'Blocks', 'ti-layout-grid2', num(blocks.length),
+                       noRouter ? noRouter + ' without a block router in HFCL' : upper(Topo.route.cluster)),
+            splitCard('Block Routers', 'ti-server', t.block_routers),
+            splitCard('GPs', 'ti-signal', t.gps),
+            simpleCard('c-alarm', 'Active alarms', 'ti-bell', num(t.alarms), '')
+        ], t);
 
         if (!blocks.length) {
             if (Topo.cy[2]) { Topo.cy[2].destroy(); Topo.cy[2] = null; }
@@ -848,10 +958,7 @@
                 html = countsTip(upper(cluster), $.extend({ up_pct: totalPct }, total, { blocks: blocks.length }));
             } else {
                 var r = n.data('row');
-                html = countsTip(upper(r.name), r)
-                    + '<div style="margin-top:4px">Block router: <b style="color:'
-                    + (r.router_status === 'down' ? '#ff6b7a' : (r.router_status === 'up' ? '#5cd87a' : '#ced4da'))
-                    + '">' + esc(r.router_status) + '</b></div>';
+                html = countsTip(upper(r.name), r);
             }
             showTip($tip, html, e.renderedPosition, $c);
             if (!n.data('root')) $('#topo-blocks-2 .topo-block[data-name="' + cssEsc(n.data('name')) + '"]').addClass('hl');
@@ -906,7 +1013,7 @@
             html += '<div class="topo-block' + (rdown ? ' router-down' : '') + '" data-name="' + esc(r.name) + '" style="border-left-color:' + c + '">'
                 + '<div class="topo-block-head">'
                 +   '<div><div class="topo-block-name">' + esc(upper(r.name)) + '</div>'
-                +   '<div class="topo-block-router">Block router: <b class="' + (rdown ? 'down' : '') + '">' + esc(r.router_status) + '</b></div></div>'
+                +   '</div>'
                 +   '<span class="topo-alarm-badge' + (r.alarms ? '' : ' zero') + '" title="Active alarms"><i class="ti-bell"></i> ' + num(r.alarms) + '</span>'
                 + '</div>'
                 + '<div class="topo-block-pct" style="color:' + c + '">' + (r.devices ? r.up_pct + '%' : '&ndash;')
@@ -917,11 +1024,9 @@
                 +   '<div style="width:' + (r.devices ? r.unreach * 100 / r.devices : 0) + '%;background:' + Topo.colors.unreach + '"></div>'
                 +   '<div style="width:' + (r.devices ? r.unknown * 100 / r.devices : 0) + '%;background:' + Topo.colors.unknown + '"></div>'
                 + '</div>'
-                + '<div class="topo-block-counts">'
-                +   '<div><b class="s-up">' + num(r.up) + '</b>Up</div>'
-                +   '<div><b class="s-down">' + num(r.down) + '</b>Down</div>'
-                +   '<div><b class="s-unreach">' + num(r.unreach) + '</b>Unreach</div>'
-                +   '<div><b class="s-unknown">' + num(r.unknown) + '</b>Unknown</div>'
+                + '<div style="margin-top:8px">'
+                +   miniRow('BR', splitOf(r, 'block_routers'), true)
+                +   miniRow('GP', splitOf(r, 'gps'), false)
                 + '</div></div>';
         }
         if (!rows.length) html = '<div class="topo-msg" style="grid-column:1/-1">No blocks match the filter.</div>';
@@ -1012,22 +1117,42 @@
         return Object.keys(m.nodes).sort().join(',') + '#' + Object.keys(m.links).sort().join(',');
     }
 
+    /* Totals from the nodes array, excluding external = true (neighbours in other blocks) */
     function level3Totals(m) {
-        var t = { devices: 0, up: 0, down: 0, unreach: 0, unknown: 0, alarms: 0, linksDown: 0 }, stale = 0, i;
+        var t = { devices: 0, up: 0, down: 0, unreach: 0, unknown: 0, alarms: 0, linksDown: 0,
+                  block_routers: emptySplit(), gps: emptySplit(), other: 0, brNames: [] }, stale = 0, i;
         for (i = 0; i < m.internal.length; i++) {
-            var n = m.internal[i];
+            var n = m.internal[i], st = normSt(n.effective_status), kind = kindOf(n.level);
             t.devices++;
-            t[normSt(n.effective_status)]++;
+            t[st]++;
             t.alarms += n.alarm_count || 0;
+            if (kind === 'br') { t.block_routers.total++; t.block_routers[st]++; t.brNames.push(n.name || n.id); }
+            else if (kind === 'gp') { t.gps.total++; t.gps[st]++; }
+            else t.other++;
         }
+        finishSplit(t.block_routers);
+        finishSplit(t.gps);
         for (var k in m.links) {
             if (!m.links.hasOwnProperty(k)) continue;
             if (m.links[k].status === 'down') t.linksDown++;
             if (m.links[k].stale) stale++;
         }
-        t.blocksLabel = m.external.length ? '+ ' + m.external.length + ' neighbour(s) in other blocks' : '';
+        var extra = [];
+        if (t.other) extra.push(t.other + ' other device(s)');
+        if (m.external.length) extra.push(m.external.length + ' neighbour(s) in other blocks (not counted)');
+        t.footExtra = extra.join(' · ');
         t.linksHint = m.linkCount + ' links' + (stale ? ' · ' + stale + ' stale' : '');
         return t;
+    }
+
+    function renderLevel3Kpis(m) {
+        var t = level3Totals(m);
+        Topo.renderKpis([
+            routerCard(t.block_routers, t.brNames.join(', ')),
+            splitCard('GPs', 'ti-signal', t.gps),
+            simpleCard('c-alarm', 'Active alarms', 'ti-bell', num(t.alarms), ''),
+            simpleCard('c-down', 'Links down', 'ti-unlink', num(t.linksDown), t.linksHint)
+        ], t);
     }
 
     /* ---------- cytoscape elements & style ---------- */
@@ -1130,7 +1255,7 @@
     function drawLevel3(res) {
         var m = buildModel(res), key = blockKey(Topo.route.cluster, Topo.route.block), sig = signature(m);
         setLastSync(res.last_sync);
-        Topo.renderCards(level3Totals(m));
+        renderLevel3Kpis(m);
         Topo.l3.model = m;
 
         if (Topo.cy[3] && Topo.l3.key === key && Topo.l3.sig === sig) {
