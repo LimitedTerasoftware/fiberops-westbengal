@@ -320,10 +320,10 @@ Route::get('/samriddh_analytics', "OltLocationController@SamriddhDataList")->nam
 Route::get('/gprouter_dashboard', "OltLocationController@GprouterData")->name('gprouter_dashboard');
 Route::get('/gprouter_performance', "OltLocationController@GprouterDataList")->name('gprouter_performance');
 Route::get('/gprouter_performance/export', "OltLocationController@GprouterDataListExport")->name('gprouter_performance.export');
+
 Route::get('/blockrouter_dashboard', "OltLocationController@BlockrouterData")->name('blockrouter_dashboard');
 Route::get('/blockrouter_performance', "OltLocationController@BlockrouterDataList")->name('blockrouter_performance');
 Route::get('/blockrouter_performance/export', "OltLocationController@BlockrouterDataListExport")->name('blockrouter_performance.export');
-
 Route::post('upload-otdr-images', 'AdminController@uploadImages')->name('upload-otdr-images');
 
 
@@ -376,4 +376,11 @@ Route::get('/get_recurring_gp_trends', 'InventoryMng\MaterialController@getRecur
 Route::get('/frequently_down_gps_export', 'InventoryMng\MaterialController@exportFrequentlyDownGps')->name('frequently_down_gps_export');
 
 Route::resource('holidays', "HolidayController");
+
+Route::get('topology', 'TopologyController@index')->name('topology');
+Route::group(['prefix' => 'topology/data'], function () {
+    Route::get('state',   'TopologyController@state');
+    Route::get('cluster', 'TopologyController@cluster');
+    Route::get('block',   'TopologyController@block');
+});
 

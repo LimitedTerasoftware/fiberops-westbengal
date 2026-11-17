@@ -44,6 +44,10 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT'),
-    ]
+    ],
+    'hfcl' => [
+    'ingest_token'   => env('HFCL_INGEST_TOKEN'),
+    'sync_server_ip' => env('HFCL_SYNC_SERVER_IP'),
+    ],
 
 ];

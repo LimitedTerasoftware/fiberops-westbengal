@@ -167,9 +167,11 @@ class LocationResource extends Controller
 
         $blockQuery= Block::select('blocks.name as block_name', 'districts.name as district_name', 'blocks.id as block_id', 'districts.id as districts_id', 'm_s_code')
                     ->leftJoin('districts', 'blocks.district_id', '=', 'districts.id');
-                  
-                    
-          if (!empty($district_id)) {
+
+        if (!empty($state_id)) {
+            $blockQuery->where('districts.state_id', $state_id);
+        }
+        if (!empty($district_id)) {
             $blockQuery->where('blocks.district_id', $district_id);
         }
         $blocks = $blockQuery->paginate($this->perpage);

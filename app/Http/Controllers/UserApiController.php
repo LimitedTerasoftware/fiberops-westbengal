@@ -2608,14 +2608,16 @@ public function userhistory(Request $request){
             try{
            \Log::info('userhistory API called', $request->all());
             $user_id = $request->input('user_id');
-            $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
-            $endOfMonth = \Carbon\Carbon::now()->endOfMonth();
-            $baseQuery = UserRequests::join('master_tickets',
+            $startDate = \Carbon\Carbon::now()->subDays(30);
+            $endDate = \Carbon\Carbon::now();
+
+            $baseQuery = UserRequests::join('master_tickets', 
                     'user_requests.booking_id', '=', 'master_tickets.ticketid')
                 ->where('user_requests.provider_id', $user_id)
-                ->whereBetween('user_requests.created_at', [$startOfMonth, $endOfMonth]);
+                ->whereBetween('user_requests.created_at', [$startDate, $endDate]);
+
             $total_tickets = (clone $baseQuery)->count();
-            $total_tickets_data = (clone $baseQuery)->select('user_requests.*')->get();
+            $total_tickets_data = (clone $baseQuery)->select('user_requests.*','master_tickets.host_name')->get();
             $income_tickets =  (clone $baseQuery)->where('user_requests.status','INCOMING')->count();
             $income_tickets_data =  (clone $baseQuery)->where('user_requests.status','INCOMING')->get();
             $ongoing_tickets =  (clone $baseQuery)->where('user_requests.status','PICKEDUP')->count();
@@ -4284,7 +4286,7 @@ public function get_employee_list(Request $request)
     }
 }
 
- public function createmastertickets_test(Request $request)
+ public function createmastertickets(Request $request)
     {
         try {
             $mappedData = $this->mapKolkataRequest($request->all());
@@ -4301,6 +4303,7 @@ public function get_employee_list(Request $request)
 
  private function mapKolkataRequest(array $payload)
     {
+          Log::info('ROUTERTICKETS_DETAILS: ' . json_encode($payload, JSON_PRETTY_PRINT));
 
         $timestamp = $payload['ADDITIONAL_DATA']['alert_timestamp'] ?? null;
 
@@ -4363,7 +4366,7 @@ public function get_employee_list(Request $request)
         ]];
     }
 
-// Tickets for these LGD codes must not be created
+// Tickets for these LGD codes(Permanent down) must not be created
 private const EXCLUDED_TICKET_LGD_CODES = [
     '110773', '110821', '110823', '110880', '110925', '110815', '110817', '110890', '110869', '109559',
     '109556', '109582', '109580', '109583', '109587', '109702', '109704', '109703', '109709', '109687',
@@ -4389,7 +4392,7 @@ private const EXCLUDED_TICKET_LGD_CODES = [
     '107978', '107982', '108068', '108076', '108067', '108074', '108069', '108071', '108276', '108280',
     '108275', '108019', '108018', '108025', '108026', '108038', '108028', '108034', '108033', '108193',
     '108185', '108191', '108194', '108188', '108059', '108052', '108284', '108288',
-];
+];    
 
 private function processTicketData(array $jsonData)
 {
@@ -4407,6 +4410,7 @@ private function processTicketData(array $jsonData)
     $hasError = false;
     $errormeg="";
     $excludedLgdCodes = array_flip(self::EXCLUDED_TICKET_LGD_CODES);
+
 
     DB::beginTransaction();
 
@@ -4624,9 +4628,7 @@ private function processTicketData(array $jsonData)
              }
             }
 
-
-
-            if ($lgd_code && isset($excludedLgdCodes[trim((string) $lgd_code)])) {
+          if ($lgd_code && isset($excludedLgdCodes[trim((string) $lgd_code)])) {
                 Log::info('Ticket skipped for excluded LGD code', [
                     'ticketid' => $ticketId,
                     'lgd_code' => $lgd_code,
@@ -4792,7 +4794,6 @@ private function processTicketData(array $jsonData)
     }
 }
 
-
 private function getNearestProvider($lat, $lng, $radius = 150)
 {
     return DB::table('providers')
@@ -4886,7 +4887,8 @@ public function getticketstatus(Request $request)
         $comments = $request->incidentComments;
         $rcaFlag  = $request->incidentRCAFlag;
         $status   = $request->status;
-           
+        
+           Log::info('INC Request Details:', $request->all());
 
         if (!$ticketId) {
              return response()->json([
@@ -4920,16 +4922,34 @@ public function getticketstatus(Request $request)
                 'status'=>$status
             ]);
 
-        $userUpdated = DB::table('user_requests')
-            ->where('booking_id', $ticketId)
-            ->update([
-                'description' => $finalReason,
-                'status' => $mappedStatus
+        $userRequestData = [
+            'description' => $finalReason,
+            'status' => $mappedStatus
+        ];
 
-            ]);
+        if (in_array((int) $status, [1, 3])) {
+            $userRequestData['started_at'] = Carbon::now();
+        } elseif ((int) $status === 4) {
+            $userRequestData['assigned_at'] = Carbon::now();
+            $userRequestData['finished_at'] = null;
+            $userRequestData['started_at'] = null;
+        } elseif ((int) $status === 5) {
+            $userRequestData['finished_at'] = Carbon::now();
+        }
+         $userUpdated = DB::table('user_requests')
+            ->where('booking_id', $ticketId)
+            ->update($userRequestData);
+
+        // $userUpdated = DB::table('user_requests')
+        //     ->where('booking_id', $ticketId)
+        //     ->update([
+        //         'description' => $finalReason,
+        //         'status' => $mappedStatus,
+        //         'finished_at'=>Carbon::now(),
+        //     ]);
 
          $this->updateSnocTicketStatus(
-   	 $ticketId,
+   	    $ticketId,
     	$status,
     	$comments,
     	$rcaFlag

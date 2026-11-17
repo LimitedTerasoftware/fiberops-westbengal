@@ -51,6 +51,9 @@
 
                     @endif
                     <li><a href="{{ route('admin.uptime') }}" ><i class="ti-stats-up"></i> GP Trends</a></li>
+                    @if(in_array('topology', explode(',', auth()->user()->permissions)))
+                    <li><a href="{{ route('admin.topology') }}" ><i class="ti-share"></i> Network Topology</a></li>
+                    @endif
 
                     @if(auth()->user()->role == 'inventory')
                     <li><a href="{{ route('admin.inventorydashboard') }}" ><i class="ti-anchor"></i> @lang('admin.include.inventory_dashboard')</a></li>

@@ -146,4 +146,6 @@ Route::post('/ne-status/insert', 'UserApiController@insertBharatNetNeStatus');
 
 
 Route::get('/get_employee_list', 'UserApiController@get_employee_list');
+Route::post('/hfcl/ingest', 'HfclIngestController@store');
+
 
